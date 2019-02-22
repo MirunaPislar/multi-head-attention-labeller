@@ -1,0 +1,3231 @@
+binary_labels: False
+debug_mode: False
+use_one_hot: True
+path_train: ../mltagger/data/fce-error-detection/tsv/fce-public.train.sent_label.tsv
+path_dev: ../mltagger/data/fce-error-detection/tsv/fce-public.dev.sent_label.tsv
+path_test: ../mltagger/data/fce-error-detection/tsv/fce-public.dev.sent_label.tsv:../mltagger/data/fce-error-detection/tsv/fce-public.test.sent_label.tsv
+default_label: c
+model_selector: dev_key=i_sent_f:high
+preload_vectors: ../mltagger/glove/glove.6B.300d.txt
+word_embedding_size: 300
+emb_initial_zero: False
+train_embeddings: True
+char_embedding_size: 100
+word_recurrent_size: 300
+char_recurrent_size: 100
+hidden_layer_size: 50
+char_hidden_layer_size: 50
+lowercase: True
+replace_digits: True
+min_word_freq: -1.0
+singletons_prob: 0.1
+allowed_word_length: -1.0
+max_train_sent_length: -1.0
+vocab_include_devtest: True
+vocab_only_embedded: False
+initializer: glorot
+opt_strategy: adadelta
+learningrate: 1.0
+clip: 0.0
+batch_equal_size: False
+max_batch_size: 32
+epochs: 200
+stop_if_no_improvement_for_epochs: 7
+learningrate_decay: 0.9
+dropout_input: 0.5
+dropout_word_lstm: 0.5
+tf_per_process_gpu_memory_fraction: 1.0
+tf_allow_growth: True
+lmcost_max_vocab_size: 7500
+lmcost_hidden_layer_size: 50
+lmcost_lstm_gamma: 0.1
+lmcost_joint_lstm_gamma: 0.0
+lmcost_char_gamma: 0.0
+lmcost_joint_char_gamma: 0.1
+char_integration_method: concat
+save: None
+load: None
+garbage_collection: False
+lstm_use_peepholes: False
+whidden_layer_size: 200
+attention_evidence_size: 100
+attention_activation: soft
+attention_objective_weight: 0.0
+sentence_objective_weight: 1.0
+sentence_objective_persistent: True
+word_objective_weight: 0.0
+sentence_composition: attention
+random_seed: 100
+Sent label2id:  {'i': 1, 'c': 0}
+Number of heads =  2
+Token_label2id:  {'i': 1, 'c': 0}
+n_words: 13470
+n_chars: 97
+n_singletons: 6626
+
+EPOCH: 0
+current_learningrate: 1.0
+train_cost_sum: 760491.1793823242
+train_cost_avg: 26.469359903321298
+train_sent_count: 28731.0
+train_key=c_sent_predicted: 7270.0
+train_key=c_sent_correct: 5190.0
+train_key=c_sent_total: 10514.0
+train_key=c_sent_p: 0.7138927097661623
+train_key=c_sent_r: 0.4936275442267453
+train_key=c_sent_f: 0.5836707152496626
+train_key=c_sent_f05: 0.6554023336869222
+train_key=i_sent_predicted: 21461.0
+train_key=i_sent_correct: 16137.0
+train_key=i_sent_total: 18217.0
+train_key=i_sent_p: 0.751922091235264
+train_key=i_sent_r: 0.885820936487896
+train_key=i_sent_f: 0.8133978527143505
+train_key=i_sent_f05: 0.7753625277481477
+train_sent_p_macro: 0.7329074005007131
+train_sent_r_macro: 0.6897242403573206
+train_sent_f_macro: 0.6985342839820066
+train_sent_p_micro: 0.7422992586404928
+train_sent_r_micro: 0.7422992586404928
+train_sent_f_micro: 0.7422992586404928
+train_sent_correct_binary: 21327.0
+train_sent_accuracy_binary: 0.7422992586404928
+train_key=c_tok_0_map: 2.488645257702847
+train_key=c_tok_0_p: 0.8846671255162057
+train_key=c_tok_0_r: 0.4306917874984769
+train_key=c_tok_0_f: 0.579338250358533
+train_key=c_tok_0_f05: 0.7306394435487205
+train_key=i_tok_0_map: 0.29175934871099296
+train_key=i_tok_0_p: 0.1408854276400216
+train_key=i_tok_0_r: 0.6244460668624887
+train_key=i_tok_0_f: 0.22990129584367364
+train_key=i_tok_0_f05: 0.16670398597398406
+train_tok_p_macro: 0.5127762765781136
+train_tok_r_macro: 0.5275689271804829
+train_tok_f_macro: 0.4046197731011033
+train_tok_p_micro: 0.45589212800303863
+train_tok_r_micro: 0.45589212800303863
+train_tok_f_micro: 0.45589212800303863
+train_time: 178.38791918754578
+***********************************************************
+Sentence pred: 
+              precision    recall  f1-score   support
+
+           0       0.71      0.49      0.58     10514
+           1       0.75      0.89      0.81     18217
+
+   micro avg       0.74      0.74      0.74     28731
+   macro avg       0.73      0.69      0.70     28731
+weighted avg       0.74      0.74      0.73     28731
+
+F1-macro sent:  0.6985342839820066
+F1-micro sent:  0.7422992586404928
+***********************************************************
+Token pred: 
+              precision    recall  f1-score   support
+
+           0       0.88      0.43      0.58    393936
+           1       0.14      0.62      0.23     58897
+
+   micro avg       0.46      0.46      0.46    452833
+   macro avg       0.51      0.53      0.40    452833
+weighted avg       0.79      0.46      0.53    452833
+
+F1-macro tok:  0.4046197731011033
+F1-micro tok:  0.45589212800303863
+***********************************************************
+
+dev_cost_sum: 55026.747314453125
+dev_cost_avg: 24.764512742778184
+dev_sent_count: 2222.0
+dev_key=c_sent_predicted: 523.0
+dev_key=c_sent_correct: 412.0
+dev_key=c_sent_total: 806.0
+dev_key=c_sent_p: 0.7877629063097514
+dev_key=c_sent_r: 0.511166253101737
+dev_key=c_sent_f: 0.6200150489089541
+dev_key=c_sent_f05: 0.7108350586611456
+dev_key=i_sent_predicted: 1699.0
+dev_key=i_sent_correct: 1305.0
+dev_key=i_sent_total: 1416.0
+dev_key=i_sent_p: 0.7680988816951148
+dev_key=i_sent_r: 0.9216101694915254
+dev_key=i_sent_f: 0.8378812199036918
+dev_key=i_sent_f05: 0.7945689235265465
+dev_sent_p_macro: 0.7779308940024331
+dev_sent_r_macro: 0.7163882112966312
+dev_sent_f_macro: 0.7289481344063229
+dev_sent_p_micro: 0.7727272727272727
+dev_sent_r_micro: 0.7727272727272727
+dev_sent_f_micro: 0.7727272727272727
+dev_sent_correct_binary: 1717.0
+dev_sent_accuracy_binary: 0.7727272727272727
+dev_key=c_tok_0_map: 2.50320952084245
+dev_key=c_tok_0_p: 0.9088578088578089
+dev_key=c_tok_0_r: 0.26028906171768085
+dev_key=c_tok_0_f: 0.404680972521342
+dev_key=c_tok_0_f05: 0.6065744644440642
+dev_key=i_tok_0_map: 0.3019291768125568
+dev_key=i_tok_0_p: 0.14827625965640492
+dev_key=i_tok_0_r: 0.8314655172413793
+dev_key=i_tok_0_f: 0.2516716135555628
+dev_key=i_tok_0_f05: 0.17743478420839617
+dev_tok_p_macro: 0.5285670342571069
+dev_tok_r_macro: 0.5458772894795301
+dev_tok_f_macro: 0.3281762930384524
+dev_tok_p_micro: 0.3368883493742594
+dev_tok_r_micro: 0.3368883493742594
+dev_tok_f_micro: 0.3368883493742594
+dev_time: 5.413131475448608
+***********************************************************
+Sentence pred: 
+              precision    recall  f1-score   support
+
+           0       0.79      0.51      0.62       806
+           1       0.77      0.92      0.84      1416
+
+   micro avg       0.77      0.77      0.77      2222
+   macro avg       0.78      0.72      0.73      2222
+weighted avg       0.78      0.77      0.76      2222
+
+F1-macro sent:  0.7289481344063229
+F1-micro sent:  0.7727272727272727
+***********************************************************
+Token pred: 
+              precision    recall  f1-score   support
+
+           0       0.91      0.26      0.40     29959
+           1       0.15      0.83      0.25      4640
+
+   micro avg       0.34      0.34      0.34     34599
+   macro avg       0.53      0.55      0.33     34599
+weighted avg       0.81      0.34      0.38     34599
+
+F1-macro tok:  0.3281762930384524
+F1-micro tok:  0.3368883493742594
+***********************************************************
+
+best_epoch: 0
+
+EPOCH: 1
+current_learningrate: 1.0
+train_cost_sum: 685467.7650146484
+train_cost_avg: 23.85812415212309
+train_sent_count: 28731.0
+train_key=c_sent_predicted: 7405.0
+train_key=c_sent_correct: 5559.0
+train_key=c_sent_total: 10514.0
+train_key=c_sent_p: 0.7507089804186361
+train_key=c_sent_r: 0.5287236066197452
+train_key=c_sent_f: 0.6204587309559685
+train_key=c_sent_f05: 0.6925549409478248
+train_key=i_sent_predicted: 21326.0
+train_key=i_sent_correct: 16371.0
+train_key=i_sent_total: 18217.0
+train_key=i_sent_p: 0.7676545062365188
+train_key=i_sent_r: 0.8986660811330076
+train_key=i_sent_f: 0.8280100144146877
+train_key=i_sent_f05: 0.7907091314805691
+train_sent_p_macro: 0.7591817433275774
+train_sent_r_macro: 0.7136948438763764
+train_sent_f_macro: 0.7242343726853281
+train_sent_p_micro: 0.7632870418711496
+train_sent_r_micro: 0.7632870418711496
+train_sent_f_micro: 0.7632870418711496
+train_sent_correct_binary: 21930.0
+train_sent_accuracy_binary: 0.7632870418711496
+train_key=c_tok_0_map: 2.4867031290946273
+train_key=c_tok_0_p: 0.8773907423140557
+train_key=c_tok_0_r: 0.5479037204012834
+train_key=c_tok_0_f: 0.6745632773226115
+train_key=c_tok_0_f05: 0.783194478714603
+train_key=i_tok_0_map: 0.2934185477759994
+train_key=i_tok_0_p: 0.13892917923725537
+train_key=i_tok_0_r: 0.487885630847072
+train_key=i_tok_0_f: 0.21627296983016533
+train_key=i_tok_0_f05: 0.16212022906146858
+train_tok_p_macro: 0.5081599607756555
+train_tok_r_macro: 0.5178946756241777
+train_tok_f_macro: 0.4454181235763884
+train_tok_p_micro: 0.5400975635609595
+train_tok_r_micro: 0.5400975635609595
+train_tok_f_micro: 0.5400975635609595
+train_time: 172.10453033447266
+***********************************************************
+Sentence pred: 
+              precision    recall  f1-score   support
+
+           0       0.75      0.53      0.62     10514
+           1       0.77      0.90      0.83     18217
+
+   micro avg       0.76      0.76      0.76     28731
+   macro avg       0.76      0.71      0.72     28731
+weighted avg       0.76      0.76      0.75     28731
+
+F1-macro sent:  0.7242343726853281
+F1-micro sent:  0.7632870418711496
+***********************************************************
+Token pred: 
+              precision    recall  f1-score   support
+
+           0       0.88      0.55      0.67    393936
+           1       0.14      0.49      0.22     58897
+
+   micro avg       0.54      0.54      0.54    452833
+   macro avg       0.51      0.52      0.45    452833
+weighted avg       0.78      0.54      0.61    452833
+
+F1-macro tok:  0.4454181235763884
+F1-micro tok:  0.5400975635609595
+***********************************************************
+
+dev_cost_sum: 51285.91427612305
+dev_cost_avg: 23.080969521207493
+dev_sent_count: 2222.0
+dev_key=c_sent_predicted: 519.0
+dev_key=c_sent_correct: 418.0
+dev_key=c_sent_total: 806.0
+dev_key=c_sent_p: 0.8053949903660886
+dev_key=c_sent_r: 0.5186104218362283
+dev_key=c_sent_f: 0.6309433962264152
+dev_key=c_sent_f05: 0.7251908396946564
+dev_key=i_sent_predicted: 1703.0
+dev_key=i_sent_correct: 1315.0
+dev_key=i_sent_total: 1416.0
+dev_key=i_sent_p: 0.7721667645331768
+dev_key=i_sent_r: 0.9286723163841808
+dev_key=i_sent_f: 0.8432189804424495
+dev_key=i_sent_f05: 0.7991006319883326
+dev_sent_p_macro: 0.7887808774496328
+dev_sent_r_macro: 0.7236413691102046
+dev_sent_f_macro: 0.7370811883344324
+dev_sent_p_micro: 0.7799279927992799
+dev_sent_r_micro: 0.7799279927992799
+dev_sent_f_micro: 0.7799279927992799
+dev_sent_correct_binary: 1733.0
+dev_sent_accuracy_binary: 0.7799279927992799
+dev_key=c_tok_0_map: 2.505608486341719
+dev_key=c_tok_0_p: 0.8686096224483651
+dev_key=c_tok_0_r: 0.48149137154110616
+dev_key=c_tok_0_f: 0.6195507451788859
+dev_key=c_tok_0_f05: 0.7482855571809477
+dev_key=i_tok_0_map: 0.2960304091196599
+dev_key=i_tok_0_p: 0.1366162738995109
+dev_key=i_tok_0_r: 0.5297413793103448
+dev_key=i_tok_0_f: 0.2172145634499823
+dev_key=i_tok_0_f05: 0.16042710944026736
+dev_tok_p_macro: 0.502612948173938
+dev_tok_r_macro: 0.5056163754257255
+dev_tok_f_macro: 0.4183826543144341
+dev_tok_p_micro: 0.4879620798288968
+dev_tok_r_micro: 0.4879620798288968
+dev_tok_f_micro: 0.4879620798288968
+dev_time: 5.038118600845337
+***********************************************************
+Sentence pred: 
+              precision    recall  f1-score   support
+
+           0       0.81      0.52      0.63       806
+           1       0.77      0.93      0.84      1416
+
+   micro avg       0.78      0.78      0.78      2222
+   macro avg       0.79      0.72      0.74      2222
+weighted avg       0.78      0.78      0.77      2222
+
+F1-macro sent:  0.7370811883344324
+F1-micro sent:  0.7799279927992799
+***********************************************************
+Token pred: 
+              precision    recall  f1-score   support
+
+           0       0.87      0.48      0.62     29959
+           1       0.14      0.53      0.22      4640
+
+   micro avg       0.49      0.49      0.49     34599
+   macro avg       0.50      0.51      0.42     34599
+weighted avg       0.77      0.49      0.57     34599
+
+F1-macro tok:  0.4183826543144341
+F1-micro tok:  0.4879620798288968
+***********************************************************
+
+best_epoch: 1
+
+EPOCH: 2
+current_learningrate: 1.0
+train_cost_sum: 647801.8954772949
+train_cost_avg: 22.547140561668403
+train_sent_count: 28731.0
+train_key=c_sent_predicted: 7455.0
+train_key=c_sent_correct: 5622.0
+train_key=c_sent_total: 10514.0
+train_key=c_sent_p: 0.7541247484909457
+train_key=c_sent_r: 0.5347156172722085
+train_key=c_sent_f: 0.6257443374700874
+train_key=c_sent_f05: 0.6969306292457975
+train_key=i_sent_predicted: 21276.0
+train_key=i_sent_correct: 16384.0
+train_key=i_sent_total: 18217.0
+train_key=i_sent_p: 0.7700695619477346
+train_key=i_sent_r: 0.8993797002799583
+train_key=i_sent_f: 0.8297166586483681
+train_key=i_sent_f05: 0.7928688262792656
+train_sent_p_macro: 0.7620971552193401
+train_sent_r_macro: 0.7170476587760835
+train_sent_f_macro: 0.7277304980592277
+train_sent_p_micro: 0.765932268281647
+train_sent_r_micro: 0.765932268281647
+train_sent_f_micro: 0.765932268281647
+train_sent_correct_binary: 22006.0
+train_sent_accuracy_binary: 0.765932268281647
+train_key=c_tok_0_map: 2.502332786599237
+train_key=c_tok_0_p: 0.8623558811836202
+train_key=c_tok_0_r: 0.4625167539904959
+train_key=c_tok_0_f: 0.6021017150788143
+train_key=c_tok_0_f05: 0.7352357248004958
+train_key=i_tok_0_map: 0.2775382937697042
+train_key=i_tok_0_p: 0.12343251265788723
+train_key=i_tok_0_r: 0.5062227278129616
+train_key=i_tok_0_f: 0.198471605546421
+train_key=i_tok_0_f05: 0.14542582965643117
+train_tok_p_macro: 0.4928941969207537
+train_tok_r_macro: 0.4843697409017288
+train_tok_f_macro: 0.4002866603126176
+train_tok_p_micro: 0.468201301583586
+train_tok_r_micro: 0.468201301583586
+train_tok_f_micro: 0.468201301583586
+train_time: 172.66138982772827
+***********************************************************
+Sentence pred: 
+              precision    recall  f1-score   support
+
+           0       0.75      0.53      0.63     10514
+           1       0.77      0.90      0.83     18217
+
+   micro avg       0.77      0.77      0.77     28731
+   macro avg       0.76      0.72      0.73     28731
+weighted avg       0.76      0.77      0.76     28731
+
+F1-macro sent:  0.7277304980592277
+F1-micro sent:  0.765932268281647
+***********************************************************
+Token pred: 
+              precision    recall  f1-score   support
+
+           0       0.86      0.46      0.60    393936
+           1       0.12      0.51      0.20     58897
+
+   micro avg       0.47      0.47      0.47    452833
+   macro avg       0.49      0.48      0.40    452833
+weighted avg       0.77      0.47      0.55    452833
+
+F1-macro tok:  0.4002866603126176
+F1-micro tok:  0.468201301583586
+***********************************************************
+
+dev_cost_sum: 48926.853088378906
+dev_cost_avg: 22.019285818352344
+dev_sent_count: 2222.0
+dev_key=c_sent_predicted: 853.0
+dev_key=c_sent_correct: 568.0
+dev_key=c_sent_total: 806.0
+dev_key=c_sent_p: 0.6658851113716295
+dev_key=c_sent_r: 0.7047146401985112
+dev_key=c_sent_f: 0.6847498493068114
+dev_key=c_sent_f05: 0.6733048838311996
+dev_key=i_sent_predicted: 1369.0
+dev_key=i_sent_correct: 1131.0
+dev_key=i_sent_total: 1416.0
+dev_key=i_sent_p: 0.8261504747991234
+dev_key=i_sent_r: 0.798728813559322
+dev_key=i_sent_f: 0.8122082585278275
+dev_key=i_sent_f05: 0.8205165409170051
+dev_sent_p_macro: 0.7460177930853764
+dev_sent_r_macro: 0.7517217268789166
+dev_sent_f_macro: 0.7484790539173194
+dev_sent_p_micro: 0.7646264626462647
+dev_sent_r_micro: 0.7646264626462647
+dev_sent_f_micro: 0.7646264626462647
+dev_sent_correct_binary: 1699.0
+dev_sent_accuracy_binary: 0.7646264626462647
+dev_key=c_tok_0_map: 2.517444132792675
+dev_key=c_tok_0_p: 0.8601055630809472
+dev_key=c_tok_0_r: 0.6146400080109483
+dev_key=c_tok_0_f: 0.7169444011836162
+dev_key=c_tok_0_f05: 0.7964877373588823
+dev_key=i_tok_0_map: 0.28371242731844026
+dev_key=i_tok_0_p: 0.12471569370735405
+dev_key=i_tok_0_r: 0.3545258620689655
+dev_key=i_tok_0_f: 0.18452047111609646
+dev_key=i_tok_0_f05: 0.14329268292682926
+dev_tok_p_macro: 0.4924106283941506
+dev_tok_r_macro: 0.4845829350399569
+dev_tok_f_macro: 0.45073243614985636
+dev_tok_p_micro: 0.5797566403653285
+dev_tok_r_micro: 0.5797566403653285
+dev_tok_f_micro: 0.5797566403653285
+dev_time: 5.042784214019775
+***********************************************************
+Sentence pred: 
+              precision    recall  f1-score   support
+
+           0       0.67      0.70      0.68       806
+           1       0.83      0.80      0.81      1416
+
+   micro avg       0.76      0.76      0.76      2222
+   macro avg       0.75      0.75      0.75      2222
+weighted avg       0.77      0.76      0.77      2222
+
+F1-macro sent:  0.7484790539173194
+F1-micro sent:  0.7646264626462647
+***********************************************************
+Token pred: 
+              precision    recall  f1-score   support
+
+           0       0.86      0.61      0.72     29959
+           1       0.12      0.35      0.18      4640
+
+   micro avg       0.58      0.58      0.58     34599
+   macro avg       0.49      0.48      0.45     34599
+weighted avg       0.76      0.58      0.65     34599
+
+F1-macro tok:  0.45073243614985636
+F1-micro tok:  0.5797566403653285
+***********************************************************
+
+best_epoch: 1
+
+EPOCH: 3
+current_learningrate: 1.0
+train_cost_sum: 623900.1634521484
+train_cost_avg: 21.7152261825954
+train_sent_count: 28731.0
+train_key=c_sent_predicted: 7540.0
+train_key=c_sent_correct: 5752.0
+train_key=c_sent_total: 10514.0
+train_key=c_sent_p: 0.7628647214854112
+train_key=c_sent_r: 0.5470800836979266
+train_key=c_sent_f: 0.637199512573391
+train_key=c_sent_f05: 0.7070856075133992
+train_key=i_sent_predicted: 21191.0
+train_key=i_sent_correct: 16429.0
+train_key=i_sent_total: 18217.0
+train_key=i_sent_p: 0.7752819593223538
+train_key=i_sent_r: 0.9018499204040182
+train_key=i_sent_f: 0.8337900933820545
+train_key=i_sent_f05: 0.7976714151154096
+train_sent_p_macro: 0.7690733404038825
+train_sent_r_macro: 0.7244650020509724
+train_sent_f_macro: 0.7354948029777227
+train_sent_p_micro: 0.7720232501479238
+train_sent_r_micro: 0.7720232501479238
+train_sent_f_micro: 0.7720232501479238
+train_sent_correct_binary: 22181.0
+train_sent_accuracy_binary: 0.7720232501479238
+train_key=c_tok_0_map: 2.5056511001658213
+train_key=c_tok_0_p: 0.8558349903591227
+train_key=c_tok_0_r: 0.5768830469924049
+train_key=c_tok_0_f: 0.689202877453478
+train_key=c_tok_0_f05: 0.7803657766056811
+train_key=i_tok_0_map: 0.27448328991839116
+train_key=i_tok_0_p: 0.11007117038713914
+train_key=i_tok_0_r: 0.3500348065266482
+train_key=i_tok_0_f: 0.1674776802034168
+train_key=i_tok_0_f05: 0.12756083827815143
+train_tok_p_macro: 0.4829530803731309
+train_tok_r_macro: 0.46345892675952655
+train_tok_f_macro: 0.4283402788284474
+train_tok_p_micro: 0.5473783933591412
+train_tok_r_micro: 0.5473783933591412
+train_tok_f_micro: 0.5473783933591412
+train_time: 171.00055193901062
+***********************************************************
+Sentence pred: 
+              precision    recall  f1-score   support
+
+           0       0.76      0.55      0.64     10514
+           1       0.78      0.90      0.83     18217
+
+   micro avg       0.77      0.77      0.77     28731
+   macro avg       0.77      0.72      0.74     28731
+weighted avg       0.77      0.77      0.76     28731
+
+F1-macro sent:  0.7354948029777227
+F1-micro sent:  0.7720232501479238
+***********************************************************
+Token pred: 
+              precision    recall  f1-score   support
+
+           0       0.86      0.58      0.69    393936
+           1       0.11      0.35      0.17     58897
+
+   micro avg       0.55      0.55      0.55    452833
+   macro avg       0.48      0.46      0.43    452833
+weighted avg       0.76      0.55      0.62    452833
+
+F1-macro tok:  0.4283402788284474
+F1-micro tok:  0.5473783933591412
+***********************************************************
+
+dev_cost_sum: 47403.746002197266
+dev_cost_avg: 21.333819082897058
+dev_sent_count: 2222.0
+dev_key=c_sent_predicted: 530.0
+dev_key=c_sent_correct: 426.0
+dev_key=c_sent_total: 806.0
+dev_key=c_sent_p: 0.8037735849056604
+dev_key=c_sent_r: 0.5285359801488834
+dev_key=c_sent_f: 0.6377245508982036
+dev_key=c_sent_f05: 0.7279562542720438
+dev_key=i_sent_predicted: 1692.0
+dev_key=i_sent_correct: 1312.0
+dev_key=i_sent_total: 1416.0
+dev_key=i_sent_p: 0.7754137115839244
+dev_key=i_sent_r: 0.9265536723163842
+dev_key=i_sent_f: 0.8442728442728442
+dev_key=i_sent_f05: 0.801564027370479
+dev_sent_p_macro: 0.7895936482447924
+dev_sent_r_macro: 0.7275448262326338
+dev_sent_f_macro: 0.7409986975855238
+dev_sent_p_micro: 0.7821782178217822
+dev_sent_r_micro: 0.7821782178217822
+dev_sent_f_micro: 0.7821782178217822
+dev_sent_correct_binary: 1738.0
+dev_sent_accuracy_binary: 0.7821782178217822
+dev_key=c_tok_0_map: 2.5255809119024977
+dev_key=c_tok_0_p: 0.8474347217529804
+dev_key=c_tok_0_r: 0.5860676257551988
+dev_key=c_tok_0_f: 0.6929239512214374
+dev_key=c_tok_0_f05: 0.7780387291177383
+dev_key=i_tok_0_map: 0.279869756683629
+dev_key=i_tok_0_p: 0.10655619596541786
+dev_key=i_tok_0_r: 0.31875
+dev_key=i_tok_0_f: 0.15971922246220302
+dev_key=i_tok_0_f05: 0.1229222074468085
+dev_tok_p_macro: 0.47699545885919914
+dev_tok_r_macro: 0.4524088128775994
+dev_tok_f_macro: 0.4263215868418202
+dev_tok_p_micro: 0.5502182143992601
+dev_tok_r_micro: 0.5502182143992601
+dev_tok_f_micro: 0.5502182143992601
+dev_time: 5.053934335708618
+***********************************************************
+Sentence pred: 
+              precision    recall  f1-score   support
+
+           0       0.80      0.53      0.64       806
+           1       0.78      0.93      0.84      1416
+
+   micro avg       0.78      0.78      0.78      2222
+   macro avg       0.79      0.73      0.74      2222
+weighted avg       0.79      0.78      0.77      2222
+
+F1-macro sent:  0.7409986975855238
+F1-micro sent:  0.7821782178217822
+***********************************************************
+Token pred: 
+              precision    recall  f1-score   support
+
+           0       0.85      0.59      0.69     29959
+           1       0.11      0.32      0.16      4640
+
+   micro avg       0.55      0.55      0.55     34599
+   macro avg       0.48      0.45      0.43     34599
+weighted avg       0.75      0.55      0.62     34599
+
+F1-macro tok:  0.4263215868418202
+F1-micro tok:  0.5502182143992601
+***********************************************************
+
+best_epoch: 3
+
+EPOCH: 4
+current_learningrate: 1.0
+train_cost_sum: 606778.9114990234
+train_cost_avg: 21.119310553027162
+train_sent_count: 28731.0
+train_key=c_sent_predicted: 7698.0
+train_key=c_sent_correct: 5878.0
+train_key=c_sent_total: 10514.0
+train_key=c_sent_p: 0.7635749545336451
+train_key=c_sent_r: 0.5590641050028533
+train_key=c_sent_f: 0.6455084559631012
+train_key=c_sent_f05: 0.7115189076647461
+train_key=i_sent_predicted: 21033.0
+train_key=i_sent_correct: 16397.0
+train_key=i_sent_total: 18217.0
+train_key=i_sent_p: 0.7795844625112918
+train_key=i_sent_r: 0.900093319426909
+train_key=i_sent_f: 0.835515923566879
+train_key=i_sent_f05: 0.8010337179650021
+train_sent_p_macro: 0.7715797085224685
+train_sent_r_macro: 0.7295787122148811
+train_sent_f_macro: 0.7405121897649901
+train_sent_p_micro: 0.7752949775503811
+train_sent_r_micro: 0.7752949775503811
+train_sent_f_micro: 0.7752949775503811
+train_sent_correct_binary: 22275.0
+train_sent_accuracy_binary: 0.7752949775503811
+train_key=c_tok_0_map: 2.4941731568969217
+train_key=c_tok_0_p: 0.8646087802101369
+train_key=c_tok_0_r: 0.5552348604849519
+train_key=c_tok_0_f: 0.6762166223021917
+train_key=c_tok_0_f05: 0.7779183809344963
+train_key=i_tok_0_map: 0.28594421465993625
+train_key=i_tok_0_p: 0.12331940656976308
+train_key=i_tok_0_r: 0.41845934427899556
+train_key=i_tok_0_f: 0.1904990106356666
+train_key=i_tok_0_f05: 0.14357166408215144
+train_tok_p_macro: 0.49396409338994995
+train_tok_r_macro: 0.4868471023819737
+train_tok_f_macro: 0.4333578164689291
+train_tok_p_micro: 0.5374453716933174
+train_tok_r_micro: 0.5374453716933174
+train_tok_f_micro: 0.5374453716933174
+train_time: 171.35103821754456
+***********************************************************
+Sentence pred: 
+              precision    recall  f1-score   support
+
+           0       0.76      0.56      0.65     10514
+           1       0.78      0.90      0.84     18217
+
+   micro avg       0.78      0.78      0.78     28731
+   macro avg       0.77      0.73      0.74     28731
+weighted avg       0.77      0.78      0.77     28731
+
+F1-macro sent:  0.7405121897649901
+F1-micro sent:  0.7752949775503811
+***********************************************************
+Token pred: 
+              precision    recall  f1-score   support
+
+           0       0.86      0.56      0.68    393936
+           1       0.12      0.42      0.19     58897
+
+   micro avg       0.54      0.54      0.54    452833
+   macro avg       0.49      0.49      0.43    452833
+weighted avg       0.77      0.54      0.61    452833
+
+F1-macro tok:  0.4333578164689291
+F1-micro tok:  0.5374453716933174
+***********************************************************
+
+dev_cost_sum: 46201.545318603516
+dev_cost_avg: 20.792774670838664
+dev_sent_count: 2222.0
+dev_key=c_sent_predicted: 636.0
+dev_key=c_sent_correct: 480.0
+dev_key=c_sent_total: 806.0
+dev_key=c_sent_p: 0.7547169811320755
+dev_key=c_sent_r: 0.5955334987593052
+dev_key=c_sent_f: 0.6657420249653259
+dev_key=c_sent_f05: 0.7164179104477612
+dev_key=i_sent_predicted: 1586.0
+dev_key=i_sent_correct: 1260.0
+dev_key=i_sent_total: 1416.0
+dev_key=i_sent_p: 0.7944514501891551
+dev_key=i_sent_r: 0.8898305084745762
+dev_key=i_sent_f: 0.8394403730846102
+dev_key=i_sent_f05: 0.8118556701030927
+dev_sent_p_macro: 0.7745842156606153
+dev_sent_r_macro: 0.7426820036169407
+dev_sent_f_macro: 0.7525911990249681
+dev_sent_p_micro: 0.783078307830783
+dev_sent_r_micro: 0.783078307830783
+dev_sent_f_micro: 0.7830783078307829
+dev_sent_correct_binary: 1740.0
+dev_sent_accuracy_binary: 0.783078307830783
+dev_key=c_tok_0_map: 2.5013943144682362
+dev_key=c_tok_0_p: 0.8827965097490036
+dev_key=c_tok_0_r: 0.27354050535732166
+dev_key=c_tok_0_f: 0.41766474695479333
+dev_key=c_tok_0_f05: 0.610737654827026
+dev_key=i_tok_0_map: 0.30178768388659244
+dev_key=i_tok_0_p: 0.1403065255174593
+dev_key=i_tok_0_r: 0.7655172413793103
+dev_key=i_tok_0_f: 0.23714781679797034
+dev_key=i_tok_0_f05: 0.16769904819459133
+dev_tok_p_macro: 0.5115515176332315
+dev_tok_r_macro: 0.519528873368316
+dev_tok_f_macro: 0.3274062818763818
+dev_tok_p_micro: 0.33951848319315586
+dev_tok_r_micro: 0.33951848319315586
+dev_tok_f_micro: 0.33951848319315586
+dev_time: 5.076873064041138
+***********************************************************
+Sentence pred: 
+              precision    recall  f1-score   support
+
+           0       0.75      0.60      0.67       806
+           1       0.79      0.89      0.84      1416
+
+   micro avg       0.78      0.78      0.78      2222
+   macro avg       0.77      0.74      0.75      2222
+weighted avg       0.78      0.78      0.78      2222
+
+F1-macro sent:  0.7525911990249681
+F1-micro sent:  0.7830783078307829
+***********************************************************
+Token pred: 
+              precision    recall  f1-score   support
+
+           0       0.88      0.27      0.42     29959
+           1       0.14      0.77      0.24      4640
+
+   micro avg       0.34      0.34      0.34     34599
+   macro avg       0.51      0.52      0.33     34599
+weighted avg       0.78      0.34      0.39     34599
+
+F1-macro tok:  0.3274062818763818
+F1-micro tok:  0.33951848319315586
+***********************************************************
+
+best_epoch: 3
+
+EPOCH: 5
+current_learningrate: 1.0
+train_cost_sum: 593320.779510498
+train_cost_avg: 20.650892050763915
+train_sent_count: 28731.0
+train_key=c_sent_predicted: 7835.0
+train_key=c_sent_correct: 5978.0
+train_key=c_sent_total: 10514.0
+train_key=c_sent_p: 0.7629865985960433
+train_key=c_sent_r: 0.5685752330226365
+train_key=c_sent_f: 0.6515886424328301
+train_key=c_sent_f05: 0.7141491852630574
+train_key=i_sent_predicted: 20896.0
+train_key=i_sent_correct: 16360.0
+train_key=i_sent_total: 18217.0
+train_key=i_sent_p: 0.7829249617151608
+train_key=i_sent_r: 0.8980622495471263
+train_key=i_sent_f: 0.8365505075038989
+train_key=i_sent_f05: 0.8035284525692282
+train_sent_p_macro: 0.7729557801556021
+train_sent_r_macro: 0.7333187412848814
+train_sent_f_macro: 0.7440695749683646
+train_sent_p_micro: 0.7774877310222408
+train_sent_r_micro: 0.7774877310222408
+train_sent_f_micro: 0.7774877310222408
+train_sent_correct_binary: 22338.0
+train_sent_accuracy_binary: 0.7774877310222408
+train_key=c_tok_0_map: 2.493867585847803
+train_key=c_tok_0_p: 0.8654506572134535
+train_key=c_tok_0_r: 0.45612485276796233
+train_key=c_tok_0_f: 0.5973984091230228
+train_key=c_tok_0_f05: 0.7337562846492847
+train_key=i_tok_0_map: 0.2860092766366522
+train_key=i_tok_0_p: 0.12626522139845198
+train_key=i_tok_0_r: 0.5256974039424759
+train_key=i_tok_0_f: 0.20362301922653242
+train_key=i_tok_0_f05: 0.14889113087435188
+train_tok_p_macro: 0.49585793930595273
+train_tok_r_macro: 0.4909111283552191
+train_tok_f_macro: 0.40051071417477757
+train_tok_p_micro: 0.4651736953799745
+train_tok_r_micro: 0.4651736953799745
+train_tok_f_micro: 0.4651736953799745
+train_time: 172.243656873703
+***********************************************************
+Sentence pred: 
+              precision    recall  f1-score   support
+
+           0       0.76      0.57      0.65     10514
+           1       0.78      0.90      0.84     18217
+
+   micro avg       0.78      0.78      0.78     28731
+   macro avg       0.77      0.73      0.74     28731
+weighted avg       0.78      0.78      0.77     28731
+
+F1-macro sent:  0.7440695749683646
+F1-micro sent:  0.7774877310222408
+***********************************************************
+Token pred: 
+              precision    recall  f1-score   support
+
+           0       0.87      0.46      0.60    393936
+           1       0.13      0.53      0.20     58897
+
+   micro avg       0.47      0.47      0.47    452833
+   macro avg       0.50      0.49      0.40    452833
+weighted avg       0.77      0.47      0.55    452833
+
+F1-macro tok:  0.40051071417477757
+F1-micro tok:  0.4651736953799745
+***********************************************************
+
+dev_cost_sum: 45217.69793701172
+dev_cost_avg: 20.34999907156243
+dev_sent_count: 2222.0
+dev_key=c_sent_predicted: 617.0
+dev_key=c_sent_correct: 477.0
+dev_key=c_sent_total: 806.0
+dev_key=c_sent_p: 0.773095623987034
+dev_key=c_sent_r: 0.5918114143920595
+dev_key=c_sent_f: 0.6704146170063247
+dev_key=c_sent_f05: 0.7284667073915699
+dev_key=i_sent_predicted: 1605.0
+dev_key=i_sent_correct: 1276.0
+dev_key=i_sent_total: 1416.0
+dev_key=i_sent_p: 0.7950155763239876
+dev_key=i_sent_r: 0.9011299435028248
+dev_key=i_sent_f: 0.844753392916253
+dev_key=i_sent_f05: 0.8141909137314957
+dev_sent_p_macro: 0.7840556001555108
+dev_sent_r_macro: 0.7464706789474422
+dev_sent_f_macro: 0.7575840049612887
+dev_sent_p_micro: 0.7889288928892889
+dev_sent_r_micro: 0.7889288928892889
+dev_sent_f_micro: 0.7889288928892889
+dev_sent_correct_binary: 1753.0
+dev_sent_accuracy_binary: 0.7889288928892889
+dev_key=c_tok_0_map: 2.504921102247969
+dev_key=c_tok_0_p: 0.8687670710792098
+dev_key=c_tok_0_r: 0.4565239160185587
+dev_key=c_tok_0_f: 0.5985296048312984
+dev_key=c_tok_0_f05: 0.7358685476321142
+dev_key=i_tok_0_map: 0.29689551534175795
+dev_key=i_tok_0_p: 0.13650827322868053
+dev_key=i_tok_0_r: 0.5547413793103448
+dev_key=i_tok_0_f: 0.21910112359550563
+dev_key=i_tok_0_f05: 0.16074640287769784
+dev_tok_p_macro: 0.5026376721539452
+dev_tok_r_macro: 0.5056326476644517
+dev_tok_f_macro: 0.408815364213402
+dev_tok_p_micro: 0.4696956559438134
+dev_tok_r_micro: 0.4696956559438134
+dev_tok_f_micro: 0.4696956559438134
+dev_time: 5.0485312938690186
+***********************************************************
+Sentence pred: 
+              precision    recall  f1-score   support
+
+           0       0.77      0.59      0.67       806
+           1       0.80      0.90      0.84      1416
+
+   micro avg       0.79      0.79      0.79      2222
+   macro avg       0.78      0.75      0.76      2222
+weighted avg       0.79      0.79      0.78      2222
+
+F1-macro sent:  0.7575840049612887
+F1-micro sent:  0.7889288928892889
+***********************************************************
+Token pred: 
+              precision    recall  f1-score   support
+
+           0       0.87      0.46      0.60     29959
+           1       0.14      0.55      0.22      4640
+
+   micro avg       0.47      0.47      0.47     34599
+   macro avg       0.50      0.51      0.41     34599
+weighted avg       0.77      0.47      0.55     34599
+
+F1-macro tok:  0.408815364213402
+F1-micro tok:  0.4696956559438134
+***********************************************************
+
+best_epoch: 5
+
+EPOCH: 6
+current_learningrate: 1.0
+train_cost_sum: 582086.6434326172
+train_cost_avg: 20.259881084285865
+train_sent_count: 28731.0
+train_key=c_sent_predicted: 7988.0
+train_key=c_sent_correct: 6118.0
+train_key=c_sent_total: 10514.0
+train_key=c_sent_p: 0.7658988482724086
+train_key=c_sent_r: 0.5818908122503329
+train_key=c_sent_f: 0.661333909847584
+train_key=c_sent_f05: 0.7203409786652851
+train_key=i_sent_predicted: 20743.0
+train_key=i_sent_correct: 16347.0
+train_key=i_sent_total: 18217.0
+train_key=i_sent_p: 0.7880730848961095
+train_key=i_sent_r: 0.8973486304001757
+train_key=i_sent_f: 0.8391683778234086
+train_key=i_sent_f05: 0.8077459012343239
+train_sent_p_macro: 0.7769859665842591
+train_sent_r_macro: 0.7396197213252542
+train_sent_f_macro: 0.7502511438354963
+train_sent_p_micro: 0.7819080435766246
+train_sent_r_micro: 0.7819080435766246
+train_sent_f_micro: 0.7819080435766246
+train_sent_correct_binary: 22465.0
+train_sent_accuracy_binary: 0.7819080435766246
+train_key=c_tok_0_map: 2.483332139350696
+train_key=c_tok_0_p: 0.8946298479489737
+train_key=c_tok_0_r: 0.30050820437837616
+train_key=c_tok_0_f: 0.44989548892182574
+train_key=c_tok_0_f05: 0.641122708051714
+train_key=i_tok_0_map: 0.29631707677158076
+train_key=i_tok_0_p: 0.1402581518771704
+train_key=i_tok_0_r: 0.7632646824116678
+train_key=i_tok_0_f: 0.2369704221862596
+train_key=i_tok_0_f05: 0.1676220959585602
+train_tok_p_macro: 0.517443999913072
+train_tok_r_macro: 0.531886443395022
+train_tok_f_macro: 0.3434329555540427
+train_tok_p_micro: 0.3606958856797097
+train_tok_r_micro: 0.3606958856797097
+train_tok_f_micro: 0.3606958856797097
+train_time: 170.2998297214508
+***********************************************************
+Sentence pred: 
+              precision    recall  f1-score   support
+
+           0       0.77      0.58      0.66     10514
+           1       0.79      0.90      0.84     18217
+
+   micro avg       0.78      0.78      0.78     28731
+   macro avg       0.78      0.74      0.75     28731
+weighted avg       0.78      0.78      0.77     28731
+
+F1-macro sent:  0.7502511438354963
+F1-micro sent:  0.7819080435766246
+***********************************************************
+Token pred: 
+              precision    recall  f1-score   support
+
+           0       0.89      0.30      0.45    393936
+           1       0.14      0.76      0.24     58897
+
+   micro avg       0.36      0.36      0.36    452833
+   macro avg       0.52      0.53      0.34    452833
+weighted avg       0.80      0.36      0.42    452833
+
+F1-macro tok:  0.3434329555540427
+F1-micro tok:  0.3606958856797097
+***********************************************************
+
+dev_cost_sum: 44544.73098754883
+dev_cost_avg: 20.04713365776275
+dev_sent_count: 2222.0
+dev_key=c_sent_predicted: 786.0
+dev_key=c_sent_correct: 557.0
+dev_key=c_sent_total: 806.0
+dev_key=c_sent_p: 0.7086513994910941
+dev_key=c_sent_r: 0.6910669975186104
+dev_key=c_sent_f: 0.699748743718593
+dev_key=c_sent_f05: 0.7050632911392406
+dev_key=i_sent_predicted: 1436.0
+dev_key=i_sent_correct: 1187.0
+dev_key=i_sent_total: 1416.0
+dev_key=i_sent_p: 0.8266016713091922
+dev_key=i_sent_r: 0.838276836158192
+dev_key=i_sent_f: 0.832398316970547
+dev_key=i_sent_f05: 0.8289106145251396
+dev_sent_p_macro: 0.7676265354001431
+dev_sent_r_macro: 0.7646719168384013
+dev_sent_f_macro: 0.76607353034457
+dev_sent_p_micro: 0.7848784878487849
+dev_sent_r_micro: 0.7848784878487849
+dev_sent_f_micro: 0.784878487848785
+dev_sent_correct_binary: 1744.0
+dev_sent_accuracy_binary: 0.7848784878487849
+dev_key=c_tok_0_map: 2.4982843244782487
+dev_key=c_tok_0_p: 0.8998513563730955
+dev_key=c_tok_0_r: 0.3233085216462499
+dev_key=c_tok_0_f: 0.4757016919185718
+dev_key=c_tok_0_f05: 0.6632883654043691
+dev_key=i_tok_0_map: 0.30641569704980337
+dev_key=i_tok_0_p: 0.14944409481854415
+dev_key=i_tok_0_r: 0.7676724137931035
+dev_key=i_tok_0_f: 0.2501843722563652
+dev_key=i_tok_0_f05: 0.17813562712542508
+dev_tok_p_macro: 0.5246477255958198
+dev_tok_r_macro: 0.5454904677196767
+dev_tok_f_macro: 0.3629430320874685
+dev_tok_p_micro: 0.3829012399202289
+dev_tok_r_micro: 0.3829012399202289
+dev_tok_f_micro: 0.3829012399202289
+dev_time: 5.083743572235107
+***********************************************************
+Sentence pred: 
+              precision    recall  f1-score   support
+
+           0       0.71      0.69      0.70       806
+           1       0.83      0.84      0.83      1416
+
+   micro avg       0.78      0.78      0.78      2222
+   macro avg       0.77      0.76      0.77      2222
+weighted avg       0.78      0.78      0.78      2222
+
+F1-macro sent:  0.76607353034457
+F1-micro sent:  0.784878487848785
+***********************************************************
+Token pred: 
+              precision    recall  f1-score   support
+
+           0       0.90      0.32      0.48     29959
+           1       0.15      0.77      0.25      4640
+
+   micro avg       0.38      0.38      0.38     34599
+   macro avg       0.52      0.55      0.36     34599
+weighted avg       0.80      0.38      0.45     34599
+
+F1-macro tok:  0.3629430320874685
+F1-micro tok:  0.3829012399202289
+***********************************************************
+
+best_epoch: 5
+
+EPOCH: 7
+current_learningrate: 1.0
+train_cost_sum: 572904.2509460449
+train_cost_avg: 19.94028230643016
+train_sent_count: 28731.0
+train_key=c_sent_predicted: 8395.0
+train_key=c_sent_correct: 6351.0
+train_key=c_sent_total: 10514.0
+train_key=c_sent_p: 0.7565217391304347
+train_key=c_sent_r: 0.6040517405364276
+train_key=c_sent_f: 0.6717436141519911
+train_key=c_sent_f05: 0.7201660089808136
+train_key=i_sent_predicted: 20336.0
+train_key=i_sent_correct: 16173.0
+train_key=i_sent_total: 18217.0
+train_key=i_sent_p: 0.7952891424075531
+train_key=i_sent_r: 0.8877971125871439
+train_key=i_sent_f: 0.8390008559645163
+train_key=i_sent_f05: 0.8122156266007774
+train_sent_p_macro: 0.7759054407689939
+train_sent_r_macro: 0.7459244265617857
+train_sent_f_macro: 0.7553722350582537
+train_sent_p_micro: 0.7839615746058265
+train_sent_r_micro: 0.7839615746058265
+train_sent_f_micro: 0.7839615746058265
+train_sent_correct_binary: 22524.0
+train_sent_accuracy_binary: 0.7839615746058265
+train_key=c_tok_0_map: 2.4843434693033446
+train_key=c_tok_0_p: 0.8805450836177813
+train_key=c_tok_0_r: 0.33855753218796963
+train_key=c_tok_0_f: 0.48907313728114643
+train_key=c_tok_0_f05: 0.6669914021772616
+train_key=i_tok_0_map: 0.29611115911853286
+train_key=i_tok_0_p: 0.13539502936589573
+train_key=i_tok_0_r: 0.6928026894408883
+train_key=i_tok_0_f: 0.22652088589851413
+train_key=i_tok_0_f05: 0.16136010066617787
+train_tok_p_macro: 0.5079700564918385
+train_tok_r_macro: 0.515680110814429
+train_tok_f_macro: 0.3577970115898303
+train_tok_p_micro: 0.3846318620771896
+train_tok_r_micro: 0.3846318620771896
+train_tok_f_micro: 0.3846318620771896
+train_time: 171.59324026107788
+***********************************************************
+Sentence pred: 
+              precision    recall  f1-score   support
+
+           0       0.76      0.60      0.67     10514
+           1       0.80      0.89      0.84     18217
+
+   micro avg       0.78      0.78      0.78     28731
+   macro avg       0.78      0.75      0.76     28731
+weighted avg       0.78      0.78      0.78     28731
+
+F1-macro sent:  0.7553722350582537
+F1-micro sent:  0.7839615746058265
+***********************************************************
+Token pred: 
+              precision    recall  f1-score   support
+
+           0       0.88      0.34      0.49    393936
+           1       0.14      0.69      0.23     58897
+
+   micro avg       0.38      0.38      0.38    452833
+   macro avg       0.51      0.52      0.36    452833
+weighted avg       0.78      0.38      0.45    452833
+
+F1-macro tok:  0.3577970115898303
+F1-micro tok:  0.3846318620771896
+***********************************************************
+
+dev_cost_sum: 43781.8251953125
+dev_cost_avg: 19.70379171706233
+dev_sent_count: 2222.0
+dev_key=c_sent_predicted: 695.0
+dev_key=c_sent_correct: 518.0
+dev_key=c_sent_total: 806.0
+dev_key=c_sent_p: 0.7453237410071942
+dev_key=c_sent_r: 0.6426799007444168
+dev_key=c_sent_f: 0.6902065289806795
+dev_key=c_sent_f05: 0.7222532069157835
+dev_key=i_sent_predicted: 1527.0
+dev_key=i_sent_correct: 1239.0
+dev_key=i_sent_total: 1416.0
+dev_key=i_sent_p: 0.8113948919449901
+dev_key=i_sent_r: 0.875
+dev_key=i_sent_f: 0.8419979612640163
+dev_key=i_sent_f05: 0.8233652312599682
+dev_sent_p_macro: 0.7783593164760922
+dev_sent_r_macro: 0.7588399503722084
+dev_sent_f_macro: 0.7661022451223478
+dev_sent_p_micro: 0.7907290729072908
+dev_sent_r_micro: 0.7907290729072908
+dev_sent_f_micro: 0.7907290729072908
+dev_sent_correct_binary: 1757.0
+dev_sent_accuracy_binary: 0.7907290729072908
+dev_key=c_tok_0_map: 2.50349104937712
+dev_key=c_tok_0_p: 0.8794845278816323
+dev_key=c_tok_0_r: 0.36903768483594246
+dev_key=c_tok_0_f: 0.5199153538678579
+dev_key=c_tok_0_f05: 0.6889074436399436
+dev_key=i_tok_0_map: 0.30084400415044504
+dev_key=i_tok_0_p: 0.14186489921917558
+dev_key=i_tok_0_r: 0.6734913793103449
+dev_key=i_tok_0_f: 0.2343632818359082
+dev_key=i_tok_0_f05: 0.1684599792996377
+dev_tok_p_macro: 0.510674713550404
+dev_tok_r_macro: 0.5212645320731437
+dev_tok_f_macro: 0.37713931785188304
+dev_tok_p_micro: 0.40986733720627766
+dev_tok_r_micro: 0.40986733720627766
+dev_tok_f_micro: 0.4098673372062776
+dev_time: 5.05043625831604
+***********************************************************
+Sentence pred: 
+              precision    recall  f1-score   support
+
+           0       0.75      0.64      0.69       806
+           1       0.81      0.88      0.84      1416
+
+   micro avg       0.79      0.79      0.79      2222
+   macro avg       0.78      0.76      0.77      2222
+weighted avg       0.79      0.79      0.79      2222
+
+F1-macro sent:  0.7661022451223478
+F1-micro sent:  0.7907290729072908
+***********************************************************
+Token pred: 
+              precision    recall  f1-score   support
+
+           0       0.88      0.37      0.52     29959
+           1       0.14      0.67      0.23      4640
+
+   micro avg       0.41      0.41      0.41     34599
+   macro avg       0.51      0.52      0.38     34599
+weighted avg       0.78      0.41      0.48     34599
+
+F1-macro tok:  0.37713931785188304
+F1-micro tok:  0.4098673372062776
+***********************************************************
+
+best_epoch: 5
+
+EPOCH: 8
+current_learningrate: 1.0
+train_cost_sum: 564598.556640625
+train_cost_avg: 19.651197544137865
+train_sent_count: 28731.0
+train_key=c_sent_predicted: 8277.0
+train_key=c_sent_correct: 6320.0
+train_key=c_sent_total: 10514.0
+train_key=c_sent_p: 0.763561676936088
+train_key=c_sent_r: 0.6011032908502948
+train_key=c_sent_f: 0.6726624447873982
+train_key=c_sent_f05: 0.7244051166842419
+train_key=i_sent_predicted: 20454.0
+train_key=i_sent_correct: 16260.0
+train_key=i_sent_total: 18217.0
+train_key=i_sent_p: 0.7949545321208565
+train_key=i_sent_r: 0.8925728714936597
+train_key=i_sent_f: 0.840940239455923
+train_key=i_sent_f05: 0.8127317985064927
+train_sent_p_macro: 0.7792581045284723
+train_sent_r_macro: 0.7468380811719773
+train_sent_f_macro: 0.7568013421216606
+train_sent_p_micro: 0.785910688803035
+train_sent_r_micro: 0.785910688803035
+train_sent_f_micro: 0.785910688803035
+train_sent_correct_binary: 22580.0
+train_sent_accuracy_binary: 0.785910688803035
+train_key=c_tok_0_map: 2.4873898569302204
+train_key=c_tok_0_p: 0.8760789853642322
+train_key=c_tok_0_r: 0.4281964583079485
+train_key=c_tok_0_f: 0.5752372638018817
+train_key=c_tok_0_f05: 0.7245143045638534
+train_key=i_tok_0_map: 0.29228591435693757
+train_key=i_tok_0_p: 0.1346070359712783
+train_key=i_tok_0_r: 0.5948859874017353
+train_key=i_tok_0_f: 0.2195383285085905
+train_key=i_tok_0_f05: 0.1592502597583225
+train_tok_p_macro: 0.5053430106677552
+train_tok_r_macro: 0.5115412228548419
+train_tok_f_macro: 0.3973877961552361
+train_tok_p_micro: 0.449876665349036
+train_tok_r_micro: 0.449876665349036
+train_tok_f_micro: 0.449876665349036
+train_time: 171.5139148235321
+***********************************************************
+Sentence pred: 
+              precision    recall  f1-score   support
+
+           0       0.76      0.60      0.67     10514
+           1       0.79      0.89      0.84     18217
+
+   micro avg       0.79      0.79      0.79     28731
+   macro avg       0.78      0.75      0.76     28731
+weighted avg       0.78      0.79      0.78     28731
+
+F1-macro sent:  0.7568013421216606
+F1-micro sent:  0.785910688803035
+***********************************************************
+Token pred: 
+              precision    recall  f1-score   support
+
+           0       0.88      0.43      0.58    393936
+           1       0.13      0.59      0.22     58897
+
+   micro avg       0.45      0.45      0.45    452833
+   macro avg       0.51      0.51      0.40    452833
+weighted avg       0.78      0.45      0.53    452833
+
+F1-macro tok:  0.3973877961552361
+F1-micro tok:  0.449876665349036
+***********************************************************
+
+dev_cost_sum: 43224.65704345703
+dev_cost_avg: 19.453040973653028
+dev_sent_count: 2222.0
+dev_key=c_sent_predicted: 645.0
+dev_key=c_sent_correct: 495.0
+dev_key=c_sent_total: 806.0
+dev_key=c_sent_p: 0.7674418604651163
+dev_key=c_sent_r: 0.6141439205955335
+dev_key=c_sent_f: 0.6822880771881461
+dev_key=c_sent_f05: 0.7309509746012995
+dev_key=i_sent_predicted: 1577.0
+dev_key=i_sent_correct: 1266.0
+dev_key=i_sent_total: 1416.0
+dev_key=i_sent_p: 0.8027901077996196
+dev_key=i_sent_r: 0.8940677966101694
+dev_key=i_sent_f: 0.8459739391914468
+dev_key=i_sent_f05: 0.8195235629207666
+dev_sent_p_macro: 0.7851159841323679
+dev_sent_r_macro: 0.7541058586028515
+dev_sent_f_macro: 0.7641310081897965
+dev_sent_p_micro: 0.7925292529252925
+dev_sent_r_micro: 0.7925292529252925
+dev_sent_f_micro: 0.7925292529252925
+dev_sent_correct_binary: 1761.0
+dev_sent_accuracy_binary: 0.7925292529252925
+dev_key=c_tok_0_map: 2.5053779457866674
+dev_key=c_tok_0_p: 0.8796107361481714
+dev_key=c_tok_0_r: 0.374111285423412
+dev_key=c_tok_0_f: 0.5249525772230158
+dev_key=c_tok_0_f05: 0.6924759351020056
+dev_key=i_tok_0_map: 0.2985592054449195
+dev_key=i_tok_0_p: 0.1421055039575422
+dev_key=i_tok_0_r: 0.6693965517241379
+dev_key=i_tok_0_f: 0.23444163490206438
+dev_key=i_tok_0_f05: 0.16867967154711733
+dev_tok_p_macro: 0.5108581200528568
+dev_tok_r_macro: 0.521753918573775
+dev_tok_f_macro: 0.3796971060625401
+dev_tok_p_micro: 0.4137113789415879
+dev_tok_r_micro: 0.4137113789415879
+dev_tok_f_micro: 0.4137113789415879
+dev_time: 5.048026084899902
+***********************************************************
+Sentence pred: 
+              precision    recall  f1-score   support
+
+           0       0.77      0.61      0.68       806
+           1       0.80      0.89      0.85      1416
+
+   micro avg       0.79      0.79      0.79      2222
+   macro avg       0.79      0.75      0.76      2222
+weighted avg       0.79      0.79      0.79      2222
+
+F1-macro sent:  0.7641310081897965
+F1-micro sent:  0.7925292529252925
+***********************************************************
+Token pred: 
+              precision    recall  f1-score   support
+
+           0       0.88      0.37      0.52     29959
+           1       0.14      0.67      0.23      4640
+
+   micro avg       0.41      0.41      0.41     34599
+   macro avg       0.51      0.52      0.38     34599
+weighted avg       0.78      0.41      0.49     34599
+
+F1-macro tok:  0.3796971060625401
+F1-micro tok:  0.4137113789415879
+***********************************************************
+
+best_epoch: 8
+
+EPOCH: 9
+current_learningrate: 1.0
+train_cost_sum: 557329.381652832
+train_cost_avg: 19.398189469661062
+train_sent_count: 28731.0
+train_key=c_sent_predicted: 8362.0
+train_key=c_sent_correct: 6412.0
+train_key=c_sent_total: 10514.0
+train_key=c_sent_p: 0.766802200430519
+train_key=c_sent_r: 0.6098535286284953
+train_key=c_sent_f: 0.6793812248357702
+train_key=c_sent_f05: 0.7292661844320094
+train_key=i_sent_predicted: 20369.0
+train_key=i_sent_correct: 16267.0
+train_key=i_sent_total: 18217.0
+train_key=i_sent_p: 0.7986155432274534
+train_key=i_sent_r: 0.8929571279574025
+train_key=i_sent_f: 0.843155548644586
+train_key=i_sent_f05: 0.8158546738487156
+train_sent_p_macro: 0.7827088718289863
+train_sent_r_macro: 0.7514053282929489
+train_sent_f_macro: 0.7612683867401782
+train_sent_p_micro: 0.7893564442588146
+train_sent_r_micro: 0.7893564442588146
+train_sent_f_micro: 0.7893564442588146
+train_sent_correct_binary: 22679.0
+train_sent_accuracy_binary: 0.7893564442588146
+train_key=c_tok_0_map: 2.486215113096593
+train_key=c_tok_0_p: 0.8784043139187662
+train_key=c_tok_0_r: 0.38456500548312417
+train_key=c_tok_0_f: 0.534935496229703
+train_key=c_tok_0_f05: 0.6989045909008706
+train_key=i_tok_0_map: 0.293311460243487
+train_key=i_tok_0_p: 0.13527221366204417
+train_key=i_tok_0_r: 0.6439377217854899
+train_key=i_tok_0_f: 0.2235774394647252
+train_key=i_tok_0_f05: 0.16065315168392258
+train_tok_p_macro: 0.5068382637904052
+train_tok_r_macro: 0.514251363634307
+train_tok_f_macro: 0.3792564678472141
+train_tok_p_micro: 0.41829990305476855
+train_tok_r_micro: 0.41829990305476855
+train_tok_f_micro: 0.41829990305476855
+train_time: 171.78856086730957
+***********************************************************
+Sentence pred: 
+              precision    recall  f1-score   support
+
+           0       0.77      0.61      0.68     10514
+           1       0.80      0.89      0.84     18217
+
+   micro avg       0.79      0.79      0.79     28731
+   macro avg       0.78      0.75      0.76     28731
+weighted avg       0.79      0.79      0.78     28731
+
+F1-macro sent:  0.7612683867401782
+F1-micro sent:  0.7893564442588146
+***********************************************************
+Token pred: 
+              precision    recall  f1-score   support
+
+           0       0.88      0.38      0.53    393936
+           1       0.14      0.64      0.22     58897
+
+   micro avg       0.42      0.42      0.42    452833
+   macro avg       0.51      0.51      0.38    452833
+weighted avg       0.78      0.42      0.49    452833
+
+F1-macro tok:  0.3792564678472141
+F1-micro tok:  0.41829990305476855
+***********************************************************
+
+dev_cost_sum: 42661.482971191406
+dev_cost_avg: 19.19958729576571
+dev_sent_count: 2222.0
+dev_key=c_sent_predicted: 706.0
+dev_key=c_sent_correct: 532.0
+dev_key=c_sent_total: 806.0
+dev_key=c_sent_p: 0.7535410764872521
+dev_key=c_sent_r: 0.6600496277915633
+dev_key=c_sent_f: 0.7037037037037037
+dev_key=c_sent_f05: 0.7327823691460055
+dev_key=i_sent_predicted: 1516.0
+dev_key=i_sent_correct: 1242.0
+dev_key=i_sent_total: 1416.0
+dev_key=i_sent_p: 0.8192612137203166
+dev_key=i_sent_r: 0.8771186440677966
+dev_key=i_sent_f: 0.8472032742155524
+dev_key=i_sent_f05: 0.8302139037433156
+dev_sent_p_macro: 0.7864011451037843
+dev_sent_r_macro: 0.7685841359296799
+dev_sent_f_macro: 0.7754534889596281
+dev_sent_p_micro: 0.7983798379837984
+dev_sent_r_micro: 0.7983798379837984
+dev_sent_f_micro: 0.7983798379837984
+dev_sent_correct_binary: 1774.0
+dev_sent_accuracy_binary: 0.7983798379837984
+dev_key=c_tok_0_map: 2.5015828710609584
+dev_key=c_tok_0_p: 0.8747704478033621
+dev_key=c_tok_0_r: 0.4133983110250676
+dev_key=c_tok_0_f: 0.5614615681029989
+dev_key=c_tok_0_f05: 0.715143606148445
+dev_key=i_tok_0_map: 0.3023907393909971
+dev_key=i_tok_0_p: 0.1402573259625263
+dev_key=i_tok_0_r: 0.6178879310344828
+dev_key=i_tok_0_f: 0.22861927355368608
+dev_key=i_tok_0_f05: 0.16590667098745426
+dev_tok_p_macro: 0.5075138868829442
+dev_tok_r_macro: 0.5156431210297752
+dev_tok_f_macro: 0.39504042082834245
+dev_tok_p_micro: 0.4408219890748288
+dev_tok_r_micro: 0.4408219890748288
+dev_tok_f_micro: 0.44082198907482883
+dev_time: 5.061742305755615
+***********************************************************
+Sentence pred: 
+              precision    recall  f1-score   support
+
+           0       0.75      0.66      0.70       806
+           1       0.82      0.88      0.85      1416
+
+   micro avg       0.80      0.80      0.80      2222
+   macro avg       0.79      0.77      0.78      2222
+weighted avg       0.80      0.80      0.80      2222
+
+F1-macro sent:  0.7754534889596281
+F1-micro sent:  0.7983798379837984
+***********************************************************
+Token pred: 
+              precision    recall  f1-score   support
+
+           0       0.87      0.41      0.56     29959
+           1       0.14      0.62      0.23      4640
+
+   micro avg       0.44      0.44      0.44     34599
+   macro avg       0.51      0.52      0.40     34599
+weighted avg       0.78      0.44      0.52     34599
+
+F1-macro tok:  0.39504042082834245
+F1-micro tok:  0.44082198907482883
+***********************************************************
+
+best_epoch: 9
+
+EPOCH: 10
+current_learningrate: 1.0
+train_cost_sum: 550901.8468017578
+train_cost_avg: 19.17447519410246
+train_sent_count: 28731.0
+train_key=c_sent_predicted: 8434.0
+train_key=c_sent_correct: 6517.0
+train_key=c_sent_total: 10514.0
+train_key=c_sent_p: 0.772705714963244
+train_key=c_sent_r: 0.6198402130492676
+train_key=c_sent_f: 0.6878826261346844
+train_key=c_sent_f05: 0.7363841807909605
+train_key=i_sent_predicted: 20297.0
+train_key=i_sent_correct: 16300.0
+train_key=i_sent_total: 18217.0
+train_key=i_sent_p: 0.8030743459624575
+train_key=i_sent_r: 0.8947686227150464
+train_key=i_sent_f: 0.8464454484083709
+train_key=i_sent_f05: 0.819878275740657
+train_sent_p_macro: 0.7878900304628508
+train_sent_r_macro: 0.7573044178821571
+train_sent_f_macro: 0.7671640372715276
+train_sent_p_micro: 0.7941596185305071
+train_sent_r_micro: 0.7941596185305071
+train_sent_f_micro: 0.7941596185305072
+train_sent_correct_binary: 22817.0
+train_sent_accuracy_binary: 0.7941596185305071
+train_key=c_tok_0_map: 2.4809010493412025
+train_key=c_tok_0_p: 0.884097887782637
+train_key=c_tok_0_r: 0.36178719385890096
+train_key=c_tok_0_f: 0.5134587429139624
+train_key=c_tok_0_f05: 0.6860176980927185
+train_key=i_tok_0_map: 0.2994907189287676
+train_key=i_tok_0_p: 0.13789142332012017
+train_key=i_tok_0_r: 0.6827682224901098
+train_key=i_tok_0_f: 0.22944440482133943
+train_key=i_tok_0_f05: 0.1640799112786017
+train_tok_p_macro: 0.5109946555513786
+train_tok_r_macro: 0.5222777081745054
+train_tok_f_macro: 0.37145157386765093
+train_tok_p_micro: 0.4035350780530571
+train_tok_r_micro: 0.4035350780530571
+train_tok_f_micro: 0.4035350780530571
+train_time: 170.9618661403656
+***********************************************************
+Sentence pred: 
+              precision    recall  f1-score   support
+
+           0       0.77      0.62      0.69     10514
+           1       0.80      0.89      0.85     18217
+
+   micro avg       0.79      0.79      0.79     28731
+   macro avg       0.79      0.76      0.77     28731
+weighted avg       0.79      0.79      0.79     28731
+
+F1-macro sent:  0.7671640372715276
+F1-micro sent:  0.7941596185305072
+***********************************************************
+Token pred: 
+              precision    recall  f1-score   support
+
+           0       0.88      0.36      0.51    393936
+           1       0.14      0.68      0.23     58897
+
+   micro avg       0.40      0.40      0.40    452833
+   macro avg       0.51      0.52      0.37    452833
+weighted avg       0.79      0.40      0.48    452833
+
+F1-macro tok:  0.37145157386765093
+F1-micro tok:  0.4035350780530571
+***********************************************************
+
+dev_cost_sum: 42248.61309814453
+dev_cost_avg: 19.013777271892227
+dev_sent_count: 2222.0
+dev_key=c_sent_predicted: 788.0
+dev_key=c_sent_correct: 571.0
+dev_key=c_sent_total: 806.0
+dev_key=c_sent_p: 0.7246192893401016
+dev_key=c_sent_r: 0.7084367245657568
+dev_key=c_sent_f: 0.7164366373902133
+dev_key=c_sent_f05: 0.7213239009600809
+dev_key=i_sent_predicted: 1434.0
+dev_key=i_sent_correct: 1199.0
+dev_key=i_sent_total: 1416.0
+dev_key=i_sent_p: 0.8361227336122734
+dev_key=i_sent_r: 0.8467514124293786
+dev_key=i_sent_f: 0.8414035087719298
+dev_key=i_sent_f05: 0.8382270693512306
+dev_sent_p_macro: 0.7803710114761875
+dev_sent_r_macro: 0.7775940684975677
+dev_sent_f_macro: 0.7789200730810716
+dev_sent_p_micro: 0.7965796579657966
+dev_sent_r_micro: 0.7965796579657966
+dev_sent_f_micro: 0.7965796579657967
+dev_sent_correct_binary: 1770.0
+dev_sent_accuracy_binary: 0.7965796579657966
+dev_key=c_tok_0_map: 2.5043055837093573
+dev_key=c_tok_0_p: 0.8686987795530924
+dev_key=c_tok_0_r: 0.49180546747221204
+dev_key=c_tok_0_f: 0.6280477408354647
+dev_key=c_tok_0_f05: 0.7532488778462829
+dev_key=i_tok_0_map: 0.29687872661930015
+dev_key=i_tok_0_p: 0.13680689420569225
+dev_key=i_tok_0_r: 0.5200431034482759
+dev_key=i_tok_0_f: 0.21662626806715146
+dev_key=i_tok_0_f05: 0.16045589956378337
+dev_tok_p_macro: 0.5027528368793923
+dev_tok_r_macro: 0.5059242854602439
+dev_tok_f_macro: 0.42233700445130806
+dev_tok_p_micro: 0.49559235816064046
+dev_tok_r_micro: 0.49559235816064046
+dev_tok_f_micro: 0.49559235816064046
+dev_time: 5.054164171218872
+***********************************************************
+Sentence pred: 
+              precision    recall  f1-score   support
+
+           0       0.72      0.71      0.72       806
+           1       0.84      0.85      0.84      1416
+
+   micro avg       0.80      0.80      0.80      2222
+   macro avg       0.78      0.78      0.78      2222
+weighted avg       0.80      0.80      0.80      2222
+
+F1-macro sent:  0.7789200730810716
+F1-micro sent:  0.7965796579657967
+***********************************************************
+Token pred: 
+              precision    recall  f1-score   support
+
+           0       0.87      0.49      0.63     29959
+           1       0.14      0.52      0.22      4640
+
+   micro avg       0.50      0.50      0.50     34599
+   macro avg       0.50      0.51      0.42     34599
+weighted avg       0.77      0.50      0.57     34599
+
+F1-macro tok:  0.42233700445130806
+F1-micro tok:  0.49559235816064046
+***********************************************************
+
+best_epoch: 9
+
+EPOCH: 11
+current_learningrate: 1.0
+train_cost_sum: 545338.7417907715
+train_cost_avg: 18.98084792700468
+train_sent_count: 28731.0
+train_key=c_sent_predicted: 8570.0
+train_key=c_sent_correct: 6605.0
+train_key=c_sent_total: 10514.0
+train_key=c_sent_p: 0.7707117852975496
+train_key=c_sent_r: 0.6282100057066768
+train_key=c_sent_f: 0.692202892475372
+train_key=c_sent_f05: 0.7372639192749029
+train_key=i_sent_predicted: 20161.0
+train_key=i_sent_correct: 16252.0
+train_key=i_sent_total: 18217.0
+train_key=i_sent_p: 0.8061108079956352
+train_key=i_sent_r: 0.8921337212493824
+train_key=i_sent_f: 0.8469435614153944
+train_key=i_sent_f05: 0.8219621488756942
+train_sent_p_macro: 0.7884112966465924
+train_sent_r_macro: 0.7601718634780297
+train_sent_f_macro: 0.7695732269453832
+train_sent_p_micro: 0.7955518429570847
+train_sent_r_micro: 0.7955518429570847
+train_sent_f_micro: 0.7955518429570847
+train_sent_correct_binary: 22857.0
+train_sent_accuracy_binary: 0.7955518429570847
+train_key=c_tok_0_map: 2.488007717470467
+train_key=c_tok_0_p: 0.8691839862082176
+train_key=c_tok_0_r: 0.4607423540879737
+train_key=c_tok_0_f: 0.6022436939657175
+train_key=c_tok_0_f05: 0.7382876565225316
+train_key=i_tok_0_map: 0.2909837447374644
+train_key=i_tok_0_p: 0.12941933421579999
+train_key=i_tok_0_r: 0.5361902983174016
+train_key=i_tok_0_f: 0.20851077877917537
+train_key=i_tok_0_f05: 0.15256790431219316
+train_tok_p_macro: 0.4993016602120088
+train_tok_r_macro: 0.49846632620268766
+train_tok_f_macro: 0.40537723637244644
+train_tok_p_micro: 0.47055537030207606
+train_tok_r_micro: 0.47055537030207606
+train_tok_f_micro: 0.47055537030207606
+train_time: 171.3151400089264
+***********************************************************
+Sentence pred: 
+              precision    recall  f1-score   support
+
+           0       0.77      0.63      0.69     10514
+           1       0.81      0.89      0.85     18217
+
+   micro avg       0.80      0.80      0.80     28731
+   macro avg       0.79      0.76      0.77     28731
+weighted avg       0.79      0.80      0.79     28731
+
+F1-macro sent:  0.7695732269453832
+F1-micro sent:  0.7955518429570847
+***********************************************************
+Token pred: 
+              precision    recall  f1-score   support
+
+           0       0.87      0.46      0.60    393936
+           1       0.13      0.54      0.21     58897
+
+   micro avg       0.47      0.47      0.47    452833
+   macro avg       0.50      0.50      0.41    452833
+weighted avg       0.77      0.47      0.55    452833
+
+F1-macro tok:  0.40537723637244644
+F1-micro tok:  0.47055537030207606
+***********************************************************
+
+dev_cost_sum: 41841.002044677734
+dev_cost_avg: 18.83033395350033
+dev_sent_count: 2222.0
+dev_key=c_sent_predicted: 771.0
+dev_key=c_sent_correct: 562.0
+dev_key=c_sent_total: 806.0
+dev_key=c_sent_p: 0.728923476005188
+dev_key=c_sent_r: 0.6972704714640199
+dev_key=c_sent_f: 0.7127457197209892
+dev_key=c_sent_f05: 0.7223650385604113
+dev_key=i_sent_predicted: 1451.0
+dev_key=i_sent_correct: 1207.0
+dev_key=i_sent_total: 1416.0
+dev_key=i_sent_p: 0.8318401102687801
+dev_key=i_sent_r: 0.8524011299435028
+dev_key=i_sent_f: 0.8419951168468782
+dev_key=i_sent_f05: 0.8358725761772853
+dev_sent_p_macro: 0.7803817931369841
+dev_sent_r_macro: 0.7748358007037613
+dev_sent_f_macro: 0.7773704182839337
+dev_sent_p_micro: 0.7961296129612961
+dev_sent_r_micro: 0.7961296129612961
+dev_sent_f_micro: 0.7961296129612961
+dev_sent_correct_binary: 1769.0
+dev_sent_accuracy_binary: 0.7961296129612961
+dev_key=c_tok_0_map: 2.4943796192847305
+dev_key=c_tok_0_p: 0.8766700924974307
+dev_key=c_tok_0_r: 0.4840281718348409
+dev_key=c_tok_0_f: 0.6236989247311827
+dev_key=c_tok_0_f05: 0.7542939775079844
+dev_key=i_tok_0_map: 0.3079016349915182
+dev_key=i_tok_0_p: 0.14398050725440248
+dev_key=i_tok_0_r: 0.5603448275862069
+dev_key=i_tok_0_f: 0.2290950744558992
+dev_key=i_tok_0_f05: 0.16911229056093244
+dev_tok_p_macro: 0.5103252998759166
+dev_tok_r_macro: 0.5221864997105239
+dev_tok_f_macro: 0.42639699959354094
+dev_tok_p_micro: 0.494262839966473
+dev_tok_r_micro: 0.494262839966473
+dev_tok_f_micro: 0.494262839966473
+dev_time: 5.053466320037842
+***********************************************************
+Sentence pred: 
+              precision    recall  f1-score   support
+
+           0       0.73      0.70      0.71       806
+           1       0.83      0.85      0.84      1416
+
+   micro avg       0.80      0.80      0.80      2222
+   macro avg       0.78      0.77      0.78      2222
+weighted avg       0.79      0.80      0.80      2222
+
+F1-macro sent:  0.7773704182839337
+F1-micro sent:  0.7961296129612961
+***********************************************************
+Token pred: 
+              precision    recall  f1-score   support
+
+           0       0.88      0.48      0.62     29959
+           1       0.14      0.56      0.23      4640
+
+   micro avg       0.49      0.49      0.49     34599
+   macro avg       0.51      0.52      0.43     34599
+weighted avg       0.78      0.49      0.57     34599
+
+F1-macro tok:  0.42639699959354094
+F1-micro tok:  0.494262839966473
+***********************************************************
+
+best_epoch: 9
+
+EPOCH: 12
+current_learningrate: 1.0
+train_cost_sum: 540130.400970459
+train_cost_avg: 18.79956844420518
+train_sent_count: 28731.0
+train_key=c_sent_predicted: 8579.0
+train_key=c_sent_correct: 6659.0
+train_key=c_sent_total: 10514.0
+train_key=c_sent_p: 0.7761976920386991
+train_key=c_sent_r: 0.6333460148373597
+train_key=c_sent_f: 0.6975331273241503
+train_key=c_sent_f05: 0.7426946241356235
+train_key=i_sent_predicted: 20152.0
+train_key=i_sent_correct: 16297.0
+train_key=i_sent_total: 18217.0
+train_key=i_sent_p: 0.8087038507344184
+train_key=i_sent_r: 0.8946039413734423
+train_key=i_sent_f: 0.8494878678099508
+train_key=i_sent_f05: 0.8245383253225398
+train_sent_p_macro: 0.7924507713865587
+train_sent_r_macro: 0.763974978105401
+train_sent_f_macro: 0.7735104975670506
+train_sent_p_micro: 0.7989975984128641
+train_sent_r_micro: 0.7989975984128641
+train_sent_f_micro: 0.7989975984128641
+train_sent_correct_binary: 22956.0
+train_sent_accuracy_binary: 0.7989975984128641
+train_key=c_tok_0_map: 2.483301860815611
+train_key=c_tok_0_p: 0.873134722362213
+train_key=c_tok_0_r: 0.4617882092522643
+train_key=c_tok_0_f: 0.604084790704702
+train_key=c_tok_0_f05: 0.7411042234976257
+train_key=i_tok_0_map: 0.2968762215823956
+train_key=i_tok_0_p: 0.13278878954214146
+train_key=i_tok_0_r: 0.5512165305533389
+train_key=i_tok_0_f: 0.21401990223578776
+train_key=i_tok_0_f05: 0.15655727348744886
+train_tok_p_macro: 0.5029617559521773
+train_tok_r_macro: 0.5065023699028016
+train_tok_f_macro: 0.4090523464702449
+train_tok_p_micro: 0.4734195608535597
+train_tok_r_micro: 0.4734195608535597
+train_tok_f_micro: 0.4734195608535597
+train_time: 171.46953654289246
+***********************************************************
+Sentence pred: 
+              precision    recall  f1-score   support
+
+           0       0.78      0.63      0.70     10514
+           1       0.81      0.89      0.85     18217
+
+   micro avg       0.80      0.80      0.80     28731
+   macro avg       0.79      0.76      0.77     28731
+weighted avg       0.80      0.80      0.79     28731
+
+F1-macro sent:  0.7735104975670506
+F1-micro sent:  0.7989975984128641
+***********************************************************
+Token pred: 
+              precision    recall  f1-score   support
+
+           0       0.87      0.46      0.60    393936
+           1       0.13      0.55      0.21     58897
+
+   micro avg       0.47      0.47      0.47    452833
+   macro avg       0.50      0.51      0.41    452833
+weighted avg       0.78      0.47      0.55    452833
+
+F1-macro tok:  0.4090523464702449
+F1-micro tok:  0.4734195608535597
+***********************************************************
+
+dev_cost_sum: 41486.34567260742
+dev_cost_avg: 18.670722624935834
+dev_sent_count: 2222.0
+dev_key=c_sent_predicted: 646.0
+dev_key=c_sent_correct: 504.0
+dev_key=c_sent_total: 806.0
+dev_key=c_sent_p: 0.7801857585139319
+dev_key=c_sent_r: 0.6253101736972705
+dev_key=c_sent_f: 0.6942148760330579
+dev_key=c_sent_f05: 0.743362831858407
+dev_key=i_sent_predicted: 1576.0
+dev_key=i_sent_correct: 1274.0
+dev_key=i_sent_total: 1416.0
+dev_key=i_sent_p: 0.8083756345177665
+dev_key=i_sent_r: 0.8997175141242938
+dev_key=i_sent_f: 0.8516042780748663
+dev_key=i_sent_f05: 0.8251295336787565
+dev_sent_p_macro: 0.7942806965158492
+dev_sent_r_macro: 0.7625138439107821
+dev_sent_f_macro: 0.772909577053962
+dev_sent_p_micro: 0.8001800180018002
+dev_sent_r_micro: 0.8001800180018002
+dev_sent_f_micro: 0.8001800180018002
+dev_sent_correct_binary: 1778.0
+dev_sent_accuracy_binary: 0.8001800180018002
+dev_key=c_tok_0_map: 2.4874864321316847
+dev_key=c_tok_0_p: 0.9167577232541969
+dev_key=c_tok_0_r: 0.3080543409326079
+dev_key=c_tok_0_f: 0.4611502523359816
+dev_key=c_tok_0_f05: 0.6570834579292866
+dev_key=i_tok_0_map: 0.3123472693409796
+dev_key=i_tok_0_p: 0.1549812489809229
+dev_key=i_tok_0_r: 0.819396551724138
+dev_key=i_tok_0_f: 0.26066090771973127
+dev_key=i_tok_0_f05: 0.18497976023664955
+dev_tok_p_macro: 0.5358694861175599
+dev_tok_r_macro: 0.563725446328373
+dev_tok_f_macro: 0.36090558002785644
+dev_tok_p_micro: 0.3766293823520911
+dev_tok_r_micro: 0.3766293823520911
+dev_tok_f_micro: 0.3766293823520911
+dev_time: 5.068309783935547
+***********************************************************
+Sentence pred: 
+              precision    recall  f1-score   support
+
+           0       0.78      0.63      0.69       806
+           1       0.81      0.90      0.85      1416
+
+   micro avg       0.80      0.80      0.80      2222
+   macro avg       0.79      0.76      0.77      2222
+weighted avg       0.80      0.80      0.79      2222
+
+F1-macro sent:  0.772909577053962
+F1-micro sent:  0.8001800180018002
+***********************************************************
+Token pred: 
+              precision    recall  f1-score   support
+
+           0       0.92      0.31      0.46     29959
+           1       0.15      0.82      0.26      4640
+
+   micro avg       0.38      0.38      0.38     34599
+   macro avg       0.54      0.56      0.36     34599
+weighted avg       0.81      0.38      0.43     34599
+
+F1-macro tok:  0.36090558002785644
+F1-micro tok:  0.3766293823520911
+***********************************************************
+
+best_epoch: 12
+
+EPOCH: 13
+current_learningrate: 1.0
+train_cost_sum: 535537.8280639648
+train_cost_avg: 18.639721139673693
+train_sent_count: 28731.0
+train_key=c_sent_predicted: 8571.0
+train_key=c_sent_correct: 6678.0
+train_key=c_sent_total: 10514.0
+train_key=c_sent_p: 0.7791389569478474
+train_key=c_sent_r: 0.6351531291611185
+train_key=c_sent_f: 0.6998166099030654
+train_key=c_sent_f05: 0.745345774364927
+train_key=i_sent_predicted: 20160.0
+train_key=i_sent_correct: 16324.0
+train_key=i_sent_total: 18217.0
+train_key=i_sent_p: 0.8097222222222222
+train_key=i_sent_r: 0.8960860734478784
+train_key=i_sent_f: 0.8507178778956146
+train_key=i_sent_f05: 0.8256370312673862
+train_sent_p_macro: 0.7944305895850348
+train_sent_r_macro: 0.7656196013044985
+train_sent_f_macro: 0.77526724389934
+train_sent_p_micro: 0.8005986565034283
+train_sent_r_micro: 0.8005986565034283
+train_sent_f_micro: 0.8005986565034282
+train_sent_correct_binary: 23002.0
+train_sent_accuracy_binary: 0.8005986565034283
+train_key=c_tok_0_map: 2.4806361387146785
+train_key=c_tok_0_p: 0.8800790356684598
+train_key=c_tok_0_r: 0.37085719507737297
+train_key=c_tok_0_f: 0.5218229908007508
+train_key=c_tok_0_f05: 0.6904644875890882
+train_key=i_tok_0_map: 0.2991906354881302
+train_key=i_tok_0_p: 0.13593322920734088
+train_key=i_tok_0_r: 0.6620031580555886
+train_key=i_tok_0_f: 0.2255523835142554
+train_key=i_tok_0_f05: 0.16161992994673466
+train_tok_p_macro: 0.5080061324379004
+train_tok_r_macro: 0.5164301765664808
+train_tok_f_macro: 0.3736876871575031
+train_tok_p_micro: 0.40872462916792723
+train_tok_r_micro: 0.40872462916792723
+train_tok_f_micro: 0.40872462916792723
+train_time: 172.0636968612671
+***********************************************************
+Sentence pred: 
+              precision    recall  f1-score   support
+
+           0       0.78      0.64      0.70     10514
+           1       0.81      0.90      0.85     18217
+
+   micro avg       0.80      0.80      0.80     28731
+   macro avg       0.79      0.77      0.78     28731
+weighted avg       0.80      0.80      0.80     28731
+
+F1-macro sent:  0.77526724389934
+F1-micro sent:  0.8005986565034282
+***********************************************************
+Token pred: 
+              precision    recall  f1-score   support
+
+           0       0.88      0.37      0.52    393936
+           1       0.14      0.66      0.23     58897
+
+   micro avg       0.41      0.41      0.41    452833
+   macro avg       0.51      0.52      0.37    452833
+weighted avg       0.78      0.41      0.48    452833
+
+F1-macro tok:  0.3736876871575031
+F1-micro tok:  0.40872462916792723
+***********************************************************
+
+dev_cost_sum: 41144.48663330078
+dev_cost_avg: 18.51687067205256
+dev_sent_count: 2222.0
+dev_key=c_sent_predicted: 626.0
+dev_key=c_sent_correct: 497.0
+dev_key=c_sent_total: 806.0
+dev_key=c_sent_p: 0.7939297124600639
+dev_key=c_sent_r: 0.6166253101736973
+dev_key=c_sent_f: 0.6941340782122906
+dev_key=c_sent_f05: 0.7507552870090635
+dev_key=i_sent_predicted: 1596.0
+dev_key=i_sent_correct: 1287.0
+dev_key=i_sent_total: 1416.0
+dev_key=i_sent_p: 0.806390977443609
+dev_key=i_sent_r: 0.9088983050847458
+dev_key=i_sent_f: 0.8545816733067728
+dev_key=i_sent_f05: 0.825
+dev_sent_p_macro: 0.8001603449518364
+dev_sent_r_macro: 0.7627618076292215
+dev_sent_f_macro: 0.7743578757595317
+dev_sent_p_micro: 0.8028802880288028
+dev_sent_r_micro: 0.8028802880288028
+dev_sent_f_micro: 0.802880288028803
+dev_sent_correct_binary: 1784.0
+dev_sent_accuracy_binary: 0.8028802880288028
+dev_key=c_tok_0_map: 2.4831111797451917
+dev_key=c_tok_0_p: 0.8960587631308743
+dev_key=c_tok_0_r: 0.37868420174238127
+dev_key=c_tok_0_f: 0.5323791647114031
+dev_key=c_tok_0_f05: 0.7037579246430034
+dev_key=i_tok_0_map: 0.3221063623317328
+dev_key=i_tok_0_p: 0.15151791412161547
+dev_key=i_tok_0_r: 0.7163793103448276
+dev_key=i_tok_0_f: 0.2501316878621416
+dev_key=i_tok_0_f05: 0.17988570438999046
+dev_tok_p_macro: 0.5237883386262449
+dev_tok_r_macro: 0.5475317560436044
+dev_tok_f_macro: 0.39125542628677235
+dev_tok_p_micro: 0.4239717910922281
+dev_tok_r_micro: 0.4239717910922281
+dev_tok_f_micro: 0.4239717910922281
+dev_time: 5.059289932250977
+***********************************************************
+Sentence pred: 
+              precision    recall  f1-score   support
+
+           0       0.79      0.62      0.69       806
+           1       0.81      0.91      0.85      1416
+
+   micro avg       0.80      0.80      0.80      2222
+   macro avg       0.80      0.76      0.77      2222
+weighted avg       0.80      0.80      0.80      2222
+
+F1-macro sent:  0.7743578757595317
+F1-micro sent:  0.802880288028803
+***********************************************************
+Token pred: 
+              precision    recall  f1-score   support
+
+           0       0.90      0.38      0.53     29959
+           1       0.15      0.72      0.25      4640
+
+   micro avg       0.42      0.42      0.42     34599
+   macro avg       0.52      0.55      0.39     34599
+weighted avg       0.80      0.42      0.49     34599
+
+F1-macro tok:  0.39125542628677235
+F1-micro tok:  0.4239717910922281
+***********************************************************
+
+best_epoch: 13
+
+EPOCH: 14
+current_learningrate: 1.0
+train_cost_sum: 531332.6184082031
+train_cost_avg: 18.49335624963291
+train_sent_count: 28731.0
+train_key=c_sent_predicted: 8579.0
+train_key=c_sent_correct: 6672.0
+train_key=c_sent_total: 10514.0
+train_key=c_sent_p: 0.7777130201655205
+train_key=c_sent_r: 0.6345824614799315
+train_key=c_sent_f: 0.6988948829413921
+train_key=c_sent_f05: 0.7441445460629043
+train_key=i_sent_predicted: 20152.0
+train_key=i_sent_correct: 16310.0
+train_key=i_sent_total: 18217.0
+train_key=i_sent_p: 0.8093489479952362
+train_key=i_sent_r: 0.895317560520393
+train_key=i_sent_f: 0.8501654981886418
+train_key=i_sent_f05: 0.8251960536301542
+train_sent_p_macro: 0.7935309840803784
+train_sent_r_macro: 0.7649500110001622
+train_sent_f_macro: 0.774530190565017
+train_sent_p_micro: 0.7999025442901395
+train_sent_r_micro: 0.7999025442901395
+train_sent_f_micro: 0.7999025442901395
+train_sent_correct_binary: 22982.0
+train_sent_accuracy_binary: 0.7999025442901395
+train_key=c_tok_0_map: 2.474174788923882
+train_key=c_tok_0_p: 0.8776372289498537
+train_key=c_tok_0_r: 0.47888235652491773
+train_key=c_tok_0_f: 0.6196519222778611
+train_key=c_tok_0_f05: 0.7523449838084451
+train_key=i_tok_0_map: 0.3062662978986869
+train_key=i_tok_0_p: 0.13702171664943122
+train_key=i_tok_0_r: 0.5534237737066404
+train_key=i_tok_0_f: 0.21965839901071166
+train_key=i_tok_0_f05: 0.16129351510503004
+train_tok_p_macro: 0.5073294727996425
+train_tok_r_macro: 0.5161530651157791
+train_tok_f_macro: 0.41965516064428643
+train_tok_p_micro: 0.4885774667482273
+train_tok_r_micro: 0.4885774667482273
+train_tok_f_micro: 0.4885774667482273
+train_time: 171.14500951766968
+***********************************************************
+Sentence pred: 
+              precision    recall  f1-score   support
+
+           0       0.78      0.63      0.70     10514
+           1       0.81      0.90      0.85     18217
+
+   micro avg       0.80      0.80      0.80     28731
+   macro avg       0.79      0.76      0.77     28731
+weighted avg       0.80      0.80      0.79     28731
+
+F1-macro sent:  0.774530190565017
+F1-micro sent:  0.7999025442901395
+***********************************************************
+Token pred: 
+              precision    recall  f1-score   support
+
+           0       0.88      0.48      0.62    393936
+           1       0.14      0.55      0.22     58897
+
+   micro avg       0.49      0.49      0.49    452833
+   macro avg       0.51      0.52      0.42    452833
+weighted avg       0.78      0.49      0.57    452833
+
+F1-macro tok:  0.41965516064428643
+F1-micro tok:  0.4885774667482273
+***********************************************************
+
+dev_cost_sum: 40874.457763671875
+dev_cost_avg: 18.395345528205166
+dev_sent_count: 2222.0
+dev_key=c_sent_predicted: 667.0
+dev_key=c_sent_correct: 515.0
+dev_key=c_sent_total: 806.0
+dev_key=c_sent_p: 0.7721139430284858
+dev_key=c_sent_r: 0.6389578163771712
+dev_key=c_sent_f: 0.6992532247114731
+dev_key=c_sent_f05: 0.7412204951065056
+dev_key=i_sent_predicted: 1555.0
+dev_key=i_sent_correct: 1264.0
+dev_key=i_sent_total: 1416.0
+dev_key=i_sent_p: 0.8128617363344052
+dev_key=i_sent_r: 0.8926553672316384
+dev_key=i_sent_f: 0.850891955570515
+dev_key=i_sent_f05: 0.8276584599266633
+dev_sent_p_macro: 0.7924878396814454
+dev_sent_r_macro: 0.7658065918044048
+dev_sent_f_macro: 0.775072590140994
+dev_sent_p_micro: 0.8006300630063007
+dev_sent_r_micro: 0.8006300630063007
+dev_sent_f_micro: 0.8006300630063007
+dev_sent_correct_binary: 1779.0
+dev_sent_accuracy_binary: 0.8006300630063007
+dev_key=c_tok_0_map: 2.45824061301417
+dev_key=c_tok_0_p: 0.8905640607718727
+dev_key=c_tok_0_r: 0.510664574919056
+dev_key=c_tok_0_f: 0.6491153634010777
+dev_key=c_tok_0_f05: 0.7752216873574868
+dev_key=i_tok_0_map: 0.34908317464111466
+dev_key=i_tok_0_p: 0.1584385763490241
+dev_key=i_tok_0_r: 0.5948275862068966
+dev_key=i_tok_0_f: 0.25022665457842247
+dev_key=i_tok_0_f05: 0.18568353067814855
+dev_tok_p_macro: 0.5245013185604483
+dev_tok_r_macro: 0.5527460805629762
+dev_tok_f_macro: 0.4496710089897501
+dev_tok_p_micro: 0.5219515014884824
+dev_tok_r_micro: 0.5219515014884824
+dev_tok_f_micro: 0.5219515014884824
+dev_time: 5.05620551109314
+***********************************************************
+Sentence pred: 
+              precision    recall  f1-score   support
+
+           0       0.77      0.64      0.70       806
+           1       0.81      0.89      0.85      1416
+
+   micro avg       0.80      0.80      0.80      2222
+   macro avg       0.79      0.77      0.78      2222
+weighted avg       0.80      0.80      0.80      2222
+
+F1-macro sent:  0.775072590140994
+F1-micro sent:  0.8006300630063007
+***********************************************************
+Token pred: 
+              precision    recall  f1-score   support
+
+           0       0.89      0.51      0.65     29959
+           1       0.16      0.59      0.25      4640
+
+   micro avg       0.52      0.52      0.52     34599
+   macro avg       0.52      0.55      0.45     34599
+weighted avg       0.79      0.52      0.60     34599
+
+F1-macro tok:  0.4496710089897501
+F1-micro tok:  0.5219515014884824
+***********************************************************
+
+best_epoch: 13
+
+EPOCH: 15
+current_learningrate: 1.0
+train_cost_sum: 527706.5493774414
+train_cost_avg: 18.367148702705837
+train_sent_count: 28731.0
+train_key=c_sent_predicted: 8822.0
+train_key=c_sent_correct: 6858.0
+train_key=c_sent_total: 10514.0
+train_key=c_sent_p: 0.7773747449557923
+train_key=c_sent_r: 0.6522731595967282
+train_key=c_sent_f: 0.7093504344228382
+train_key=c_sent_f05: 0.7486572638749399
+train_key=i_sent_predicted: 19909.0
+train_key=i_sent_correct: 16253.0
+train_key=i_sent_total: 18217.0
+train_key=i_sent_p: 0.8163644582851977
+train_key=i_sent_r: 0.8921886150299171
+train_key=i_sent_f: 0.8525940303205163
+train_key=i_sent_f05: 0.8304804144992999
+train_sent_p_macro: 0.796869601620495
+train_sent_r_macro: 0.7722308873133226
+train_sent_f_macro: 0.7809722323716772
+train_sent_p_micro: 0.8043924680658522
+train_sent_r_micro: 0.8043924680658522
+train_sent_f_micro: 0.8043924680658522
+train_sent_correct_binary: 23111.0
+train_sent_accuracy_binary: 0.8043924680658522
+train_key=c_tok_0_map: 2.4595457774232923
+train_key=c_tok_0_p: 0.8970241594254352
+train_key=c_tok_0_r: 0.3912412168474067
+train_key=c_tok_0_f: 0.5448455421358791
+train_key=c_tok_0_f05: 0.7127424611821636
+train_key=i_tok_0_map: 0.32128337486258124
+train_key=i_tok_0_p: 0.146625103196971
+train_key=i_tok_0_r: 0.6995942068356622
+train_key=i_tok_0_f: 0.24243850632367694
+train_key=i_tok_0_f05: 0.17415620633309126
+train_tok_p_macro: 0.5218246313112032
+train_tok_r_macro: 0.5454177118415344
+train_tok_f_macro: 0.393642024229778
+train_tok_p_micro: 0.43134665538951444
+train_tok_r_micro: 0.43134665538951444
+train_tok_f_micro: 0.43134665538951444
+train_time: 171.62856936454773
+***********************************************************
+Sentence pred: 
+              precision    recall  f1-score   support
+
+           0       0.78      0.65      0.71     10514
+           1       0.82      0.89      0.85     18217
+
+   micro avg       0.80      0.80      0.80     28731
+   macro avg       0.80      0.77      0.78     28731
+weighted avg       0.80      0.80      0.80     28731
+
+F1-macro sent:  0.7809722323716772
+F1-micro sent:  0.8043924680658522
+***********************************************************
+Token pred: 
+              precision    recall  f1-score   support
+
+           0       0.90      0.39      0.54    393936
+           1       0.15      0.70      0.24     58897
+
+   micro avg       0.43      0.43      0.43    452833
+   macro avg       0.52      0.55      0.39    452833
+weighted avg       0.80      0.43      0.51    452833
+
+F1-macro tok:  0.393642024229778
+F1-micro tok:  0.43134665538951444
+***********************************************************
+
+dev_cost_sum: 40657.26092529297
+dev_cost_avg: 18.297597176099448
+dev_sent_count: 2222.0
+dev_key=c_sent_predicted: 722.0
+dev_key=c_sent_correct: 533.0
+dev_key=c_sent_total: 806.0
+dev_key=c_sent_p: 0.7382271468144044
+dev_key=c_sent_r: 0.6612903225806451
+dev_key=c_sent_f: 0.6976439790575917
+dev_key=c_sent_f05: 0.7214401732539253
+dev_key=i_sent_predicted: 1500.0
+dev_key=i_sent_correct: 1227.0
+dev_key=i_sent_total: 1416.0
+dev_key=i_sent_p: 0.818
+dev_key=i_sent_r: 0.8665254237288136
+dev_key=i_sent_f: 0.8415637860082303
+dev_key=i_sent_f05: 0.8272653721682848
+dev_sent_p_macro: 0.7781135734072022
+dev_sent_r_macro: 0.7639078731547293
+dev_sent_f_macro: 0.769603882532911
+dev_sent_p_micro: 0.7920792079207921
+dev_sent_r_micro: 0.7920792079207921
+dev_sent_f_micro: 0.7920792079207921
+dev_sent_correct_binary: 1760.0
+dev_sent_accuracy_binary: 0.7920792079207921
+dev_key=c_tok_0_map: 2.4415253937557715
+dev_key=c_tok_0_p: 0.889717549984132
+dev_key=c_tok_0_r: 0.5614673386962181
+dev_key=c_tok_0_f: 0.688468228793615
+dev_key=c_tok_0_f05: 0.7965771004801908
+dev_key=i_tok_0_map: 0.372168777978672
+dev_key=i_tok_0_p: 0.16281144459313068
+dev_key=i_tok_0_r: 0.5506465517241379
+dev_key=i_tok_0_f: 0.2513155953376285
+dev_key=i_tok_0_f05: 0.18950631934967066
+dev_tok_p_macro: 0.5262644972886313
+dev_tok_r_macro: 0.556056945210178
+dev_tok_f_macro: 0.46989191206562175
+dev_tok_p_micro: 0.5600161854388855
+dev_tok_r_micro: 0.5600161854388855
+dev_tok_f_micro: 0.5600161854388855
+dev_time: 5.022871971130371
+***********************************************************
+Sentence pred: 
+              precision    recall  f1-score   support
+
+           0       0.74      0.66      0.70       806
+           1       0.82      0.87      0.84      1416
+
+   micro avg       0.79      0.79      0.79      2222
+   macro avg       0.78      0.76      0.77      2222
+weighted avg       0.79      0.79      0.79      2222
+
+F1-macro sent:  0.769603882532911
+F1-micro sent:  0.7920792079207921
+***********************************************************
+Token pred: 
+              precision    recall  f1-score   support
+
+           0       0.89      0.56      0.69     29959
+           1       0.16      0.55      0.25      4640
+
+   micro avg       0.56      0.56      0.56     34599
+   macro avg       0.53      0.56      0.47     34599
+weighted avg       0.79      0.56      0.63     34599
+
+F1-macro tok:  0.46989191206562175
+F1-micro tok:  0.5600161854388855
+***********************************************************
+
+best_epoch: 13
+
+EPOCH: 16
+current_learningrate: 1.0
+train_cost_sum: 524407.0157775879
+train_cost_avg: 18.2523064208551
+train_sent_count: 28731.0
+train_key=c_sent_predicted: 8882.0
+train_key=c_sent_correct: 6922.0
+train_key=c_sent_total: 10514.0
+train_key=c_sent_p: 0.7793289799594686
+train_key=c_sent_r: 0.6583602815293894
+train_key=c_sent_f: 0.713755413487317
+train_key=c_sent_f05: 0.7517049650319274
+train_key=i_sent_predicted: 19849.0
+train_key=i_sent_correct: 16257.0
+train_key=i_sent_total: 18217.0
+train_key=i_sent_p: 0.819033704468739
+train_key=i_sent_r: 0.8924081901520557
+train_key=i_sent_f: 0.8541480586350023
+train_key=i_sent_f05: 0.8327271982215482
+train_sent_p_macro: 0.7991813422141039
+train_sent_r_macro: 0.7753842358407226
+train_sent_f_macro: 0.7839517360611596
+train_sent_p_micro: 0.8067592495910341
+train_sent_r_micro: 0.8067592495910341
+train_sent_f_micro: 0.8067592495910341
+train_sent_correct_binary: 23179.0
+train_sent_accuracy_binary: 0.8067592495910341
+train_key=c_tok_0_map: 2.4606066064529712
+train_key=c_tok_0_p: 0.8913334367606562
+train_key=c_tok_0_r: 0.4667001746476585
+train_key=c_tok_0_f: 0.6126291236254582
+train_key=c_tok_0_f05: 0.7541066717418983
+train_key=i_tok_0_map: 0.32228652690563186
+train_key=i_tok_0_p: 0.147962639261221
+train_key=i_tok_0_r: 0.619437322783843
+train_key=i_tok_0_f: 0.23886782817072932
+train_key=i_tok_0_f05: 0.1745309149777118
+train_tok_p_macro: 0.5196480380109386
+train_tok_r_macro: 0.5430687487157507
+train_tok_f_macro: 0.4257484758980937
+train_tok_p_micro: 0.4865656875713563
+train_tok_r_micro: 0.4865656875713563
+train_tok_f_micro: 0.4865656875713563
+train_time: 171.04240894317627
+***********************************************************
+Sentence pred: 
+              precision    recall  f1-score   support
+
+           0       0.78      0.66      0.71     10514
+           1       0.82      0.89      0.85     18217
+
+   micro avg       0.81      0.81      0.81     28731
+   macro avg       0.80      0.78      0.78     28731
+weighted avg       0.80      0.81      0.80     28731
+
+F1-macro sent:  0.7839517360611596
+F1-micro sent:  0.8067592495910341
+***********************************************************
+Token pred: 
+              precision    recall  f1-score   support
+
+           0       0.89      0.47      0.61    393936
+           1       0.15      0.62      0.24     58897
+
+   micro avg       0.49      0.49      0.49    452833
+   macro avg       0.52      0.54      0.43    452833
+weighted avg       0.79      0.49      0.56    452833
+
+F1-macro tok:  0.4257484758980937
+F1-micro tok:  0.4865656875713563
+***********************************************************
+
+dev_cost_sum: 40425.45251464844
+dev_cost_avg: 18.193272958887686
+dev_sent_count: 2222.0
+dev_key=c_sent_predicted: 671.0
+dev_key=c_sent_correct: 520.0
+dev_key=c_sent_total: 806.0
+dev_key=c_sent_p: 0.7749627421758569
+dev_key=c_sent_r: 0.6451612903225806
+dev_key=c_sent_f: 0.7041299932295192
+dev_key=c_sent_f05: 0.7449856733524357
+dev_key=i_sent_predicted: 1551.0
+dev_key=i_sent_correct: 1265.0
+dev_key=i_sent_total: 1416.0
+dev_key=i_sent_p: 0.8156028368794326
+dev_key=i_sent_r: 0.893361581920904
+dev_key=i_sent_f: 0.8527131782945737
+dev_key=i_sent_f05: 0.8300524934383202
+dev_sent_p_macro: 0.7952827895276448
+dev_sent_r_macro: 0.7692614361217422
+dev_sent_f_macro: 0.7784215857620465
+dev_sent_p_micro: 0.8033303330333034
+dev_sent_r_micro: 0.8033303330333034
+dev_sent_f_micro: 0.8033303330333034
+dev_sent_correct_binary: 1785.0
+dev_sent_accuracy_binary: 0.8033303330333034
+dev_key=c_tok_0_map: 2.4694574259033586
+dev_key=c_tok_0_p: 0.8922353228663938
+dev_key=c_tok_0_r: 0.48749958276310956
+dev_key=c_tok_0_f: 0.6305042307028147
+dev_key=c_tok_0_f05: 0.7651804893382931
+dev_key=i_tok_0_map: 0.3416953828378565
+dev_key=i_tok_0_p: 0.15776193088315962
+dev_key=i_tok_0_r: 0.6198275862068966
+dev_key=i_tok_0_f: 0.25150852645386973
+dev_key=i_tok_0_f05: 0.1854048478597215
+dev_tok_p_macro: 0.5249986268747767
+dev_tok_r_macro: 0.5536635844850031
+dev_tok_f_macro: 0.44100637857834224
+dev_tok_p_micro: 0.5052458163530738
+dev_tok_r_micro: 0.5052458163530738
+dev_tok_f_micro: 0.5052458163530738
+dev_time: 5.024599552154541
+***********************************************************
+Sentence pred: 
+              precision    recall  f1-score   support
+
+           0       0.77      0.65      0.70       806
+           1       0.82      0.89      0.85      1416
+
+   micro avg       0.80      0.80      0.80      2222
+   macro avg       0.80      0.77      0.78      2222
+weighted avg       0.80      0.80      0.80      2222
+
+F1-macro sent:  0.7784215857620465
+F1-micro sent:  0.8033303330333034
+***********************************************************
+Token pred: 
+              precision    recall  f1-score   support
+
+           0       0.89      0.49      0.63     29959
+           1       0.16      0.62      0.25      4640
+
+   micro avg       0.51      0.51      0.51     34599
+   macro avg       0.52      0.55      0.44     34599
+weighted avg       0.79      0.51      0.58     34599
+
+F1-macro tok:  0.44100637857834224
+F1-micro tok:  0.5052458163530738
+***********************************************************
+
+best_epoch: 13
+
+EPOCH: 17
+current_learningrate: 1.0
+train_cost_sum: 521128.4676513672
+train_cost_avg: 18.138194551229237
+train_sent_count: 28731.0
+train_key=c_sent_predicted: 8960.0
+train_key=c_sent_correct: 6979.0
+train_key=c_sent_total: 10514.0
+train_key=c_sent_p: 0.77890625
+train_key=c_sent_r: 0.6637816245006658
+train_key=c_sent_f: 0.7167505391804456
+train_key=c_sent_f05: 0.752793717909997
+train_key=i_sent_predicted: 19771.0
+train_key=i_sent_correct: 16236.0
+train_key=i_sent_total: 18217.0
+train_key=i_sent_p: 0.8212027717363816
+train_key=i_sent_r: 0.8912554207608278
+train_key=i_sent_f: 0.8547962514478257
+train_key=i_sent_f05: 0.834318249555503
+train_sent_p_macro: 0.8000545108681908
+train_sent_r_macro: 0.7775185226307468
+train_sent_f_macro: 0.7857733953141357
+train_sent_p_micro: 0.8080122515749539
+train_sent_r_micro: 0.8080122515749539
+train_sent_f_micro: 0.8080122515749539
+train_sent_correct_binary: 23215.0
+train_sent_accuracy_binary: 0.8080122515749539
+train_key=c_tok_0_map: 2.45269676018889
+train_key=c_tok_0_p: 0.8839820235153646
+train_key=c_tok_0_r: 0.5412554323544941
+train_key=c_tok_0_f: 0.6714110274900021
+train_key=c_tok_0_f05: 0.7846170603612725
+train_key=i_tok_0_map: 0.33292310039535805
+train_key=i_tok_0_p: 0.14607166314635517
+train_key=i_tok_0_r: 0.5248654430616161
+train_key=i_tok_0_f: 0.22853995549411146
+train_key=i_tok_0_f05: 0.17071215014584504
+train_tok_p_macro: 0.5150268433308599
+train_tok_r_macro: 0.5330604377080551
+train_tok_f_macro: 0.4499754914920568
+train_tok_p_micro: 0.5391236946070627
+train_tok_r_micro: 0.5391236946070627
+train_tok_f_micro: 0.5391236946070627
+train_time: 170.14224648475647
+***********************************************************
+Sentence pred: 
+              precision    recall  f1-score   support
+
+           0       0.78      0.66      0.72     10514
+           1       0.82      0.89      0.85     18217
+
+   micro avg       0.81      0.81      0.81     28731
+   macro avg       0.80      0.78      0.79     28731
+weighted avg       0.81      0.81      0.80     28731
+
+F1-macro sent:  0.7857733953141357
+F1-micro sent:  0.8080122515749539
+***********************************************************
+Token pred: 
+              precision    recall  f1-score   support
+
+           0       0.88      0.54      0.67    393936
+           1       0.15      0.52      0.23     58897
+
+   micro avg       0.54      0.54      0.54    452833
+   macro avg       0.52      0.53      0.45    452833
+weighted avg       0.79      0.54      0.61    452833
+
+F1-macro tok:  0.4499754914920568
+F1-micro tok:  0.5391236946070627
+***********************************************************
+
+dev_cost_sum: 40200.90200805664
+dev_cost_avg: 18.092215125138
+dev_sent_count: 2222.0
+dev_key=c_sent_predicted: 791.0
+dev_key=c_sent_correct: 570.0
+dev_key=c_sent_total: 806.0
+dev_key=c_sent_p: 0.7206068268015171
+dev_key=c_sent_r: 0.707196029776675
+dev_key=c_sent_f: 0.7138384470882905
+dev_key=c_sent_f05: 0.7178841309823677
+dev_key=i_sent_predicted: 1431.0
+dev_key=i_sent_correct: 1195.0
+dev_key=i_sent_total: 1416.0
+dev_key=i_sent_p: 0.8350803633822502
+dev_key=i_sent_r: 0.8439265536723164
+dev_key=i_sent_f: 0.8394801545486477
+dev_key=i_sent_f05: 0.8368347338935576
+dev_sent_p_macro: 0.7778435950918836
+dev_sent_r_macro: 0.7755612917244956
+dev_sent_f_macro: 0.776659300818469
+dev_sent_p_micro: 0.7943294329432943
+dev_sent_r_micro: 0.7943294329432943
+dev_sent_f_micro: 0.7943294329432943
+dev_sent_correct_binary: 1765.0
+dev_sent_accuracy_binary: 0.7943294329432943
+dev_key=c_tok_0_map: 2.4441905098076853
+dev_key=c_tok_0_p: 0.8862061379386206
+dev_key=c_tok_0_r: 0.5378350412230047
+dev_key=c_tok_0_f: 0.6694086122016576
+dev_key=c_tok_0_f05: 0.7845686406263692
+dev_key=i_tok_0_map: 0.361309428028767
+dev_key=i_tok_0_p: 0.15660595723944692
+dev_key=i_tok_0_r: 0.5540948275862069
+dev_key=i_tok_0_f: 0.2441943296765921
+dev_key=i_tok_0_f05: 0.18283836832223926
+dev_tok_p_macro: 0.5214060475890337
+dev_tok_r_macro: 0.5459649344046058
+dev_tok_f_macro: 0.4568014709391248
+dev_tok_p_micro: 0.5400156073874968
+dev_tok_r_micro: 0.5400156073874968
+dev_tok_f_micro: 0.5400156073874968
+dev_time: 5.035974979400635
+***********************************************************
+Sentence pred: 
+              precision    recall  f1-score   support
+
+           0       0.72      0.71      0.71       806
+           1       0.84      0.84      0.84      1416
+
+   micro avg       0.79      0.79      0.79      2222
+   macro avg       0.78      0.78      0.78      2222
+weighted avg       0.79      0.79      0.79      2222
+
+F1-macro sent:  0.776659300818469
+F1-micro sent:  0.7943294329432943
+***********************************************************
+Token pred: 
+              precision    recall  f1-score   support
+
+           0       0.89      0.54      0.67     29959
+           1       0.16      0.55      0.24      4640
+
+   micro avg       0.54      0.54      0.54     34599
+   macro avg       0.52      0.55      0.46     34599
+weighted avg       0.79      0.54      0.61     34599
+
+F1-macro tok:  0.4568014709391248
+F1-micro tok:  0.5400156073874968
+***********************************************************
+
+best_epoch: 13
+
+EPOCH: 18
+current_learningrate: 0.9
+train_cost_sum: 518141.7319030762
+train_cost_avg: 18.03423938961666
+train_sent_count: 28731.0
+train_key=c_sent_predicted: 8948.0
+train_key=c_sent_correct: 7026.0
+train_key=c_sent_total: 10514.0
+train_key=c_sent_p: 0.7852033974072419
+train_key=c_sent_r: 0.6682518546699638
+train_key=c_sent_f: 0.7220224026307677
+train_key=c_sent_f05: 0.7586489871722887
+train_key=i_sent_predicted: 19783.0
+train_key=i_sent_correct: 16295.0
+train_key=i_sent_total: 18217.0
+train_key=i_sent_p: 0.8236870039933276
+train_key=i_sent_r: 0.8944941538123731
+train_key=i_sent_f: 0.8576315789473685
+train_key=i_sent_f05: 0.8369372053128434
+train_sent_p_macro: 0.8044452007002847
+train_sent_r_macro: 0.7813730042411684
+train_sent_f_macro: 0.789826990789068
+train_sent_p_micro: 0.8117016463053844
+train_sent_r_micro: 0.8117016463053844
+train_sent_f_micro: 0.8117016463053844
+train_sent_correct_binary: 23321.0
+train_sent_accuracy_binary: 0.8117016463053844
+train_key=c_tok_0_map: 2.4499824362940914
+train_key=c_tok_0_p: 0.8875053485527573
+train_key=c_tok_0_r: 0.5212597985459567
+train_key=c_tok_0_f: 0.6567749921238689
+train_key=c_tok_0_f05: 0.7781563111063953
+train_key=i_tok_0_map: 0.336653563141967
+train_key=i_tok_0_p: 0.14841823879491742
+train_key=i_tok_0_r: 0.5580759631220605
+train_key=i_tok_0_f: 0.23447793721621205
+train_key=i_tok_0_f05: 0.17395699368612694
+train_tok_p_macro: 0.5179617936738373
+train_tok_r_macro: 0.5396678808340086
+train_tok_f_macro: 0.44562646467004047
+train_tok_p_micro: 0.5260482341172132
+train_tok_r_micro: 0.5260482341172132
+train_tok_f_micro: 0.5260482341172132
+train_time: 169.48729157447815
+***********************************************************
+Sentence pred: 
+              precision    recall  f1-score   support
+
+           0       0.79      0.67      0.72     10514
+           1       0.82      0.89      0.86     18217
+
+   micro avg       0.81      0.81      0.81     28731
+   macro avg       0.80      0.78      0.79     28731
+weighted avg       0.81      0.81      0.81     28731
+
+F1-macro sent:  0.789826990789068
+F1-micro sent:  0.8117016463053844
+***********************************************************
+Token pred: 
+              precision    recall  f1-score   support
+
+           0       0.89      0.52      0.66    393936
+           1       0.15      0.56      0.23     58897
+
+   micro avg       0.53      0.53      0.53    452833
+   macro avg       0.52      0.54      0.45    452833
+weighted avg       0.79      0.53      0.60    452833
+
+F1-macro tok:  0.44562646467004047
+F1-micro tok:  0.5260482341172132
+***********************************************************
+
+dev_cost_sum: 40049.306549072266
+dev_cost_avg: 18.02399034611713
+dev_sent_count: 2222.0
+dev_key=c_sent_predicted: 901.0
+dev_key=c_sent_correct: 618.0
+dev_key=c_sent_total: 806.0
+dev_key=c_sent_p: 0.6859045504994451
+dev_key=c_sent_r: 0.7667493796526055
+dev_key=c_sent_f: 0.7240773286467487
+dev_key=c_sent_f05: 0.7006802721088435
+dev_key=i_sent_predicted: 1321.0
+dev_key=i_sent_correct: 1133.0
+dev_key=i_sent_total: 1416.0
+dev_key=i_sent_p: 0.8576835730507192
+dev_key=i_sent_r: 0.8001412429378532
+dev_key=i_sent_f: 0.8279137742053343
+dev_key=i_sent_f05: 0.8455223880597014
+dev_sent_p_macro: 0.7717940617750821
+dev_sent_r_macro: 0.7834453112952293
+dev_sent_f_macro: 0.7759955514260415
+dev_sent_p_micro: 0.788028802880288
+dev_sent_r_micro: 0.788028802880288
+dev_sent_f_micro: 0.7880288028802879
+dev_sent_correct_binary: 1751.0
+dev_sent_accuracy_binary: 0.788028802880288
+dev_key=c_tok_0_map: 2.472148495719534
+dev_key=c_tok_0_p: 0.8638856879465314
+dev_key=c_tok_0_r: 0.6255883040154878
+dev_key=c_tok_0_f: 0.725674681534828
+dev_key=c_tok_0_f05: 0.8027308782840351
+dev_key=i_tok_0_map: 0.3317124959343002
+dev_key=i_tok_0_p: 0.13073465592064476
+dev_key=i_tok_0_r: 0.36357758620689656
+dev_key=i_tok_0_f: 0.19231646146830825
+dev_key=i_tok_0_f05: 0.14993956200227532
+dev_tok_p_macro: 0.49731017193358806
+dev_tok_r_macro: 0.49458294511119216
+dev_tok_f_macro: 0.4589955715015681
+dev_tok_p_micro: 0.590450591057545
+dev_tok_r_micro: 0.590450591057545
+dev_tok_f_micro: 0.590450591057545
+dev_time: 4.995434522628784
+***********************************************************
+Sentence pred: 
+              precision    recall  f1-score   support
+
+           0       0.69      0.77      0.72       806
+           1       0.86      0.80      0.83      1416
+
+   micro avg       0.79      0.79      0.79      2222
+   macro avg       0.77      0.78      0.78      2222
+weighted avg       0.80      0.79      0.79      2222
+
+F1-macro sent:  0.7759955514260415
+F1-micro sent:  0.7880288028802879
+***********************************************************
+Token pred: 
+              precision    recall  f1-score   support
+
+           0       0.86      0.63      0.73     29959
+           1       0.13      0.36      0.19      4640
+
+   micro avg       0.59      0.59      0.59     34599
+   macro avg       0.50      0.49      0.46     34599
+weighted avg       0.77      0.59      0.65     34599
+
+F1-macro tok:  0.4589955715015681
+F1-micro tok:  0.590450591057545
+***********************************************************
+
+best_epoch: 13
+
+EPOCH: 19
+current_learningrate: 0.81
+train_cost_sum: 515736.387298584
+train_cost_avg: 17.95051990179889
+train_sent_count: 28731.0
+train_key=c_sent_predicted: 9217.0
+train_key=c_sent_correct: 7231.0
+train_key=c_sent_total: 10514.0
+train_key=c_sent_p: 0.7845285884778127
+train_key=c_sent_r: 0.6877496671105193
+train_key=c_sent_f: 0.7329582889868734
+train_key=c_sent_f05: 0.7630534802245579
+train_key=i_sent_predicted: 19514.0
+train_key=i_sent_correct: 16231.0
+train_key=i_sent_total: 18217.0
+train_key=i_sent_p: 0.831761812032387
+train_key=i_sent_r: 0.8909809518581545
+train_key=i_sent_f: 0.8603535554318731
+train_key=i_sent_f05: 0.8429673948043583
+train_sent_p_macro: 0.8081452002550998
+train_sent_r_macro: 0.7893653094843369
+train_sent_f_macro: 0.7966559222093732
+train_sent_p_micro: 0.8166092374090703
+train_sent_r_micro: 0.8166092374090703
+train_sent_f_micro: 0.8166092374090703
+train_sent_correct_binary: 23462.0
+train_sent_accuracy_binary: 0.8166092374090703
+train_key=c_tok_0_map: 2.4545133996212996
+train_key=c_tok_0_p: 0.8837874495981694
+train_key=c_tok_0_r: 0.4862921895942488
+train_key=c_tok_0_f: 0.627378032205982
+train_key=c_tok_0_f05: 0.7596069051712653
+train_key=i_tok_0_map: 0.3300274938581539
+train_key=i_tok_0_p: 0.14278089590172616
+train_key=i_tok_0_r: 0.5723041920641119
+train_key=i_tok_0_f: 0.2285437261841802
+train_key=i_tok_0_f05: 0.16799791067955747
+train_tok_p_macro: 0.5132841727499478
+train_tok_r_macro: 0.5292981908291803
+train_tok_f_macro: 0.4279608791950811
+train_tok_p_micro: 0.4974792031499471
+train_tok_r_micro: 0.4974792031499471
+train_tok_f_micro: 0.4974792031499471
+train_time: 170.5038149356842
+***********************************************************
+Sentence pred: 
+              precision    recall  f1-score   support
+
+           0       0.78      0.69      0.73     10514
+           1       0.83      0.89      0.86     18217
+
+   micro avg       0.82      0.82      0.82     28731
+   macro avg       0.81      0.79      0.80     28731
+weighted avg       0.81      0.82      0.81     28731
+
+F1-macro sent:  0.7966559222093732
+F1-micro sent:  0.8166092374090703
+***********************************************************
+Token pred: 
+              precision    recall  f1-score   support
+
+           0       0.88      0.49      0.63    393936
+           1       0.14      0.57      0.23     58897
+
+   micro avg       0.50      0.50      0.50    452833
+   macro avg       0.51      0.53      0.43    452833
+weighted avg       0.79      0.50      0.58    452833
+
+F1-macro tok:  0.4279608791950811
+F1-micro tok:  0.4974792031499471
+***********************************************************
+
+dev_cost_sum: 39866.20086669922
+dev_cost_avg: 17.941584548469496
+dev_sent_count: 2222.0
+dev_key=c_sent_predicted: 721.0
+dev_key=c_sent_correct: 547.0
+dev_key=c_sent_total: 806.0
+dev_key=c_sent_p: 0.7586685159500693
+dev_key=c_sent_r: 0.6786600496277916
+dev_key=c_sent_f: 0.7164374590700721
+dev_key=c_sent_f05: 0.7411924119241192
+dev_key=i_sent_predicted: 1501.0
+dev_key=i_sent_correct: 1242.0
+dev_key=i_sent_total: 1416.0
+dev_key=i_sent_p: 0.8274483677548301
+dev_key=i_sent_r: 0.8771186440677966
+dev_key=i_sent_f: 0.8515598217346589
+dev_key=i_sent_f05: 0.8369272237196764
+dev_sent_p_macro: 0.7930584418524498
+dev_sent_r_macro: 0.7778893468477941
+dev_sent_f_macro: 0.7839986404023656
+dev_sent_p_micro: 0.8051305130513051
+dev_sent_r_micro: 0.8051305130513051
+dev_sent_f_micro: 0.8051305130513051
+dev_sent_correct_binary: 1789.0
+dev_sent_accuracy_binary: 0.8051305130513051
+dev_key=c_tok_0_map: 2.439781779445445
+dev_key=c_tok_0_p: 0.9057146772646293
+dev_key=c_tok_0_r: 0.44120297740245
+dev_key=c_tok_0_f: 0.5933607164500706
+dev_key=c_tok_0_f05: 0.7481745627440992
+dev_key=i_tok_0_map: 0.36722313411071494
+dev_key=i_tok_0_p: 0.16315921019745064
+dev_key=i_tok_0_r: 0.7034482758620689
+dev_key=i_tok_0_f: 0.26488131466828974
+dev_key=i_tok_0_f05: 0.19277108433734938
+dev_tok_p_macro: 0.53443694373104
+dev_tok_r_macro: 0.5723256266322595
+dev_tok_f_macro: 0.42912101555918014
+dev_tok_p_micro: 0.4763721494840891
+dev_tok_r_micro: 0.4763721494840891
+dev_tok_f_micro: 0.47637214948408907
+dev_time: 5.0639564990997314
+***********************************************************
+Sentence pred: 
+              precision    recall  f1-score   support
+
+           0       0.76      0.68      0.72       806
+           1       0.83      0.88      0.85      1416
+
+   micro avg       0.81      0.81      0.81      2222
+   macro avg       0.79      0.78      0.78      2222
+weighted avg       0.80      0.81      0.80      2222
+
+F1-macro sent:  0.7839986404023656
+F1-micro sent:  0.8051305130513051
+***********************************************************
+Token pred: 
+              precision    recall  f1-score   support
+
+           0       0.91      0.44      0.59     29959
+           1       0.16      0.70      0.26      4640
+
+   micro avg       0.48      0.48      0.48     34599
+   macro avg       0.53      0.57      0.43     34599
+weighted avg       0.81      0.48      0.55     34599
+
+F1-macro tok:  0.42912101555918014
+F1-micro tok:  0.47637214948408907
+***********************************************************
+
+best_epoch: 13
+
+EPOCH: 20
+current_learningrate: 0.7290000000000001
+train_cost_sum: 513403.7016296387
+train_cost_avg: 17.869329352603064
+train_sent_count: 28731.0
+train_key=c_sent_predicted: 9079.0
+train_key=c_sent_correct: 7187.0
+train_key=c_sent_total: 10514.0
+train_key=c_sent_p: 0.7916070051767816
+train_key=c_sent_r: 0.6835647707818148
+train_key=c_sent_f: 0.7336293574235696
+train_key=c_sent_f05: 0.7673499893230835
+train_key=i_sent_predicted: 19652.0
+train_key=i_sent_correct: 16325.0
+train_key=i_sent_total: 18217.0
+train_key=i_sent_p: 0.8307042540199471
+train_key=i_sent_r: 0.896140967228413
+train_key=i_sent_f: 0.8621827880324275
+train_key=i_sent_f05: 0.8430157500645494
+train_sent_p_macro: 0.8111556295983644
+train_sent_r_macro: 0.7898528690051139
+train_sent_f_macro: 0.7979060727279985
+train_sent_p_micro: 0.8183495179422923
+train_sent_r_micro: 0.8183495179422923
+train_sent_f_micro: 0.8183495179422923
+train_sent_correct_binary: 23512.0
+train_sent_accuracy_binary: 0.8183495179422923
+train_key=c_tok_0_map: 2.4527215597412053
+train_key=c_tok_0_p: 0.8937283619713141
+train_key=c_tok_0_r: 0.4266022907274278
+train_key=c_tok_0_f: 0.5775319473583825
+train_key=c_tok_0_f05: 0.7331661553603402
+train_key=i_tok_0_map: 0.3324163222058966
+train_key=i_tok_0_p: 0.14695841326908263
+train_key=i_tok_0_r: 0.6607127697505816
+train_key=i_tok_0_f: 0.24043769868362924
+train_key=i_tok_0_f05: 0.17402138127738512
+train_tok_p_macro: 0.5203433876201984
+train_tok_r_macro: 0.5436575302390046
+train_tok_f_macro: 0.4089848230210059
+train_tok_p_micro: 0.45705149580529686
+train_tok_r_micro: 0.45705149580529686
+train_tok_f_micro: 0.45705149580529686
+train_time: 171.21133542060852
+***********************************************************
+Sentence pred: 
+              precision    recall  f1-score   support
+
+           0       0.79      0.68      0.73     10514
+           1       0.83      0.90      0.86     18217
+
+   micro avg       0.82      0.82      0.82     28731
+   macro avg       0.81      0.79      0.80     28731
+weighted avg       0.82      0.82      0.82     28731
+
+F1-macro sent:  0.7979060727279985
+F1-micro sent:  0.8183495179422923
+***********************************************************
+Token pred: 
+              precision    recall  f1-score   support
+
+           0       0.89      0.43      0.58    393936
+           1       0.15      0.66      0.24     58897
+
+   micro avg       0.46      0.46      0.46    452833
+   macro avg       0.52      0.54      0.41    452833
+weighted avg       0.80      0.46      0.53    452833
+
+F1-macro tok:  0.4089848230210059
+F1-micro tok:  0.45705149580529686
+***********************************************************
+
+dev_cost_sum: 39748.027923583984
+dev_cost_avg: 17.888401405753367
+dev_sent_count: 2222.0
+dev_key=c_sent_predicted: 835.0
+dev_key=c_sent_correct: 596.0
+dev_key=c_sent_total: 806.0
+dev_key=c_sent_p: 0.7137724550898203
+dev_key=c_sent_r: 0.739454094292804
+dev_key=c_sent_f: 0.7263863497867153
+dev_key=c_sent_f05: 0.7187650747708636
+dev_key=i_sent_predicted: 1387.0
+dev_key=i_sent_correct: 1177.0
+dev_key=i_sent_total: 1416.0
+dev_key=i_sent_p: 0.8485940879596251
+dev_key=i_sent_r: 0.8312146892655368
+dev_key=i_sent_f: 0.8398144844809132
+dev_key=i_sent_f05: 0.8450603101665711
+dev_sent_p_macro: 0.7811832715247227
+dev_sent_r_macro: 0.7853343917791704
+dev_sent_f_macro: 0.7831004171338143
+dev_sent_p_micro: 0.7979297929792979
+dev_sent_r_micro: 0.7979297929792979
+dev_sent_f_micro: 0.7979297929792979
+dev_sent_correct_binary: 1773.0
+dev_sent_accuracy_binary: 0.7979297929792979
+dev_key=c_tok_0_map: 2.45784241598774
+dev_key=c_tok_0_p: 0.8992117117117117
+dev_key=c_tok_0_r: 0.3731432958376448
+dev_key=c_tok_0_f: 0.5274232738081197
+dev_key=c_tok_0_f05: 0.701431852121425
+dev_key=i_tok_0_map: 0.34830050388330913
+dev_key=i_tok_0_p: 0.1527946948166193
+dev_key=i_tok_0_r: 0.7299568965517241
+dev_key=i_tok_0_f: 0.25269519155444475
+dev_key=i_tok_0_f05: 0.18149569168774382
+dev_tok_p_macro: 0.5260032032641655
+dev_tok_r_macro: 0.5515500961946844
+dev_tok_f_macro: 0.39005923268128223
+dev_tok_p_micro: 0.4209948264400705
+dev_tok_r_micro: 0.4209948264400705
+dev_tok_f_micro: 0.4209948264400705
+dev_time: 5.037447452545166
+***********************************************************
+Sentence pred: 
+              precision    recall  f1-score   support
+
+           0       0.71      0.74      0.73       806
+           1       0.85      0.83      0.84      1416
+
+   micro avg       0.80      0.80      0.80      2222
+   macro avg       0.78      0.79      0.78      2222
+weighted avg       0.80      0.80      0.80      2222
+
+F1-macro sent:  0.7831004171338143
+F1-micro sent:  0.7979297929792979
+***********************************************************
+Token pred: 
+              precision    recall  f1-score   support
+
+           0       0.90      0.37      0.53     29959
+           1       0.15      0.73      0.25      4640
+
+   micro avg       0.42      0.42      0.42     34599
+   macro avg       0.53      0.55      0.39     34599
+weighted avg       0.80      0.42      0.49     34599
+
+F1-macro tok:  0.39005923268128223
+F1-micro tok:  0.4209948264400705
+***********************************************************
+
+best_epoch: 13
+test0_cost_sum: 41144.48666381836
+test0_cost_avg: 18.51687068578684
+test0_sent_count: 2222.0
+test0_key=c_sent_predicted: 626.0
+test0_key=c_sent_correct: 497.0
+test0_key=c_sent_total: 806.0
+test0_key=c_sent_p: 0.7939297124600639
+test0_key=c_sent_r: 0.6166253101736973
+test0_key=c_sent_f: 0.6941340782122906
+test0_key=c_sent_f05: 0.7507552870090635
+test0_key=i_sent_predicted: 1596.0
+test0_key=i_sent_correct: 1287.0
+test0_key=i_sent_total: 1416.0
+test0_key=i_sent_p: 0.806390977443609
+test0_key=i_sent_r: 0.9088983050847458
+test0_key=i_sent_f: 0.8545816733067728
+test0_key=i_sent_f05: 0.825
+test0_sent_p_macro: 0.8001603449518364
+test0_sent_r_macro: 0.7627618076292215
+test0_sent_f_macro: 0.7743578757595317
+test0_sent_p_micro: 0.8028802880288028
+test0_sent_r_micro: 0.8028802880288028
+test0_sent_f_micro: 0.802880288028803
+test0_sent_correct_binary: 1784.0
+test0_sent_accuracy_binary: 0.8028802880288028
+test0_key=c_tok_0_map: 2.4831111797451917
+test0_key=c_tok_0_p: 0.8960587631308743
+test0_key=c_tok_0_r: 0.37868420174238127
+test0_key=c_tok_0_f: 0.5323791647114031
+test0_key=c_tok_0_f05: 0.7037579246430034
+test0_key=i_tok_0_map: 0.3221063623317328
+test0_key=i_tok_0_p: 0.15151791412161547
+test0_key=i_tok_0_r: 0.7163793103448276
+test0_key=i_tok_0_f: 0.2501316878621416
+test0_key=i_tok_0_f05: 0.17988570438999046
+test0_tok_p_macro: 0.5237883386262449
+test0_tok_r_macro: 0.5475317560436044
+test0_tok_f_macro: 0.39125542628677235
+test0_tok_p_micro: 0.4239717910922281
+test0_tok_r_micro: 0.4239717910922281
+test0_tok_f_micro: 0.4239717910922281
+test0_time: 5.065989971160889
+***********************************************************
+Sentence pred: 
+              precision    recall  f1-score   support
+
+           0       0.79      0.62      0.69       806
+           1       0.81      0.91      0.85      1416
+
+   micro avg       0.80      0.80      0.80      2222
+   macro avg       0.80      0.76      0.77      2222
+weighted avg       0.80      0.80      0.80      2222
+
+F1-macro sent:  0.7743578757595317
+F1-micro sent:  0.802880288028803
+***********************************************************
+Token pred: 
+              precision    recall  f1-score   support
+
+           0       0.90      0.38      0.53     29959
+           1       0.15      0.72      0.25      4640
+
+   micro avg       0.42      0.42      0.42     34599
+   macro avg       0.52      0.55      0.39     34599
+weighted avg       0.80      0.42      0.49     34599
+
+F1-macro tok:  0.39125542628677235
+F1-micro tok:  0.4239717910922281
+***********************************************************
+
+test1_cost_sum: 57238.386779785156
+test1_cost_avg: 21.043524551391602
+test1_sent_count: 2720.0
+test1_key=c_sent_predicted: 569.0
+test1_key=c_sent_correct: 430.0
+test1_key=c_sent_total: 873.0
+
+test1_key=c_sent_p: 0.7557117750439367
+test1_key=c_sent_r: 0.4925544100801833
+test1_key=c_sent_f: 0.5963938973647711
+
+test1_key=c_sent_f05: 0.6827564306128929
+test1_key=i_sent_predicted: 2151.0
+test1_key=i_sent_correct: 1708.0
+test1_key=i_sent_total: 1847.0
+
+test1_key=i_sent_p: 0.794049279404928
+test1_key=i_sent_r: 0.9247428262046562
+test1_key=i_sent_f: 0.8544272136068034
+
+test1_key=i_sent_f05: 0.8171466845277965
+test1_sent_p_macro: 0.7748805272244323
+test1_sent_r_macro: 0.7086486181424198
+test1_sent_f_macro: 0.7254105554857873
+test1_sent_p_micro: 0.7860294117647059
+test1_sent_r_micro: 0.7860294117647059
+test1_sent_f_micro: 0.7860294117647059
+test1_sent_correct_binary: 2138.0
+test1_sent_accuracy_binary: 0.7860294117647059
+test1_key=c_tok_0_map: 2.7819752365348553
+test1_key=c_tok_0_p: 0.8707130839911997
+test1_key=c_tok_0_r: 0.38257704992607755
+test1_key=c_tok_0_f: 0.5315845612926164
+test1_key=c_tok_0_f05: 0.693694065245185
+test1_key=i_tok_0_map: 0.3161955049845921
+test1_key=i_tok_0_p: 0.1655074357299312
+test1_key=i_tok_0_r: 0.6831086439333862
+test1_key=i_tok_0_f: 0.2664563226924029
+test1_key=i_tok_0_f05: 0.19506870657717149
+test1_tok_p_macro: 0.5181102598605655
+test1_tok_r_macro: 0.5328428469297319
+test1_tok_f_macro: 0.39902044199250963
+test1_tok_p_micro: 0.4282614461026593
+test1_tok_r_micro: 0.4282614461026593
+test1_tok_f_micro: 0.4282614461026593
+test1_time: 5.877384662628174
+***********************************************************
+Sentence pred: 
+              precision    recall  f1-score   support
+
+           0       0.76      0.49      0.60       873
+           1       0.79      0.92      0.85      1847
+
+   micro avg       0.79      0.79      0.79      2720
+   macro avg       0.77      0.71      0.73      2720
+weighted avg       0.78      0.79      0.77      2720
+
+F1-macro sent:  0.7254105554857873
+F1-micro sent:  0.7860294117647059
+***********************************************************
+Token pred: 
+              precision    recall  f1-score   support
+
+           0       0.87      0.38      0.53     35172
+           1       0.17      0.68      0.27      6305
+
+   micro avg       0.43      0.43      0.43     41477
+   macro avg       0.52      0.53      0.40     41477
+weighted avg       0.76      0.43      0.49     41477
+
+F1-macro tok:  0.39902044199250963
+F1-micro tok:  0.4282614461026593
+***********************************************************
