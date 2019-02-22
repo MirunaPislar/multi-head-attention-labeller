@@ -1,10 +1,10 @@
-import sys
 import collections
-import numpy
-import random
-import math
-import os
 import gc
+import math
+import numpy
+import os
+import random
+import sys
 
 try:
     import ConfigParser as configparser
@@ -12,14 +12,17 @@ except:
     import configparser
 
 from model import MLTModel
-from evaluator import MLTEvaluator
+from evaluator import MLTEvaluator, MLTMultiLabelEvaluator
 
 
-def read_input_files(file_paths, max_sentence_length=-1):
+def read_input_files(file_paths, binary_labels, max_sentence_length=-1):
     """
     Reads input files in whitespace-separated format.
     Will split file_paths on comma, reading from multiple files.
     """
+    # Last element on the line is the sentence label, thus we need to increase max_sentence_length by 1
+    if not binary_labels and max_sentence_length >= 0:
+        max_sentence_length += 1
     sentences = []
     line_length = None
     for file_path in file_paths.strip().split(","):
@@ -29,12 +32,14 @@ def read_input_files(file_paths, max_sentence_length=-1):
                 line = line.strip()
                 if len(line) > 0:
                     line_parts = line.split()
-                    assert(len(line_parts) >= 2), line
-                    assert(len(line_parts) == line_length or line_length == None)
+                    assert(len(line_parts) >= 2), "Line parts less than 2: %s\n" % line
+                    assert(len(line_parts) == line_length or line_length is None), "Inconsistent line parts!"
                     line_length = len(line_parts)
                     sentence.append(line_parts)
                 elif len(line) == 0 and len(sentence) > 0:
                     if max_sentence_length <= 0 or len(sentence) <= max_sentence_length:
+                        if not binary_labels:
+                            assert(sentence[-1][0] == "sent_label"), "Sentence label missing!"
                         sentences.append(sentence)
                     sentence = []
             if len(sentence) > 0:
@@ -123,9 +128,14 @@ def process_sentences(data, model, is_training, learningrate, config, name):
     """
     Process all the sentences with the labeler, return evaluation metrics.
     """
-    evaluator = MLTEvaluator(config)
+    if config["binary_labels"]:
+        evaluator = MLTEvaluator(config)
+    else:
+        evaluator = MLTMultiLabelEvaluator(
+            config, sent_label2id=model.sent_label2id, token_label2id=model.token_label2id)
     batches_of_sentence_ids = create_batches_of_sentence_ids(
-        sentences=data, batch_equal_size=config["batch_equal_size"], max_batch_size=config["max_batch_size"])
+        sentences=data, batch_equal_size=config["batch_equal_size"],
+        max_batch_size=config["max_batch_size"])
 
     if is_training:
         random.shuffle(batches_of_sentence_ids)
@@ -141,6 +151,8 @@ def process_sentences(data, model, is_training, learningrate, config, name):
     results = evaluator.get_results(name)
     for key in results:
         print(key + ": " + str(results[key]))
+
+    evaluator.get_scikit_results()
     return results
 
 
@@ -156,20 +168,24 @@ def run_experiment(config_path):
 
     data_train, data_dev, data_test = None, None, None
     if config["path_train"] and len(config["path_train"]) > 0:
-        data_train = read_input_files(config["path_train"], config["max_train_sent_length"])
+        data_train = read_input_files(file_paths=config["path_train"],
+                                      max_sentence_length=config["max_train_sent_length"],
+                                      binary_labels=config["binary_labels"])
     if config["path_dev"] and len(config["path_dev"]) > 0:
-        data_dev = read_input_files(config["path_dev"])
+        data_dev = read_input_files(file_paths=config["path_dev"],
+                                    binary_labels=config["binary_labels"])
     if config["path_test"] and len(config["path_test"]) > 0:
         data_test = []
         for path_test in config["path_test"].strip().split(":"):
-            data_test += read_input_files(path_test)            
-
+            data_test += read_input_files(file_paths=path_test,
+                                          binary_labels=config["binary_labels"])
     data_train = data_train[:100]
     data_dev = data_dev[:50]
     data_test = data_test[:50]
 
     model = MLTModel(config)
-    model.build_vocabs(data_train, data_dev, data_test, config["preload_vectors"])
+    model.build_vocabs(data_train, data_dev, data_test,
+                       embedding_path=config["preload_vectors"])
     model.construct_network()
     model.initialize_session()
 
@@ -225,29 +241,27 @@ def run_experiment(config_path):
                 pass
 
         if data_dev and best_epoch >= 0:
-            # loading the best model so far
+            # Loading the best model so far
             model.saver.restore(model.session, temp_model_path)
             os.remove(temp_model_path+".checkpoint")
             os.remove(temp_model_path+".data-00000-of-00001")
             os.remove(temp_model_path+".index")
             os.remove(temp_model_path+".meta")
 
-    """
     if config["save"] is not None and len(config["save"]) > 0:
         model.save(config["save"])
 
     if config["path_test"] is not None:
         i = 0
         for path_test in config["path_test"].strip().split(":"):
-            data_test = read_input_files(path_test)
+            data_test = read_input_files(file_paths=path_test,
+                                         binary_labels=config["binary_labels"])
             results_test = process_sentences(
                 data_test, model, 
                 is_training=False, learningrate=0.0, 
                 config=config, name="test"+str(i))
             i += 1
-    """
 
 
 if __name__ == "__main__":
     run_experiment(sys.argv[1])
-
