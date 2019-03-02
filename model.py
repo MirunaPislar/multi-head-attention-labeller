@@ -255,70 +255,23 @@ class Model(object):
                 inputs=lstm_outputs, units=self.config["whidden_layer_size"],
                 activation=tf.tanh, kernel_initializer=self.initializer)  # B x Max_len x Hidden_size
 
-        lstm_output = tf.concat([lstm_output_fw, lstm_output_bw], -1)  # B x 2 * E
-        lstm_output = tf.nn.dropout(lstm_output, dropout_word_lstm)  # same as above
+        # Add the attention layer
+        self.sentence_scores, sentence_probabilities, \
+            self.token_scores, token_probabilities = self.attention_layer(lstm_outputs)
 
-        processed_tensor = lstm_output
-        attention_weights_unnormalised = tf.zeros_like(self.word_ids, dtype=tf.float32)
+        # Loss for word predictions, L_tok
+        word_objective_loss = tf.square(token_probabilities - self.word_labels)
+        word_objective_loss = tf.where(
+            tf.sequence_mask(self.sentence_lengths),
+            word_objective_loss, tf.zeros_like(word_objective_loss))
+        self.loss += self.config["word_objective_weight"] * tf.reduce_sum(
+            self.word_objective_weights * word_objective_loss)
 
-        if self.config["sentence_composition"] == "attention":
-            with tf.variable_scope("attention"):
-                attention_evidence = tf.layers.dense(
-                    inputs=lstm_outputs, units=self.config["attention_evidence_size"],
-                    activation=tf.tanh, kernel_initializer=self.initializer)  # B x Max_len x Attention_size
-
-                attention_weights = tf.layers.dense(
-                    inputs=attention_evidence, units=1,
-                    activation=None, kernel_initializer=self.initializer)  # B x Max_len x 1
-
-                attention_weights = tf.reshape(attention_weights, shape=tf.shape(self.word_ids))  # B x Max_len
-
-                if self.config["attention_activation"] == "sharp":
-                    attention_weights = tf.exp(attention_weights)
-                elif self.config["attention_activation"] == "soft":
-                    attention_weights = tf.sigmoid(attention_weights)
-                elif self.config["attention_activation"] == "linear":
-                    pass
-                else:
-                    raise ValueError("Unknown activation for attention: " + str(self.config["attention_activation"]))
-
-                # This is the loss for the word predictions, L_tok (in the paper)
-                word_objective_loss = tf.square(attention_weights - self.word_labels)
-                word_objective_loss = tf.where(
-                    tf.sequence_mask(self.sentence_lengths),
-                    word_objective_loss, tf.zeros_like(word_objective_loss))
-                self.loss += self.config["word_objective_weight"] * tf.reduce_sum(
-                    self.word_objective_weights * word_objective_loss)
-
-                attention_weights_unnormalised = attention_weights  # B x Max_len
-                attention_weights = tf.where(
-                    tf.sequence_mask(self.sentence_lengths),
-                    attention_weights, tf.zeros_like(attention_weights))
-                attention_weights = attention_weights / tf.reduce_sum(attention_weights, axis=1,
-                                                                      keep_dims=True)  # B x Max_len
-                product = lstm_outputs * attention_weights[:, :, numpy.newaxis]  # B x Max_len x Hidden
-                processed_tensor = tf.reduce_sum(product, axis=1)  # B x Hidden
-
-        if self.config["hidden_layer_size"] > 0:
-            processed_tensor = tf.layers.dense(
-                inputs=processed_tensor, units=self.config["hidden_layer_size"],
-                activation=tf.tanh, kernel_initializer=self.initializer)  # B x hidden_layer_size
-
-        self.sentence_scores = tf.layers.dense(
-            inputs=processed_tensor, units=1,
-            activation=tf.sigmoid, kernel_initializer=self.initializer, name="output_ff")  # [B x 1]
-        self.sentence_scores = tf.reshape(self.sentence_scores, shape=[tf.shape(processed_tensor)[0]])  # [B]
-
+        # Loss for sentence predictions, L_sent
         self.loss += self.config["sentence_objective_weight"] * tf.reduce_sum(
-            self.sentence_objective_weights * tf.square(self.sentence_scores - self.sentence_labels))
+            self.sentence_objective_weights * tf.square(sentence_probabilities - self.sentence_labels))
 
-        # ADDED
-        self.sentence_scores = tf.cast(tf.where(
-            tf.greater_equal(self.sentence_scores, 0.5),
-            tf.ones_like(self.sentence_scores),
-            tf.zeros_like(self.sentence_scores)), tf.int64)
-
-        # Loss for attention, L_attn (in the paper)
+        # Loss for attention, L_attn
         if self.config["attention_objective_weight"] > 0.0:
             self.loss += self.config["attention_objective_weight"] * (
                 tf.reduce_sum(
@@ -326,8 +279,8 @@ class Model(object):
                         tf.reduce_max(
                             tf.where(
                                 tf.sequence_mask(self.sentence_lengths),
-                                attention_weights_unnormalised,
-                                tf.zeros_like(attention_weights_unnormalised) - 1e6),
+                                token_probabilities,
+                                tf.zeros_like(token_probabilities) - 1e6),
                             axis=-1) - self.sentence_labels))
                 +
                 tf.reduce_sum(
@@ -335,20 +288,9 @@ class Model(object):
                         tf.reduce_min(
                             tf.where(
                                 tf.sequence_mask(self.sentence_lengths),
-                                attention_weights_unnormalised,
-                                tf.zeros_like(attention_weights_unnormalised) + 1e6),
+                                token_probabilities,
+                                tf.zeros_like(token_probabilities) + 1e6),
                             axis=-1) - 0.0)))
-
-        # ADDED
-        attention_weights_unnormalised = tf.where(
-            tf.greater_equal(attention_weights_unnormalised, 0.5),
-            tf.ones_like(attention_weights_unnormalised),
-            tf.zeros_like(attention_weights_unnormalised))
-
-        self.token_scores = tf.cast(tf.where(
-            tf.sequence_mask(self.sentence_lengths),
-            attention_weights_unnormalised,
-            tf.zeros_like(attention_weights_unnormalised) - 1e6), tf.int64)
 
         # This is the token-level language modelling objective, L_LM
         if self.config["lmcost_lstm_gamma"] > 0.0:
@@ -375,6 +317,67 @@ class Model(object):
             learning_rate=self.learning_rate,
             clip=self.config["clip"])
         print("Notwork built.")
+
+    def attention_layer(self, inputs):
+        with tf.variable_scope("attention"):
+            attention_evidence = tf.layers.dense(
+                inputs=inputs, units=self.config["attention_evidence_size"],
+                activation=tf.tanh, kernel_initializer=self.initializer)  # B x Max_len x Attention_size
+
+            attention_weights_unnormalised = tf.layers.dense(
+                inputs=attention_evidence, units=1,
+                activation=None, kernel_initializer=self.initializer)  # B x Max_len x 1
+            attention_weights_unnormalised = tf.reshape(
+                attention_weights_unnormalised, shape=tf.shape(self.word_ids))  # B x Max_len
+
+            if self.config["attention_activation"] == "sharp":
+                attention_weights_unnormalised = tf.exp(attention_weights_unnormalised)
+            elif self.config["attention_activation"] == "soft":
+                attention_weights_unnormalised = tf.sigmoid(attention_weights_unnormalised)
+            elif self.config["attention_activation"] == "linear":
+                pass
+            else:
+                raise ValueError("Unknown activation for attention: %s." 
+                                 % str(self.config["attention_activation"]))
+
+            attention_weights = tf.where(
+                tf.sequence_mask(self.sentence_lengths),
+                attention_weights_unnormalised,
+                tf.zeros_like(attention_weights_unnormalised))
+            attention_weights = attention_weights / tf.reduce_sum(
+                attention_weights, axis=1, keep_dims=True)  # B x Max_len
+            product = inputs * attention_weights[:, :, numpy.newaxis]  # B x Max_len x Hidden
+            processed_tensor = tf.reduce_sum(product, axis=1)  # B x Hidden
+
+            if self.config["hidden_layer_size"] > 0:
+                processed_tensor = tf.layers.dense(
+                    inputs=processed_tensor, units=self.config["hidden_layer_size"],
+                    activation=tf.tanh, kernel_initializer=self.initializer)  # B x hidden_layer_size
+
+            sentence_proba = tf.layers.dense(
+                inputs=processed_tensor, units=1,    # len(self.label2id_sent),
+                activation=tf.sigmoid, kernel_initializer=self.initializer, name="output_ff")  # [B x 1]
+            sentence_proba = tf.reshape(sentence_proba, shape=[tf.shape(processed_tensor)[0]])  # [B]
+
+            # ADDED
+            sentence_scores = tf.cast(tf.where(
+                tf.greater_equal(sentence_proba, 0.5),
+                tf.ones_like(sentence_proba),
+                tf.zeros_like(sentence_proba)), tf.int64)
+
+            # ADDED
+            token_scores = tf.where(
+                tf.greater_equal(attention_weights_unnormalised, 0.5),
+                tf.ones_like(attention_weights_unnormalised),
+                tf.zeros_like(attention_weights_unnormalised))
+
+            # ADDED
+            token_scores = tf.cast(tf.where(
+                tf.sequence_mask(self.sentence_lengths),
+                token_scores,
+                tf.zeros_like(token_scores) - 1e6), tf.int64)
+
+            return sentence_scores, sentence_proba, token_scores, attention_weights_unnormalised
 
     def construct_lmcost(self, input_tensor_fw, input_tensor_bw,
                          sentence_lengths, target_ids, lmcost_type, name):
