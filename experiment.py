@@ -1,5 +1,5 @@
-from model import Model
-from evaluator import Evaluator
+from my_second_model import Model
+from my_eval import Evaluator
 from collections import Counter
 from collections import OrderedDict
 import gc
@@ -320,9 +320,9 @@ class Experiment:
         data_dev = self.convert_labels(data_dev)
         data_test = self.convert_labels(data_test)
 
-        data_train = data_train[500:800]
-        data_dev = data_dev[:200]
-        data_test = data_test[:200]
+        data_train = data_train[:1000]
+        data_dev = data_dev[:500]
+        data_test = data_test[:500]
 
         model = Model(self.config, self.label2id_sent, self.label2id_tok)
         model.build_vocabs(data_train, data_dev, data_test,

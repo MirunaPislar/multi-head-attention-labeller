@@ -80,29 +80,33 @@ class Evaluator:
                 self.sentence_correct[true_labels_sent] += 1.0
 
             # Get the scores for the tokens in this sentence
-            self.append_token_data_for_sentence(true_labels_tok, list(token_scores[i])[:len(true_labels_tok)])
+            self.append_token_data_for_sentence(
+                    true_labels_tok, list(token_scores[i])[:len(true_labels_tok)])
 
     @staticmethod
     def calculate_metrics(correct, predicted, total):
-        p = correct / predicted if predicted > 0.0 else 0.0
-        r = correct / total if total > 0.0 else 0.0
-        f = 2.0 * p * r / (p + r) if (p + r) > 0.0 else 0.0
-        f05 = (1 + 0.5 * 0.5) * p * r / (0.5 * 0.5 * p + r) if 0.5 * 0.5 * p + r > 0.0 else 0.0
+        p = correct / predicted if predicted else 0.0
+        r = correct / total if total else 0.0
+        f = 2.0 * p * r / (p + r) if p + r else 0.0
+        f05 = (1 + 0.5 * 0.5) * p * r / (0.5 * 0.5 * p + r) if 0.5 * 0.5 * p + r else 0.0
         return p, r, f, f05
 
     def get_results(self, name):
 
         results = OrderedDict()
         results[name + "_cost_sum"] = self.cost_sum
-        results[name + "_cost_avg"] = self.cost_sum / float(self.count_sent)
+        results[name + "_cost_avg"] = (self.cost_sum / float(self.count_sent)
+                                       if self.count_sent else 0.0)
 
         results[name + "_count_sent"] = self.count_sent
         results[name + "_total_correct_sent"] = self.correct_binary_sent
-        results[name + "_accuracy_sent"] = self.correct_binary_sent / float(self.count_sent)
+        results[name + "_accuracy_sent"] = (self.correct_binary_sent / float(self.count_sent)
+                                            if self.count_sent else 0.0)
 
         results[name + "_count_tok"] = self.count_tok
         results[name + "_total_correct_tok"] = self.correct_binary_tok
-        results[name + "_accuracy_tok"] = self.correct_binary_tok / float(self.count_tok)
+        results[name + "_accuracy_tok"] = (self.correct_binary_tok / float(self.count_tok)
+                                           if self.count_tok else 0.0)
 
         # Calculate the micro and macro averages for the sentence predictions
         f_sent_macro, p_sent_macro, r_sent_macro = 0.0, 0.0, 0.0
@@ -175,20 +179,24 @@ class Evaluator:
         return results
 
     def get_scikit_results(self):
-        print("*" * 50)
-        print("Sentence pred: ")
-        print(classification_report(self.true_sent, self.pred_sent))
-        f1_macro_sent = f1_score(self.true_sent, self.pred_sent, average="macro")
-        f1_micro_sent = f1_score(self.true_sent, self.pred_sent, average="micro")
-        print("F1-macro sent: ", f1_macro_sent)
-        print("F1-micro sent: ", f1_micro_sent)
+        # Scikit results for sentence predictions, if they are not None
+        if self.true_sent and self.pred_sent:
+            print("*" * 50)
+            print("Sentence pred: ")
+            print(classification_report(self.true_sent, self.pred_sent))
+            f1_macro_sent = f1_score(self.true_sent, self.pred_sent, average="macro")
+            f1_micro_sent = f1_score(self.true_sent, self.pred_sent, average="micro")
+            print("F1-macro sent: ", f1_macro_sent)
+            print("F1-micro sent: ", f1_micro_sent)
 
-        print("*" * 50)
-        print("Token pred: ")
-        print(classification_report(self.true_tok, self.pred_tok))
-        f1_macro_tok = f1_score(self.true_tok, self.pred_tok, average="macro")
-        f1_micro_tok = f1_score(self.true_tok, self.pred_tok, average="micro")
-        print("F1-macro tok: ", f1_macro_tok)
-        print("F1-micro tok: ", f1_micro_tok)
-        print("*" * 50)
+        # Scikit results for sentence predictions, if they are not None
+        if self.true_tok and self.pred_tok:
+            print("*" * 50)
+            print("Token pred: ")
+            print(classification_report(self.true_tok, self.pred_tok))
+            f1_macro_tok = f1_score(self.true_tok, self.pred_tok, average="macro")
+            f1_micro_tok = f1_score(self.true_tok, self.pred_tok, average="micro")
+            print("F1-macro tok: ", f1_macro_tok)
+            print("F1-micro tok: ", f1_micro_tok)
+            print("*" * 50)
 
