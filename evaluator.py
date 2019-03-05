@@ -183,7 +183,9 @@ class Evaluator:
         if self.true_sent and self.pred_sent:
             print("*" * 50)
             print("Sentence pred: ")
-            print(classification_report(self.true_sent, self.pred_sent))
+            print(classification_report(
+                self.true_sent, self.pred_sent, digits=4,
+                target_names=[self.id2label_sent[i] for i in range(len(self.id2label_sent))]))
             f1_macro_sent = f1_score(self.true_sent, self.pred_sent, average="macro")
             f1_micro_sent = f1_score(self.true_sent, self.pred_sent, average="micro")
             print("F1-macro sent: ", f1_macro_sent)
@@ -193,7 +195,9 @@ class Evaluator:
         if self.true_tok and self.pred_tok:
             print("*" * 50)
             print("Token pred: ")
-            print(classification_report(self.true_tok, self.pred_tok))
+            print(classification_report(
+                self.true_tok, self.pred_tok, digits=4,
+                target_names=[self.id2label_tok[i] for i in range(len(self.id2label_tok))]))
             f1_macro_tok = f1_score(self.true_tok, self.pred_tok, average="macro")
             f1_micro_tok = f1_score(self.true_tok, self.pred_tok, average="micro")
             print("F1-macro tok: ", f1_macro_tok)

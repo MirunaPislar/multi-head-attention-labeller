@@ -1,4 +1,4 @@
-from my_second_model import Model
+from model import Model
 from my_eval import Evaluator
 from collections import Counter
 from collections import OrderedDict
@@ -8,7 +8,10 @@ import numpy
 import os
 import random
 import sys
-import configparser
+if sys.version_info[0] < 3:
+    import ConfigParser as configparser
+else:
+    import configparser
 
 
 class Token:
@@ -60,12 +63,16 @@ class Sentence:
             if label is not None:
                 self.label_sent = label
         elif label is None and sentence_label_type == "majority":
-            self.label_sent = Counter(
+            majority_label = Counter(
                 [token.label_tok for token in self.tokens]).most_common()[0][0]
+            if majority_label is not None:
+                self.label_sent = majority_label
+            else:
+                raise ValueError("Majority label is None! Sentence tokens: ", self.tokens)
         elif label is None and sentence_label_type == "binary":
             non_default_token_labels = sum(
                 [0 if token.label_tok == default_label else 1 for token in self.tokens])
-            if non_default_token_labels:
+            if non_default_token_labels > 0:
                 self.label_sent = "1"
             else:
                 self.label_sent = "0"  # Experiment.config["default_label"]
@@ -132,6 +139,9 @@ class Experiment:
                         sentence = Sentence()
                 if len(sentence.tokens) > 0:
                     if max_sentence_length <= 0 or len(sentence.tokens) <= max_sentence_length:
+                        sentence.set_label(
+                            sentence_label_type=self.config["sentence_label"],
+                            default_label=self.config["default_label"])
                         sentences.append(sentence)
         return sentences
 
@@ -160,7 +170,13 @@ class Experiment:
         """
         for sentence in data:
             current_label_sent = sentence.label_sent
-            sentence.label_sent = self.label2id_sent[current_label_sent]
+            try:
+                sentence.label_sent = self.label2id_sent[current_label_sent]
+            except KeyError:
+                print("Key error for ", current_label_sent)
+                print("Sentence: ", [token.value for token in sentence.tokens])
+                print("Label to id", self.label2id_sent)
+                # raise
             for token in sentence.tokens:
                 current_label_tok = token.label_tok
                 token.label_tok = self.label2id_tok[current_label_tok]
@@ -320,7 +336,7 @@ class Experiment:
         data_dev = self.convert_labels(data_dev)
         data_test = self.convert_labels(data_test)
 
-        data_train = data_train[:1000]
+        data_train = data_train[200:800]
         data_dev = data_dev[:500]
         data_test = data_test[:500]
 
@@ -346,7 +362,6 @@ class Experiment:
             learning_rate = self.config["learning_rate"]
 
             for epoch in range(self.config["epochs"]):
-                print("*" * 30)
                 print("EPOCH: %d" % epoch)
                 print("Learning rate: %f" % learning_rate)
                 random.shuffle(data_train)

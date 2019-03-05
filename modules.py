@@ -118,10 +118,11 @@ def multi_head_attention(inputs, initializer, attention_size,
         return sentence_scores, sentence_predictions, token_scores, token_predictions
 
 
-def transformer_attention(inputs, initializer, attention_size,
-                          sentence_lengths, hidden_units,
+def transformer_attention(inputs, initializer,
+                          attention_size, hidden_units,
                           num_sentence_labels, num_heads,
-                          is_training):
+                          is_training, dropout_rate,
+                          use_masking, use_residual_connection):
     with tf.variable_scope("transformer_multi_head_attention"):
         num_units = ceil(attention_size / num_heads) * num_heads
         # num_units = ceil(inputs.get_shape().as_list()[-1] / num_heads) * num_heads
@@ -148,42 +149,36 @@ def transformer_attention(inputs, initializer, attention_size,
         attention_evidence = tf.div(attention_evidence, tf.constant(num_units ** 0.5))
         attention_evidence = attention_evidence / (keys.get_shape().as_list()[-1] ** 0.5)
 
-        """
         # Key Masking
-        key_masks = tf.sign(tf.reduce_sum(tf.abs(keys), axis=-1))  # [B x M]
-        key_masks = tf.tile(key_masks, [num_heads, 1])  # [(heads * B) x M]
-        key_masks = tf.tile(tf.expand_dims(key_masks, 1), [1, tf.shape(queries)[1], 1])  # [(heads * B) x M x M]
+        if use_masking:
+            key_masks = tf.sign(tf.reduce_sum(tf.abs(adapted_inputs), axis=-1))  # [B x M]
+            key_masks = tf.tile(key_masks, [num_heads, 1])  # [(heads * B) x M]
+            key_masks = tf.tile(tf.expand_dims(key_masks, 1), [1, tf.shape(queries)[1], 1])  # [(heads * B) x M x M]
+            paddings = tf.ones_like(attention_evidence) * (-2 ** 32 + 1)
+            attention_evidence = tf.where(tf.equal(key_masks, 0), paddings, attention_evidence)  # [(heads * B) x M x M]
 
-        paddings = tf.ones_like(outputs) * (-2 ** 32 + 1)
-        outputs = tf.where(tf.equal(key_masks, 0), paddings, outputs)  # [(heads * B) x M x M]
-
-        attention_evidence = tf.layers.dense(
-            inputs=outputs, units=1,
-            activation=None, kernel_initializer=initializer,
-            name="output_transformer_multi_token_scores_ff")  # [(heads * B) x M x 1]
-        """
-
+        # Add softmax
         attention_weights = tf.nn.softmax(attention_evidence)  # [(heads * B) x M x M]
 
-        """
         # Query Masking
-        query_masks = tf.sign(tf.reduce_sum(tf.abs(queries), axis=-1)) # (N, T_q)
-        query_masks = tf.tile(query_masks, [num_heads, 1]) # (h*N, T_q)
-        query_masks = tf.tile(tf.expand_dims(query_masks, -1), [1, 1, tf.shape(keys)[1]]) # (h*N, T_q, T_k)
-        outputs *= query_masks # broadcasting. (N, T_q, C)
+        if use_masking:
+            query_masks = tf.sign(tf.reduce_sum(tf.abs(adapted_inputs), axis=-1))   # [B x M]
+            query_masks = tf.tile(query_masks, [num_heads, 1])  # [(heads * ) x M]
+            query_masks = tf.tile(tf.expand_dims(query_masks, -1), [1, 1, tf.shape(keys)[1]])   # [h*B, M, M]
+            attention_weights = attention_weights * query_masks  # broadcasting. [B x M x num_units]
+
         # Dropouts
-        attention_weights = tf.layers.dropout(attention_weights, rate=0.5)  # [(heads * B) x M x M]
-        # OR:
-        dropout_attention = dropout_rate * tf.cast(is_training, tf.float32)
-                         + (1.0 - tf.cast(self.is_training, tf.float32)))
-        attention_weights = tf.nn.dropout(attention_weights, dropout_attention, 
-                                          name="dropout_transducer_attention_weights")
-        """
+        dropout_attention = (dropout_rate * tf.cast(is_training, tf.float32)
+                             + (1.0 - tf.cast(is_training, tf.float32)))
+        attention_weights = tf.nn.dropout(
+            attention_weights, dropout_attention,
+            name="dropout_transducer_attention_weights")    # [(heads * B) x M x M]
 
         product = tf.matmul(attention_weights, values)  # [(heads * B) x M x (num_units / heads)]
         product = tf.concat(tf.split(product, num_heads, axis=0), axis=2)  # [B x M x num_units]
-        product += adapted_inputs  # add a residual connection
-        product = normalize(product)  # [B x M x num_units]
+        if use_residual_connection:
+            product += adapted_inputs  # add a residual connection
+            product = normalize(product)  # [B x M x num_units]
         processed_tensor = tf.reduce_sum(product, axis=1)  # [B x num_units]
 
         if hidden_units > 0:
