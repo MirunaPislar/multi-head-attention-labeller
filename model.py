@@ -258,7 +258,8 @@ class Model(object):
                 inputs=lstm_outputs, units=self.config["whidden_layer_size"],
                 activation=tf.tanh, kernel_initializer=self.initializer)  # B x Max_len x Hidden_size
 
-        if False and len(self.label2id_tok) == 2 and len(self.label2id_sent) == 2:
+        if self.config["model_type"] == "previous" \
+                and len(self.label2id_tok) == 2 and len(self.label2id_sent) == 2:
             self.sentence_scores, self.sentence_predictions, \
                 self.token_scores, self.token_predictions = single_head_attention(
                     lstm_outputs, self.initializer, self.config["attention_evidence_size"],
@@ -297,7 +298,8 @@ class Model(object):
                                     self.token_scores,
                                     tf.zeros_like(self.token_scores) + 1e6),
                                 axis=-1) - 0.0)))
-        elif False:
+
+        elif self.config["model_type"] == "multi-head":
             self.sentence_scores, self.sentence_predictions, \
                 self.token_scores, self.token_predictions = multi_head_attention(
                     lstm_outputs, self.initializer, self.config["attention_evidence_size"],
@@ -320,16 +322,21 @@ class Model(object):
                 logits=self.sentence_scores, labels=tf.cast(self.sentence_labels, tf.int32))
             self.loss += self.config["sentence_objective_weight"] * tf.reduce_sum(
                 self.sentence_objective_weights * sentence_objective_loss)
-        else:
+
+        elif self.config["model_type"] == "transformer":
             self.sentence_scores, self.sentence_predictions,\
                 self.token_scores, self.token_predictions = transformer_attention(
-                    lstm_outputs, self.initializer,
-                    self.config["attention_evidence_size"],
-                    self.config["hidden_layer_size"],
-                    len(self.label2id_sent), len(self.label2id_tok),
-                    self.is_training, self.config["dropout_attention"],
-                    self.config["masking_attention"],
-                    self.config["residual_connection"])
+                    inputs=lstm_outputs,
+                    initializer=self.initializer,
+                    attention_size=self.config["attention_evidence_size"],
+                    hidden_units=self.config["hidden_layer_size"],
+                    num_sentence_labels=len(self.label2id_sent),
+                    num_heads=len(self.label2id_tok),
+                    shrink_input=self.config["shrink_input"],
+                    is_training=self.is_training,
+                    dropout_rate=self.config["dropout_attention"],
+                    use_masking=self.config["masking_attention"],
+                    use_residual_connection=self.config["residual_connection"])
 
             # Token-level loss
             word_objective_loss = tf.nn.sparse_softmax_cross_entropy_with_logits(
@@ -345,6 +352,20 @@ class Model(object):
                 logits=self.sentence_scores, labels=tf.cast(self.sentence_labels, tf.int32))
             self.loss += self.config["sentence_objective_weight"] * tf.reduce_sum(
                 self.sentence_objective_weights * sentence_objective_loss)
+
+            # Attention-level loss
+            if self.config["attention_objective_weight"] > 0.0:
+                # Maximum over all heads
+                max_head_token_scores = tf.reduce_max(
+                    tf.transpose(self.token_scores, perm=[0, 2, 1]), axis=-1)
+                #
+                max_head_token_scores = tf.cast(
+                    tf.argmax(max_head_token_scores, axis=-1), tf.float32)
+
+                self.loss += self.config["attention_objective_weight"] * (
+                    tf.reduce_sum(
+                        self.sentence_objective_weights * tf.square(
+                            max_head_token_scores - self.sentence_labels)))
 
         # This is the token-level language modelling objective, L_LM
         if self.config["lmcost_lstm_gamma"] > 0.0:
@@ -528,11 +549,10 @@ class Model(object):
                         token=token.value[k],
                         token2id=self.char2id,
                         unk_token=self.CUNK)
-                # HERE
                 # if len(batch[i][j]) == 2 or (len(batch[i][j]) >= 3 and batch[i][j][1] == "T"):
                 word_objective_weights[i][j] = 1.0
             # if len(batch[i][j]) == 2 or (len(batch[i][j]) >= 3 and batch[i][0][1] == "S") \
-            #        or self.config["sentence_objective_persistent"]:
+            #       or self.config["sentence_objective_persistent"]:
             sentence_objective_weights[i] = 1.0
 
         if self.config["debug_mode"]:

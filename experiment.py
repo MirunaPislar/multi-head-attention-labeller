@@ -1,4 +1,4 @@
-from model import Model
+from my_second_model import Model
 from my_eval import Evaluator
 from collections import Counter
 from collections import OrderedDict
@@ -15,6 +15,9 @@ else:
 
 
 class Token:
+    """
+    Token class.
+    """
     unique_labels_tok = set()
 
     def __init__(self, value, label):
@@ -24,6 +27,9 @@ class Token:
 
 
 class Sentence:
+    """
+    Sentence class.
+    """
     unique_labels_sent = set()
 
     def __init__(self):
@@ -91,6 +97,9 @@ class Sentence:
 
 
 class Experiment:
+    """
+    Here we start the experiment.
+    """
 
     def __init__(self):
         self.config = None
@@ -307,7 +316,8 @@ class Experiment:
         :rtype: None
         """
         self.config = self.parse_config("config", config_path)
-        temp_model_path = config_path + ".model"
+        initialize_writer(self.config["to_write_filename"])
+        temp_model_path = config_path + "_%.3f" % (random.random() * 100) + ".model"
 
         if "random_seed" in self.config:
             random.seed(self.config["random_seed"])
@@ -335,10 +345,6 @@ class Experiment:
         data_train = self.convert_labels(data_train)
         data_dev = self.convert_labels(data_dev)
         data_test = self.convert_labels(data_test)
-
-        data_train = data_train[200:800]
-        data_dev = data_dev[:500]
-        data_test = data_test[:500]
 
         model = Model(self.config, self.label2id_sent, self.label2id_tok)
         model.build_vocabs(data_train, data_dev, data_test,
@@ -417,6 +423,31 @@ class Experiment:
                         data_test, model, is_training=False,
                         learning_rate=0.0, name="test" + str(i))
                     i += 1
+
+
+class Writer:
+    """
+    This class allows me to print to file and to std output at the same time.
+    """
+    def __init__(self, *writers):
+        self.writers = writers
+
+    def write(self, text):
+        for w in self.writers:
+            w.write(text)
+
+    def flush(self):
+        pass
+
+
+def initialize_writer(to_write_filename):
+    """
+    Method that initializes my writer class.
+    :param to_write_filename: name of the file where the output will be written.
+    :return: None.
+    """
+    file_out = open(to_write_filename, 'wt')
+    sys.stdout = Writer(sys.stdout, file_out)
 
 
 if __name__ == "__main__":

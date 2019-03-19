@@ -86,14 +86,14 @@ def multi_head_attention(inputs, initializer, attention_size,
 
         token_scores = tf.layers.dense(
             inputs=attention_evidence, units=num_token_labels,
-            activation=None, kernel_initializer=initializer,
+            kernel_initializer=initializer,
             name="output_multi_tokens_scores_ff")  # [B x M x num_token_labels]
         token_proba = tf.nn.softmax(token_scores)
         token_predictions = tf.argmax(token_proba, axis=2, output_type=tf.int32)  # [B x M]
 
         attention_weights = tf.layers.dense(
             inputs=attention_evidence, units=1,
-            activation=None, kernel_initializer=initializer)  # [B x M x 1]
+            kernel_initializer=initializer)  # [B x M x 1]
         attention_weights = tf.squeeze(attention_weights, axis=-1)  # [B x M]
         attention_weights = tf.nn.softmax(attention_weights)
         attention_weights = tf.where(
@@ -111,22 +111,44 @@ def multi_head_attention(inputs, initializer, attention_size,
 
         sentence_scores = tf.layers.dense(
             inputs=processed_tensor, units=num_sentence_labels,
-            activation=None, kernel_initializer=initializer,
+            kernel_initializer=initializer,
             name="output_multi_sent_specified_scores_ff")  # [B x num_unique_sent_labels]
-        sentence_proba = tf.nn.softmax(sentence_scores)
-        sentence_predictions = tf.argmax(sentence_proba, axis=1)  # [B]
+        sentence_probabilities = tf.nn.softmax(sentence_scores)
+        sentence_predictions = tf.argmax(sentence_probabilities, axis=1)  # [B]
         return sentence_scores, sentence_predictions, token_scores, token_predictions
 
 
 def transformer_attention(inputs, initializer,
                           attention_size, hidden_units,
                           num_sentence_labels, num_heads,
-                          is_training, dropout_rate,
+                          is_training, shrink_input, dropout_rate,
                           use_masking, use_residual_connection):
+    """
+    Compute the multi-head transformer architecture.
+    :param inputs: 3D floats of shape [B x M x E]
+    :param initializer: type of initializer (best if glorot or xavier)
+    :param attention_size: number of units to use for the attention evidence
+    :param hidden_units: number of units to use for the processed vector
+    :param num_sentence_labels: number of unique sentence labels
+    :param num_heads: number of unique token labels
+    :param is_training: if set to True, the current phase is a training one (rather than testing)
+    :param shrink_input: if the input should be shrinked or not to attention_size
+    :param dropout_rate: the dropout learning rate
+    :param use_masking: if set to True, a key/query masking is applied before/after the softmax layer
+    :param use_residual_connection: if set to True, a residual connection is added to the inputs
+    :return sentence_scores: 2D floats of shape [B x num_sentence_labels]
+    :return sentence_predictions: predicted labels for each sentence in the batch; ints of shape [B]
+    :return token_scores: 3D floats of shape [B x M x num_heads]
+    :return token_predictions: predicted labels for each token in each sentence; ints of shape [B x M]
+    """
     with tf.variable_scope("transformer_multi_head_attention"):
-        num_units = ceil(attention_size / num_heads) * num_heads
-        # num_units = ceil(inputs.get_shape().as_list()[-1] / num_heads) * num_heads
-        adapted_inputs = tf.layers.dense(inputs, num_units, activation=None)  # [B x M x num_units]
+        if shrink_input:
+            num_units = ceil(attention_size / num_heads) * num_heads
+        else:
+            num_units = ceil(inputs.get_shape().as_list()[-1] / num_heads) * num_heads
+
+        # Linear projection of the input (used to compute the attention values).
+        adapted_inputs = tf.layers.dense(inputs, num_units)  # [B x M x num_units]
 
         # Project to get the queries, keys, and values.
         queries = tf.layers.dense(
@@ -147,7 +169,6 @@ def transformer_attention(inputs, initializer,
         # Transpose multiplication and scale
         attention_evidence = tf.matmul(queries, tf.transpose(keys, [0, 2, 1]))  # [(heads * B) x M x M]
         attention_evidence = tf.div(attention_evidence, tf.constant(num_units ** 0.5))
-        attention_evidence = attention_evidence / (keys.get_shape().as_list()[-1] ** 0.5)
 
         # Key Masking
         if use_masking:
@@ -157,19 +178,20 @@ def transformer_attention(inputs, initializer,
             paddings = tf.ones_like(attention_evidence) * (-2 ** 32 + 1)
             attention_evidence = tf.where(tf.equal(key_masks, 0), paddings, attention_evidence)  # [(heads * B) x M x M]
 
-        # Add softmax
+        # Add a softmax layer
         attention_weights = tf.nn.softmax(attention_evidence)  # [(heads * B) x M x M]
 
         # Query Masking
         if use_masking:
             query_masks = tf.sign(tf.reduce_sum(tf.abs(adapted_inputs), axis=-1))   # [B x M]
             query_masks = tf.tile(query_masks, [num_heads, 1])  # [(heads * ) x M]
-            query_masks = tf.tile(tf.expand_dims(query_masks, -1), [1, 1, tf.shape(keys)[1]])   # [h*B, M, M]
+            query_masks = tf.tile(tf.expand_dims(query_masks, -1), [1, 1, tf.shape(keys)[1]])   # [(heads * B), M, M]
             attention_weights = attention_weights * query_masks  # broadcasting. [B x M x num_units]
 
         # Dropouts
         dropout_attention = (dropout_rate * tf.cast(is_training, tf.float32)
                              + (1.0 - tf.cast(is_training, tf.float32)))
+
         attention_weights = tf.nn.dropout(
             attention_weights, dropout_attention,
             name="dropout_transducer_attention_weights")    # [(heads * B) x M x M]
@@ -188,7 +210,7 @@ def transformer_attention(inputs, initializer,
 
         sentence_scores = tf.layers.dense(
             inputs=processed_tensor, units=num_sentence_labels,
-            activation=None, kernel_initializer=initializer,
+            kernel_initializer=initializer,
             name="output_sent_specified_scores_ff")  # [B x num_unique_sent_labels]
         sentence_proba = tf.nn.softmax(sentence_scores)
         sentence_predictions = tf.argmax(sentence_proba, axis=1)  # [B]
