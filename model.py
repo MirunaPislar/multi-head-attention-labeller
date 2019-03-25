@@ -106,7 +106,7 @@ class Model(object):
         self.char_ids = tf.placeholder(tf.int32, [None, None, None], name="char_ids")
         self.sentence_lengths = tf.placeholder(tf.int32, [None], name="sentence_lengths")
         self.word_lengths = tf.placeholder(tf.int32, [None, None], name="word_lengths")
-        self.sentence_labels = tf.placeholder(tf.float32, [None, ], name="sentence_labels")
+        self.sentence_labels = tf.placeholder(tf.float32, [None], name="sentence_labels")
         self.word_labels = tf.placeholder(tf.float32, [None, None], name="word_labels")
 
         self.word_objective_weights = tf.placeholder(
@@ -213,7 +213,8 @@ class Model(object):
 
         dropout_input = (self.config["dropout_input"] * tf.cast(self.is_training, tf.float32)
                          + (1.0 - tf.cast(self.is_training, tf.float32)))
-        word_input_tensor = tf.nn.dropout(word_input_tensor, dropout_input, name="dropout_word")
+        word_input_tensor = tf.nn.dropout(
+            x=word_input_tensor, rate=1 - dropout_input, name="dropout_word")
 
         word_lstm_cell_fw = tf.nn.rnn_cell.LSTMCell(
             self.config["word_recurrent_size"],
@@ -242,7 +243,7 @@ class Model(object):
                              + (1.0 - tf.cast(self.is_training, tf.float32)))
 
         lstm_outputs_fw = tf.nn.dropout(
-            lstm_outputs_fw, dropout_word_lstm,
+            x=lstm_outputs_fw, rate=1 - dropout_word_lstm,
             noise_shape=tf.convert_to_tensor(
                 [tf.shape(self.word_ids)[0], 1, self.config["word_recurrent_size"]], dtype=tf.int32))
         lstm_outputs_bw = tf.nn.dropout(
@@ -325,7 +326,7 @@ class Model(object):
 
         elif self.config["model_type"] == "transformer":
             self.sentence_scores, self.sentence_predictions,\
-                self.token_scores, self.token_predictions = transformer_attention(
+                self.token_scores, self.token_predictions, token_probabilities = transformer_attention(
                     inputs=lstm_outputs,
                     initializer=self.initializer,
                     attention_size=self.config["attention_evidence_size"],
@@ -334,9 +335,9 @@ class Model(object):
                     num_heads=len(self.label2id_tok),
                     shrink_input=self.config["shrink_input"],
                     is_training=self.is_training,
-                    dropout_rate=self.config["dropout_attention"],
-                    use_masking=self.config["masking_attention"],
-                    use_residual_connection=self.config["residual_connection"])
+                    dropout=self.config["dropout_attention"],
+                    use_residual_connection=self.config["residual_connection"],
+                    token_scoring_method=self.config["token_scoring_method"])
 
             # Token-level loss
             word_objective_loss = tf.nn.sparse_softmax_cross_entropy_with_logits(
@@ -353,19 +354,79 @@ class Model(object):
             self.loss += self.config["sentence_objective_weight"] * tf.reduce_sum(
                 self.sentence_objective_weights * sentence_objective_loss)
 
-            # Attention-level loss
-            if self.config["attention_objective_weight"] > 0.0:
-                # Maximum over all heads
-                max_head_token_scores = tf.reduce_max(
-                    tf.transpose(self.token_scores, perm=[0, 2, 1]), axis=-1)
-                #
-                max_head_token_scores = tf.cast(
-                    tf.argmax(max_head_token_scores, axis=-1), tf.float32)
+            # Prepare the mask for the token scores outside the true sentence length
+            # for each head (change shape from [B x M] to [B  x M x num_heads]).
+            masked_sentence_lengths = tf.tile(
+                input=tf.expand_dims(
+                    tf.sequence_mask(self.sentence_lengths), axis=-1),
+                multiples=[1, 1, len(self.label2id_tok)])
 
-                self.loss += self.config["attention_objective_weight"] * (
+            max_head_token_scores = tf.reduce_max(
+                tf.where(
+                    masked_sentence_lengths,
+                    token_probabilities,
+                    tf.zeros_like(token_probabilities) - 1e6),
+                axis=1)
+
+            # Attention-level loss
+            if (self.config["attention_objective_weight"] > 0.0
+               and (len(self.label2id_sent) == len(self.label2id_sent) or len(self.label2id_sent) == 2)):
+                if len(self.label2id_sent) == 2 and len(self.label2id_tok) > 2:
+                    # Maximum value of the first head (corresponding to the default label).
+                    max_head_token_scores_default_head = tf.gather(
+                        max_head_token_scores, indices=[0], axis=-1)  # [B x 1]
+
+                    # Maximum value of all the other heads (corresponding to the non-default labels).
+                    max_head_token_scores_non_default_heads = tf.reduce_max(tf.gather(
+                        max_head_token_scores, indices=[[i] for i in range(1, len(self.label2id_tok))],
+                        axis=-1), axis=1)  # [B x (H - 1)] before taking the max, [B x 1] afterwards.
+
+                    # Concatenate the two maximums found on the default and non-default heads.
+                    max_head_token_scores = tf.concat(
+                        [max_head_token_scores_default_head,
+                         max_head_token_scores_non_default_heads], axis=-1)  # [B x 2]
+
+                one_hot_sentence_labels = tf.one_hot(tf.cast(self.sentence_labels, tf.int64),
+                                                     depth=len(self.label2id_sent))  # [B x no_sentence_labels)]
+
+                if self.config["attention_loss_between_all"]:
+                    self.loss += self.config["attention_objective_weight"] * (
+                        tf.reduce_sum(
+                            tf.expand_dims(self.sentence_objective_weights, axis=-1) * tf.square(
+                                tf.math.subtract(
+                                    max_head_token_scores,
+                                    one_hot_sentence_labels))))
+                else:
+                    self.loss += self.config["attention_objective_weight"] * (
+                        tf.reduce_sum(
+                            tf.expand_dims(self.sentence_objective_weights, axis=-1) * tf.square(
+                                tf.math.subtract(
+                                    tf.math.multiply(
+                                        max_head_token_scores,
+                                        one_hot_sentence_labels),
+                                    one_hot_sentence_labels))))
+
+            # Gap loss: the gap between the default and non-default scores should be bigger than a threshold.
+            if self.config["gap_objective_weight"]:
+                # Maximum value of the first head (corresponding to the default label).
+                max_head_token_scores_default_head = tf.squeeze(tf.gather(
+                    max_head_token_scores, indices=[0], axis=-1), axis=-1)  # [B]
+
+                # Maximum value of all the other heads (corresponding to the non-default labels).
+                max_head_token_scores_non_default_heads = tf.squeeze(tf.reduce_max(tf.gather(
+                    max_head_token_scores, indices=[[i] for i in range(1, len(self.label2id_tok))],
+                    axis=-1), axis=1), axis=-1)  # [B]
+
+                # Gap loss = weighted sum over sent_obj * max(0, threshold - |max_default_head - max_non_default_head|)
+                self.loss += self.config["gap_objective_weight"] * (
                     tf.reduce_sum(
-                        self.sentence_objective_weights * tf.square(
-                            max_head_token_scores - self.sentence_labels)))
+                        self.sentence_objective_weights * tf.math.maximum(
+                            0.0,
+                            tf.math.subtract(
+                                self.config["maximum_gap_threshold"],
+                                tf.math.abs(
+                                    tf.math.subtract(max_head_token_scores_default_head,
+                                                     max_head_token_scores_non_default_heads))))))
 
         # This is the token-level language modelling objective, L_LM
         if self.config["lmcost_lstm_gamma"] > 0.0:

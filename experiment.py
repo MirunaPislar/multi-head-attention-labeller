@@ -16,7 +16,7 @@ else:
 
 class Token:
     """
-    Token class.
+    Representation of a single token as a value and a label.
     """
     unique_labels_tok = set()
 
@@ -28,7 +28,11 @@ class Token:
 
 class Sentence:
     """
-    Sentence class.
+    Representation of a sentence as a list of tokens which are of
+    class Token, thus each has a certain value and label.
+    Each sentence is assigned a label which can be either inferred
+    from its tokens (binary/majority) or specified by the user (so
+    the last line is "sent_label" followed by the sentence label).
     """
     unique_labels_sent = set()
 
@@ -122,7 +126,7 @@ class Experiment:
         sentences = []
         line_length = None
         for file_path in file_paths.strip().split(","):
-            with open(file_path, "r") as f:
+            with open(file_path) as f:
                 sentence = Sentence()
                 for line in f:
                     line = line.strip()
@@ -317,7 +321,7 @@ class Experiment:
         """
         self.config = self.parse_config("config", config_path)
         initialize_writer(self.config["to_write_filename"])
-        temp_model_path = config_path + "_%.3f" % (random.random() * 100) + ".model"
+        temp_model_path = "models/temp_model_%.3f" % (random.random() * 100) + ".model"
 
         if "random_seed" in self.config:
             random.seed(self.config["random_seed"])
@@ -361,9 +365,28 @@ class Experiment:
               % model.get_parameter_count_without_word_embeddings())
         
         if data_train:
-            model_selector = self.config["model_selector"].split(":")[0]
-            model_selector_type = self.config["model_selector"].split(":")[1]
+            model_selector_splits = self.config["model_selector"].split(":")
+            model_selector_ratios_splits = [float(val) for val in self.config["model_selector_ratio"].split(":")]
+            model_selector_type = model_selector_splits[-1]
+            model_selector_values = model_selector_splits[:-1]
+            assert (len(model_selector_values) == len(model_selector_ratios_splits)
+                    or len(model_selector_ratios_splits) == 1), "Model selector values and ratios don't match!"
+
+            # Each model_selector_value contributes in proportion to its corresponding (normalized) weight value.
+            # If just one ratio is specified, all model_selector_values receive equal weight.
+            if len(model_selector_ratios_splits) == 1:
+                normalized_ratio = model_selector_ratios_splits[0] / sum(
+                    model_selector_ratios_splits * len(model_selector_values))
+                model_selector_to_ratio = {value: normalized_ratio for value in model_selector_values}
+            else:
+                sum_ratios = sum(model_selector_ratios_splits)
+                normalized_ratios = [ratio / sum_ratios for ratio in model_selector_ratios_splits]
+                model_selector_to_ratio = {value: ratio for value, ratio in
+                                           zip(model_selector_values, normalized_ratios)}
+
             best_selector_value = 0.0
+            if model_selector_type == "low":
+                best_selector_value = float("inf")
             best_epoch = -1
             learning_rate = self.config["learning_rate"]
 
@@ -384,12 +407,16 @@ class Experiment:
                     if math.isnan(results_dev["dev_cost_sum"]) or math.isinf(results_dev["dev_cost_sum"]):
                         raise ValueError("Cost is NaN or Inf. Exiting.")
 
-                    if (epoch == 0 or
-                            (model_selector_type == "high" and results_dev[model_selector] > best_selector_value) or
-                            (model_selector_type == "low" and results_dev[model_selector] < best_selector_value)):
+                    results_dev_for_model_selector = sum([
+                        results_dev[model_selector] * ratio
+                        for model_selector, ratio in model_selector_to_ratio.items()])
+
+                    if (epoch == 0
+                        or (model_selector_type == "high" and results_dev_for_model_selector > best_selector_value)
+                        or (model_selector_type == "low" and results_dev_for_model_selector < best_selector_value)):
                         best_epoch = epoch
-                        best_selector_value = results_dev[model_selector]
-                        model.saver.save(model.session, temp_model_path,
+                        best_selector_value = results_dev_for_model_selector
+                        model.saver.save(sess=model.session, save_path=temp_model_path,
                                          latest_filename=os.path.basename(temp_model_path) + ".checkpoint")
 
                     print("Best epoch: %d" % best_epoch)
