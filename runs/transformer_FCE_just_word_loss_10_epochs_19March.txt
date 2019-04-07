@@ -1,0 +1,2601 @@
+to_write_filename: runs/transformer_FCE_just_word_loss_10_epochs_19March.txt
+debug_mode: False
+shrink_input: False
+model_type: transformer
+sentence_label: specified
+path_train: ../mltagger/data/fce_finegrained/fce.train.trimmed_contracted_labels.tsv
+path_dev: ../mltagger/data/fce_finegrained/fce.dev.trimmed_contracted_labels.tsv
+path_test: ../mltagger/data/fce_finegrained/fce.dev.trimmed_contracted_labels.tsv:../mltagger/data/fce_finegrained/fce.test.trimmed_contracted_labels.tsv
+default_label: c
+model_selector: dev_f-score_macro_sent:high
+preload_vectors: ../mltagger/glove/glove.6B.300d.txt
+word_embedding_size: 300
+emb_initial_zero: False
+train_embeddings: True
+char_embedding_size: 100
+word_recurrent_size: 300
+char_recurrent_size: 100
+hidden_layer_size: 50
+char_hidden_layer_size: 50
+lowercase: True
+replace_digits: True
+min_word_freq: -1.0
+singletons_prob: 0.1
+allowed_word_length: -1.0
+max_train_sent_length: -1.0
+vocab_include_devtest: True
+vocab_only_embedded: False
+initializer: glorot
+opt_strategy: adadelta
+learning_rate: 1.0
+clip: 0.0
+batch_equal_size: False
+max_batch_size: 32
+epochs: 200
+stop_if_no_improvement_for_epochs: 10
+learning_rate_decay: 0.9
+dropout_input: 0.5
+dropout_word_lstm: 0.5
+dropout_attention: 0.5
+masking_attention: False
+residual_connection: False
+tf_per_process_gpu_memory_fraction: 1.0
+tf_allow_growth: True
+lmcost_max_vocab_size: 7500
+lmcost_hidden_layer_size: 50
+lmcost_lstm_gamma: 0.0
+lmcost_joint_lstm_gamma: 0.0
+lmcost_char_gamma: 0.0
+lmcost_joint_char_gamma: 0.0
+char_integration_method: concat
+save: None
+load: None
+garbage_collection: False
+lstm_use_peepholes: False
+whidden_layer_size: 200
+attention_evidence_size: 100
+attention_activation: soft
+attention_objective_weight: 0.0
+sentence_objective_weight: 0.0
+sentence_objective_persistent: True
+word_objective_weight: 1.0
+sentence_composition: attention
+random_seed: 100
+{'i': 1, 'c': 0}
+{'PREP': 4, 'SPELL': 7, 'NOUN': 2, 'VERB': 8, 'c': 0, 'PRON': 5, 'DET': 1, 'OTHER': 3, 'PUNCT': 6}
+Total number of words: 13220
+Total number of chars: 97
+Total number of singletons: 6449
+Notwork built.
+n_preloaded_embeddings: 9392
+Parameter count: 6006080.
+Parameter count without word embeddings: 2040080.
+EPOCH: 0
+Learning rate: 1.000000
+train_cost_sum: 260952.32801818848
+train_cost_avg: 9.138906213426788
+train_count_sent: 28554.0
+train_total_correct_sent: 14984.0
+train_accuracy_sent: 0.5247601036632346
+train_count_tok: 447001.0
+train_total_correct_tok: 395616.0
+train_accuracy_tok: 0.885044999899329
+train_label=c_precision_sent: 0.2865908410655492
+train_label=c_recall_sent: 0.17867139391677553
+train_label=c_f-score_sent: 0.22011494252873562
+train_label=i_precision_sent: 0.5975219458668617
+train_label=i_recall_sent: 0.7327315541601256
+train_label=i_f-score_sent: 0.6582552634229878
+train_precision_macro_sent: 0.44205639346620546
+train_recall_macro_sent: 0.45570147403845057
+train_f-score_macro_sent: 0.4391851029758617
+train_precision_micro_sent: 0.5247601036632346
+train_recall_micro_sent: 0.5247601036632346
+train_f-score_micro_sent: 0.5247601036632346
+train_label=c_precision_tok: 0.8892766147254217
+train_label=c_recall_tok: 0.995636591093097
+train_label=c_f-score_tok: 0.9394558163112314
+train_label=DET_precision_tok: 0.017241379310344827
+train_label=DET_recall_tok: 0.00023413720440177945
+train_label=DET_f-score_tok: 0.00046200046200046204
+train_label=NOUN_precision_tok: 0.0
+train_label=NOUN_recall_tok: 0.0
+train_label=NOUN_f-score_tok: 0.0
+train_label=OTHER_precision_tok: 0.07113821138211382
+train_label=OTHER_recall_tok: 0.0024535576586049773
+train_label=OTHER_f-score_tok: 0.0047435115538388565
+train_label=PREP_precision_tok: 0.0794979079497908
+train_label=PREP_recall_tok: 0.003815261044176707
+train_label=PREP_f-score_tok: 0.007281088331097912
+train_label=PRON_precision_tok: 0.012658227848101266
+train_label=PRON_recall_tok: 0.0003201024327784891
+train_label=PRON_f-score_tok: 0.0006244146113019045
+train_label=PUNCT_precision_tok: 0.048
+train_label=PUNCT_recall_tok: 0.0029332681495966755
+train_label=PUNCT_f-score_tok: 0.0055286800276434
+train_label=SPELL_precision_tok: 0.45139283683911313
+train_label=SPELL_recall_tok: 0.1209259823332318
+train_label=SPELL_f-score_tok: 0.19075075075075076
+train_label=VERB_precision_tok: 0.038461538461538464
+train_label=VERB_recall_tok: 0.0005450779461462989
+train_label=VERB_f-score_tok: 0.0010749220681500592
+train_precision_macro_tok: 0.1786296351684916
+train_recall_macro_tok: 0.12520710865133708
+train_f-score_macro_tok: 0.127769020457335
+train_precision_micro_tok: 0.885044999899329
+train_recall_micro_tok: 0.885044999899329
+train_f-score_micro_tok: 0.8850449998993289
+train_time: 153.93199801445007
+**************************************************
+Sentence pred: 
+              precision    recall  f1-score   support
+
+           c     0.2866    0.1787    0.2201     10718
+           i     0.5975    0.7327    0.6583     17836
+
+   micro avg     0.5248    0.5248    0.5248     28554
+   macro avg     0.4421    0.4557    0.4392     28554
+weighted avg     0.4808    0.5248    0.4938     28554
+
+F1-macro sent:  0.4391851029758617
+F1-micro sent:  0.5247601036632346
+**************************************************
+Token pred: 
+              precision    recall  f1-score   support
+
+           c     0.8893    0.9956    0.9395    396479
+         DET     0.0172    0.0002    0.0005      4271
+        NOUN     0.0000    0.0000    0.0000      4052
+       OTHER     0.0711    0.0025    0.0047     14265
+        PREP     0.0795    0.0038    0.0073      4980
+        PRON     0.0127    0.0003    0.0006      3124
+       PUNCT     0.0480    0.0029    0.0055      4091
+       SPELL     0.4514    0.1209    0.1908      6566
+        VERB     0.0385    0.0005    0.0011      9173
+
+   micro avg     0.8850    0.8850    0.8850    447001
+   macro avg     0.1786    0.1252    0.1278    447001
+weighted avg     0.8000    0.8850    0.8364    447001
+
+F1-macro tok:  0.127769020457335
+F1-micro tok:  0.8850449998993289
+**************************************************
+dev_cost_sum: 18636.09482574463
+dev_cost_avg: 8.440260337746661
+dev_count_sent: 2208.0
+dev_total_correct_sent: 1372.0
+dev_accuracy_sent: 0.6213768115942029
+dev_count_tok: 34211.0
+dev_total_correct_tok: 30287.0
+dev_accuracy_tok: 0.8853000496916197
+dev_label=c_precision_sent: 0.38
+dev_label=c_recall_sent: 0.023058252427184466
+dev_label=c_f-score_sent: 0.043478260869565216
+dev_label=i_precision_sent: 0.6269694161260426
+dev_label=i_recall_sent: 0.9776011560693642
+dev_label=i_f-score_sent: 0.763975155279503
+dev_precision_macro_sent: 0.5034847080630214
+dev_recall_macro_sent: 0.5003297042482743
+dev_f-score_macro_sent: 0.4037267080745341
+dev_precision_micro_sent: 0.6213768115942029
+dev_recall_micro_sent: 0.6213768115942029
+dev_f-score_micro_sent: 0.6213768115942029
+dev_label=c_precision_tok: 0.8866776412487507
+dev_label=c_recall_tok: 0.9991718563667683
+dev_label=c_f-score_tok: 0.9395695106376353
+dev_label=DET_precision_tok: 0.0
+dev_label=DET_recall_tok: 0.0
+dev_label=DET_f-score_tok: 0.0
+dev_label=NOUN_precision_tok: 0.0
+dev_label=NOUN_recall_tok: 0.0
+dev_label=NOUN_f-score_tok: 0.0
+dev_label=OTHER_precision_tok: 0.0
+dev_label=OTHER_recall_tok: 0.0
+dev_label=OTHER_f-score_tok: 0.0
+dev_label=PREP_precision_tok: 0.0
+dev_label=PREP_recall_tok: 0.0
+dev_label=PREP_f-score_tok: 0.0
+dev_label=PRON_precision_tok: 0.0
+dev_label=PRON_recall_tok: 0.0
+dev_label=PRON_f-score_tok: 0.0
+dev_label=PUNCT_precision_tok: 0.0
+dev_label=PUNCT_recall_tok: 0.0
+dev_label=PUNCT_f-score_tok: 0.0
+dev_label=SPELL_precision_tok: 0.6424870466321243
+dev_label=SPELL_recall_tok: 0.2300556586270872
+dev_label=SPELL_f-score_tok: 0.33879781420765026
+dev_label=VERB_precision_tok: 0.0
+dev_label=VERB_recall_tok: 0.0
+dev_label=VERB_f-score_tok: 0.0
+dev_precision_macro_tok: 0.16990718754231945
+dev_recall_macro_tok: 0.13658083499931728
+dev_f-score_macro_tok: 0.1420408138716984
+dev_precision_micro_tok: 0.8853000496916197
+dev_recall_micro_tok: 0.8853000496916197
+dev_f-score_micro_tok: 0.8853000496916198
+dev_time: 4.146754741668701
+**************************************************
+Sentence pred: 
+              precision    recall  f1-score   support
+
+           c     0.3800    0.0231    0.0435       824
+           i     0.6270    0.9776    0.7640      1384
+
+   micro avg     0.6214    0.6214    0.6214      2208
+   macro avg     0.5035    0.5003    0.4037      2208
+weighted avg     0.5348    0.6214    0.4951      2208
+
+F1-macro sent:  0.4037267080745341
+F1-micro sent:  0.6213768115942029
+**************************************************
+Token pred: 
+              precision    recall  f1-score   support
+
+           c     0.8867    0.9992    0.9396     30188
+         DET     0.0000    0.0000    0.0000       360
+        NOUN     0.0000    0.0000    0.0000       327
+       OTHER     0.0000    0.0000    0.0000      1169
+        PREP     0.0000    0.0000    0.0000       362
+        PRON     0.0000    0.0000    0.0000       260
+       PUNCT     0.0000    0.0000    0.0000       355
+       SPELL     0.6425    0.2301    0.3388       539
+        VERB     0.0000    0.0000    0.0000       651
+
+   micro avg     0.8853    0.8853    0.8853     34211
+   macro avg     0.1699    0.1366    0.1420     34211
+weighted avg     0.7925    0.8853    0.8344     34211
+
+F1-macro tok:  0.1420408138716984
+F1-micro tok:  0.8853000496916198
+**************************************************
+Best epoch: 0
+**************************************************
+
+EPOCH: 1
+Learning rate: 1.000000
+train_cost_sum: 224496.04392242432
+train_cost_avg: 7.862157453331383
+train_count_sent: 28554.0
+train_total_correct_sent: 15542.0
+train_accuracy_sent: 0.5443020242347832
+train_count_tok: 447001.0
+train_total_correct_tok: 397589.0
+train_accuracy_tok: 0.8894588602710061
+train_label=c_precision_sent: 0.3162447933354694
+train_label=c_recall_sent: 0.18417615226721404
+train_label=c_f-score_sent: 0.23278301886792452
+train_label=i_precision_sent: 0.6081032628182144
+train_label=i_recall_sent: 0.760708679076026
+train_label=i_f-score_sent: 0.6758991730596792
+train_precision_macro_sent: 0.4621740280768419
+train_recall_macro_sent: 0.47244241567162004
+train_f-score_macro_sent: 0.45434109596380184
+train_precision_micro_sent: 0.5443020242347832
+train_recall_micro_sent: 0.5443020242347832
+train_f-score_micro_sent: 0.5443020242347832
+train_label=c_precision_tok: 0.8927882726447517
+train_label=c_recall_tok: 0.9972331447567211
+train_label=c_f-score_tok: 0.9421248336492557
+train_label=DET_precision_tok: 0.3333333333333333
+train_label=DET_recall_tok: 0.001638960430812456
+train_label=DET_f-score_tok: 0.0032618825722274
+train_label=NOUN_precision_tok: 0.24
+train_label=NOUN_recall_tok: 0.005923000987166831
+train_label=NOUN_f-score_tok: 0.011560693641618498
+train_label=OTHER_precision_tok: 0.13793103448275862
+train_label=OTHER_recall_tok: 0.0008412197686645636
+train_label=OTHER_f-score_tok: 0.0016722408026755853
+train_label=PREP_precision_tok: 0.25
+train_label=PREP_recall_tok: 0.006224899598393574
+train_label=PREP_f-score_tok: 0.012147335423197493
+train_label=PRON_precision_tok: 0.0
+train_label=PRON_recall_tok: 0.0
+train_label=PRON_f-score_tok: 0.0
+train_label=PUNCT_precision_tok: 0.24074074074074073
+train_label=PUNCT_recall_tok: 0.006355414324126131
+train_label=PUNCT_f-score_tok: 0.01238390092879257
+train_label=SPELL_precision_tok: 0.5839887640449438
+train_label=SPELL_recall_tok: 0.31663113006396587
+train_label=SPELL_f-score_tok: 0.4106261110013826
+train_label=VERB_precision_tok: 0.208955223880597
+train_label=VERB_recall_tok: 0.003052436498419274
+train_label=VERB_f-score_tok: 0.006016976469324165
+train_precision_macro_tok: 0.32085970768079175
+train_recall_macro_tok: 0.14865557849202998
+train_f-score_macro_tok: 0.15553266383205266
+train_precision_micro_tok: 0.8894588602710061
+train_recall_micro_tok: 0.8894588602710061
+train_f-score_micro_tok: 0.8894588602710061
+train_time: 235.82183122634888
+**************************************************
+Sentence pred: 
+              precision    recall  f1-score   support
+
+           c     0.3162    0.1842    0.2328     10718
+           i     0.6081    0.7607    0.6759     17836
+
+   micro avg     0.5443    0.5443    0.5443     28554
+   macro avg     0.4622    0.4724    0.4543     28554
+weighted avg     0.4986    0.5443    0.5096     28554
+
+F1-macro sent:  0.45434109596380184
+F1-micro sent:  0.5443020242347832
+**************************************************
+Token pred: 
+              precision    recall  f1-score   support
+
+           c     0.8928    0.9972    0.9421    396479
+         DET     0.3333    0.0016    0.0033      4271
+        NOUN     0.2400    0.0059    0.0116      4052
+       OTHER     0.1379    0.0008    0.0017     14265
+        PREP     0.2500    0.0062    0.0121      4980
+        PRON     0.0000    0.0000    0.0000      3124
+       PUNCT     0.2407    0.0064    0.0124      4091
+       SPELL     0.5840    0.3166    0.4106      6566
+        VERB     0.2090    0.0031    0.0060      9173
+
+   micro avg     0.8895    0.8895    0.8895    447001
+   macro avg     0.3209    0.1487    0.1555    447001
+weighted avg     0.8195    0.8895    0.8422    447001
+
+F1-macro tok:  0.15553266383205266
+F1-micro tok:  0.8894588602710061
+**************************************************
+dev_cost_sum: 17875.50301361084
+dev_cost_avg: 8.095789408338243
+dev_count_sent: 2208.0
+dev_total_correct_sent: 1045.0
+dev_accuracy_sent: 0.4732789855072464
+dev_count_tok: 34211.0
+dev_total_correct_tok: 30399.0
+dev_accuracy_tok: 0.888573850515916
+dev_label=c_precision_sent: 0.2878598247809762
+dev_label=c_recall_sent: 0.279126213592233
+dev_label=c_f-score_sent: 0.2834257547751078
+dev_label=i_precision_sent: 0.5784244144783535
+dev_label=i_recall_sent: 0.5888728323699421
+dev_label=i_f-score_sent: 0.5836018617973505
+dev_precision_macro_sent: 0.43314211962966487
+dev_recall_macro_sent: 0.43399952298108757
+dev_f-score_macro_sent: 0.43351380828622915
+dev_precision_micro_sent: 0.4732789855072464
+dev_recall_micro_sent: 0.4732789855072464
+dev_f-score_micro_sent: 0.4732789855072464
+dev_label=c_precision_tok: 0.8902993446300997
+dev_label=c_recall_tok: 0.9990062276401219
+dev_label=c_f-score_tok: 0.9415253972713934
+dev_label=DET_precision_tok: 0.0
+dev_label=DET_recall_tok: 0.0
+dev_label=DET_f-score_tok: 0.0
+dev_label=NOUN_precision_tok: 0.75
+dev_label=NOUN_recall_tok: 0.009174311926605505
+dev_label=NOUN_f-score_tok: 0.01812688821752266
+dev_label=OTHER_precision_tok: 0.0
+dev_label=OTHER_recall_tok: 0.0
+dev_label=OTHER_f-score_tok: 0.0
+dev_label=PREP_precision_tok: 0.0
+dev_label=PREP_recall_tok: 0.0
+dev_label=PREP_f-score_tok: 0.0
+dev_label=PRON_precision_tok: 0.0
+dev_label=PRON_recall_tok: 0.0
+dev_label=PRON_f-score_tok: 0.0
+dev_label=PUNCT_precision_tok: 0.0
+dev_label=PUNCT_recall_tok: 0.0
+dev_label=PUNCT_f-score_tok: 0.0
+dev_label=SPELL_precision_tok: 0.7147147147147147
+dev_label=SPELL_recall_tok: 0.44155844155844154
+dev_label=SPELL_f-score_tok: 0.5458715596330275
+dev_label=VERB_precision_tok: 0.0
+dev_label=VERB_recall_tok: 0.0
+dev_label=VERB_f-score_tok: 0.0
+dev_precision_macro_tok: 0.26166822881609053
+dev_recall_macro_tok: 0.16108210901390765
+dev_f-score_macro_tok: 0.1672804272357715
+dev_precision_micro_tok: 0.888573850515916
+dev_recall_micro_tok: 0.888573850515916
+dev_f-score_micro_tok: 0.888573850515916
+dev_time: 8.654608964920044
+**************************************************
+Sentence pred: 
+              precision    recall  f1-score   support
+
+           c     0.2879    0.2791    0.2834       824
+           i     0.5784    0.5889    0.5836      1384
+
+   micro avg     0.4733    0.4733    0.4733      2208
+   macro avg     0.4331    0.4340    0.4335      2208
+weighted avg     0.4700    0.4733    0.4716      2208
+
+F1-macro sent:  0.43351380828622915
+F1-micro sent:  0.4732789855072464
+**************************************************
+Token pred: 
+              precision    recall  f1-score   support
+
+           c     0.8903    0.9990    0.9415     30188
+         DET     0.0000    0.0000    0.0000       360
+        NOUN     0.7500    0.0092    0.0181       327
+       OTHER     0.0000    0.0000    0.0000      1169
+        PREP     0.0000    0.0000    0.0000       362
+        PRON     0.0000    0.0000    0.0000       260
+       PUNCT     0.0000    0.0000    0.0000       355
+       SPELL     0.7147    0.4416    0.5459       539
+        VERB     0.0000    0.0000    0.0000       651
+
+   micro avg     0.8886    0.8886    0.8886     34211
+   macro avg     0.2617    0.1611    0.1673     34211
+weighted avg     0.8040    0.8886    0.8396     34211
+
+F1-macro tok:  0.1672804272357715
+F1-micro tok:  0.888573850515916
+**************************************************
+Best epoch: 1
+**************************************************
+
+EPOCH: 2
+Learning rate: 1.000000
+train_cost_sum: 213147.58674240112
+train_cost_avg: 7.4647190145829345
+train_count_sent: 28554.0
+train_total_correct_sent: 15269.0
+train_accuracy_sent: 0.5347411921271976
+train_count_tok: 447001.0
+train_total_correct_tok: 398446.0
+train_accuracy_tok: 0.8913760819327026
+train_label=c_precision_sent: 0.3195557430057641
+train_label=c_recall_sent: 0.21207314797536853
+train_label=c_f-score_sent: 0.2549492456956985
+train_label=i_precision_sent: 0.606128445501609
+train_label=i_recall_sent: 0.728638708230545
+train_label=i_f-score_sent: 0.6617613361509281
+train_precision_macro_sent: 0.4628420942536866
+train_recall_macro_sent: 0.4703559281029568
+train_f-score_macro_sent: 0.4583552909233133
+train_precision_micro_sent: 0.5347411921271976
+train_recall_micro_sent: 0.5347411921271976
+train_f-score_micro_sent: 0.5347411921271976
+train_label=c_precision_tok: 0.8946764705882353
+train_label=c_recall_tok: 0.99739708786594
+train_label=c_f-score_tok: 0.943248429596925
+train_label=DET_precision_tok: 0.3333333333333333
+train_label=DET_recall_tok: 0.0035120580660266917
+train_label=DET_f-score_tok: 0.006950880444856348
+train_label=NOUN_precision_tok: 0.3271604938271605
+train_label=NOUN_recall_tok: 0.013079960513326752
+train_label=NOUN_f-score_tok: 0.02515424774560987
+train_label=OTHER_precision_tok: 0.1111111111111111
+train_label=OTHER_recall_tok: 0.00014020329477742728
+train_label=OTHER_f-score_tok: 0.0002800532101099209
+train_label=PREP_precision_tok: 0.28735632183908044
+train_label=PREP_recall_tok: 0.0050200803212851405
+train_label=PREP_f-score_tok: 0.009867771857114663
+train_label=PRON_precision_tok: 0.125
+train_label=PRON_recall_tok: 0.0003201024327784891
+train_label=PRON_f-score_tok: 0.0006385696040868454
+train_label=PUNCT_precision_tok: 0.18811881188118812
+train_label=PUNCT_recall_tok: 0.0046443412368614035
+train_label=PUNCT_f-score_tok: 0.009064885496183206
+train_label=SPELL_precision_tok: 0.6448322756119673
+train_label=SPELL_recall_tok: 0.4332927200731039
+train_label=SPELL_f-score_tok: 0.5183093459646566
+train_label=VERB_precision_tok: 0.23214285714285715
+train_label=VERB_recall_tok: 0.004251607979941132
+train_label=VERB_f-score_tok: 0.008350283695535811
+train_precision_macro_tok: 0.3493035194816592
+train_recall_macro_tok: 0.16240646242044898
+train_f-score_macro_tok: 0.16909605195723093
+train_precision_micro_tok: 0.8913760819327026
+train_recall_micro_tok: 0.8913760819327026
+train_f-score_micro_tok: 0.8913760819327026
+train_time: 275.9327371120453
+**************************************************
+Sentence pred: 
+              precision    recall  f1-score   support
+
+           c     0.3196    0.2121    0.2549     10718
+           i     0.6061    0.7286    0.6618     17836
+
+   micro avg     0.5347    0.5347    0.5347     28554
+   macro avg     0.4628    0.4704    0.4584     28554
+weighted avg     0.4986    0.5347    0.5091     28554
+
+F1-macro sent:  0.4583552909233133
+F1-micro sent:  0.5347411921271976
+**************************************************
+Token pred: 
+              precision    recall  f1-score   support
+
+           c     0.8947    0.9974    0.9432    396479
+         DET     0.3333    0.0035    0.0070      4271
+        NOUN     0.3272    0.0131    0.0252      4052
+       OTHER     0.1111    0.0001    0.0003     14265
+        PREP     0.2874    0.0050    0.0099      4980
+        PRON     0.1250    0.0003    0.0006      3124
+       PUNCT     0.1881    0.0046    0.0091      4091
+       SPELL     0.6448    0.4333    0.5183      6566
+        VERB     0.2321    0.0043    0.0084      9173
+
+   micro avg     0.8914    0.8914    0.8914    447001
+   macro avg     0.3493    0.1624    0.1691    447001
+weighted avg     0.8233    0.8914    0.8449    447001
+
+F1-macro tok:  0.16909605195723093
+F1-micro tok:  0.8913760819327026
+**************************************************
+dev_cost_sum: 16388.52175140381
+dev_cost_avg: 7.422337749729985
+dev_count_sent: 2208.0
+dev_total_correct_sent: 1343.0
+dev_accuracy_sent: 0.6082427536231884
+dev_count_tok: 34211.0
+dev_total_correct_tok: 30444.0
+dev_accuracy_tok: 0.889889216918535
+dev_label=c_precision_sent: 0.44533333333333336
+dev_label=c_recall_sent: 0.20266990291262135
+dev_label=c_f-score_sent: 0.2785654712260217
+dev_label=i_precision_sent: 0.6415711947626841
+dev_label=i_recall_sent: 0.8497109826589595
+dev_label=i_f-score_sent: 0.7311159465340379
+dev_precision_macro_sent: 0.5434522640480087
+dev_recall_macro_sent: 0.5261904427857904
+dev_f-score_macro_sent: 0.5048407088800297
+dev_precision_micro_sent: 0.6082427536231884
+dev_recall_micro_sent: 0.6082427536231884
+dev_f-score_micro_sent: 0.6082427536231884
+dev_label=c_precision_tok: 0.8919854442176267
+dev_label=c_recall_tok: 0.9987412216774877
+dev_label=c_f-score_tok: 0.9423494663145227
+dev_label=DET_precision_tok: 0.0
+dev_label=DET_recall_tok: 0.0
+dev_label=DET_f-score_tok: 0.0
+dev_label=NOUN_precision_tok: 1.0
+dev_label=NOUN_recall_tok: 0.0030581039755351682
+dev_label=NOUN_f-score_tok: 0.006097560975609756
+dev_label=OTHER_precision_tok: 0.0
+dev_label=OTHER_recall_tok: 0.0
+dev_label=OTHER_f-score_tok: 0.0
+dev_label=PREP_precision_tok: 0.3333333333333333
+dev_label=PREP_recall_tok: 0.0027624309392265192
+dev_label=PREP_f-score_tok: 0.005479452054794521
+dev_label=PRON_precision_tok: 0.0
+dev_label=PRON_recall_tok: 0.0
+dev_label=PRON_f-score_tok: 0.0
+dev_label=PUNCT_precision_tok: 0.3333333333333333
+dev_label=PUNCT_recall_tok: 0.0028169014084507044
+dev_label=PUNCT_f-score_tok: 0.00558659217877095
+dev_label=SPELL_precision_tok: 0.732824427480916
+dev_label=SPELL_recall_tok: 0.5343228200371057
+dev_label=SPELL_f-score_tok: 0.6180257510729614
+dev_label=VERB_precision_tok: 0.75
+dev_label=VERB_recall_tok: 0.004608294930875576
+dev_label=VERB_f-score_tok: 0.00916030534351145
+dev_precision_macro_tok: 0.4490529487072455
+dev_recall_macro_tok: 0.17181219699652017
+dev_f-score_macro_tok: 0.17629990310446342
+dev_precision_micro_tok: 0.889889216918535
+dev_recall_micro_tok: 0.889889216918535
+dev_f-score_micro_tok: 0.889889216918535
+dev_time: 8.57347321510315
+**************************************************
+Sentence pred: 
+              precision    recall  f1-score   support
+
+           c     0.4453    0.2027    0.2786       824
+           i     0.6416    0.8497    0.7311      1384
+
+   micro avg     0.6082    0.6082    0.6082      2208
+   macro avg     0.5435    0.5262    0.5048      2208
+weighted avg     0.5683    0.6082    0.5622      2208
+
+F1-macro sent:  0.5048407088800297
+F1-micro sent:  0.6082427536231884
+**************************************************
+Token pred: 
+              precision    recall  f1-score   support
+
+           c     0.8920    0.9987    0.9423     30188
+         DET     0.0000    0.0000    0.0000       360
+        NOUN     1.0000    0.0031    0.0061       327
+       OTHER     0.0000    0.0000    0.0000      1169
+        PREP     0.3333    0.0028    0.0055       362
+        PRON     0.0000    0.0000    0.0000       260
+       PUNCT     0.3333    0.0028    0.0056       355
+       SPELL     0.7328    0.5343    0.6180       539
+        VERB     0.7500    0.0046    0.0092       651
+
+   micro avg     0.8899    0.8899    0.8899     34211
+   macro avg     0.4491    0.1718    0.1763     34211
+weighted avg     0.8295    0.8899    0.8416     34211
+
+F1-macro tok:  0.17629990310446342
+F1-micro tok:  0.889889216918535
+**************************************************
+Best epoch: 2
+**************************************************
+
+EPOCH: 3
+Learning rate: 1.000000
+train_cost_sum: 206370.531791687
+train_cost_avg: 7.227377312869896
+train_count_sent: 28554.0
+train_total_correct_sent: 15252.0
+train_accuracy_sent: 0.534145828955663
+train_count_tok: 447001.0
+train_total_correct_tok: 398902.0
+train_accuracy_tok: 0.8923962138787161
+train_label=c_precision_sent: 0.3174625600452105
+train_label=c_recall_sent: 0.20964732226161598
+train_label=c_f-score_sent: 0.2525286581254214
+train_label=i_precision_sent: 0.6055596945427454
+train_label=i_recall_sent: 0.7291433056739179
+train_label=i_f-score_sent: 0.6616300366300367
+train_precision_macro_sent: 0.4615111272939779
+train_recall_macro_sent: 0.46939531396776696
+train_f-score_macro_sent: 0.45707934737772904
+train_precision_micro_sent: 0.534145828955663
+train_recall_micro_sent: 0.534145828955663
+train_f-score_micro_sent: 0.534145828955663
+train_label=c_precision_tok: 0.8956299795721474
+train_label=c_recall_tok: 0.9974525763029063
+train_label=c_f-score_tok: 0.9438029290016026
+train_label=DET_precision_tok: 0.425
+train_label=DET_recall_tok: 0.0079606649496605
+train_label=DET_f-score_tok: 0.01562859112847621
+train_label=NOUN_precision_tok: 0.37572254335260113
+train_label=NOUN_recall_tok: 0.016041461006910167
+train_label=NOUN_f-score_tok: 0.030769230769230764
+train_label=OTHER_precision_tok: 0.27586206896551724
+train_label=OTHER_recall_tok: 0.0005608131791097091
+train_label=OTHER_f-score_tok: 0.0011193507765496014
+train_label=PREP_precision_tok: 0.3225806451612903
+train_label=PREP_recall_tok: 0.006024096385542169
+train_label=PREP_f-score_tok: 0.011827321111768185
+train_label=PRON_precision_tok: 0.0
+train_label=PRON_recall_tok: 0.0
+train_label=PRON_f-score_tok: 0.0
+train_label=PUNCT_precision_tok: 0.25384615384615383
+train_label=PUNCT_recall_tok: 0.008066487411390858
+train_label=PUNCT_f-score_tok: 0.01563610518834399
+train_label=SPELL_precision_tok: 0.6771819137749737
+train_label=SPELL_recall_tok: 0.4904051172707889
+train_label=SPELL_f-score_tok: 0.5688543414892678
+train_label=VERB_precision_tok: 0.23369565217391305
+train_label=VERB_recall_tok: 0.00468767033685817
+train_label=VERB_f-score_tok: 0.009190980014962059
+train_precision_macro_tok: 0.3843909952051774
+train_recall_macro_tok: 0.17013320964924075
+train_f-score_macro_tok: 0.17742542772002237
+train_precision_micro_tok: 0.8923962138787161
+train_recall_micro_tok: 0.8923962138787161
+train_f-score_micro_tok: 0.8923962138787161
+train_time: 276.3252124786377
+**************************************************
+Sentence pred: 
+              precision    recall  f1-score   support
+
+           c     0.3175    0.2096    0.2525     10718
+           i     0.6056    0.7291    0.6616     17836
+
+   micro avg     0.5341    0.5341    0.5341     28554
+   macro avg     0.4615    0.4694    0.4571     28554
+weighted avg     0.4974    0.5341    0.5081     28554
+
+F1-macro sent:  0.45707934737772904
+F1-micro sent:  0.534145828955663
+**************************************************
+Token pred: 
+              precision    recall  f1-score   support
+
+           c     0.8956    0.9975    0.9438    396479
+         DET     0.4250    0.0080    0.0156      4271
+        NOUN     0.3757    0.0160    0.0308      4052
+       OTHER     0.2759    0.0006    0.0011     14265
+        PREP     0.3226    0.0060    0.0118      4980
+        PRON     0.0000    0.0000    0.0000      3124
+       PUNCT     0.2538    0.0081    0.0156      4091
+       SPELL     0.6772    0.4904    0.5689      6566
+        VERB     0.2337    0.0047    0.0092      9173
+
+   micro avg     0.8924    0.8924    0.8924    447001
+   macro avg     0.3844    0.1701    0.1774    447001
+weighted avg     0.8313    0.8924    0.8464    447001
+
+F1-macro tok:  0.17742542772002237
+F1-micro tok:  0.8923962138787161
+**************************************************
+dev_cost_sum: 16037.425392150879
+dev_cost_avg: 7.263326717459637
+dev_count_sent: 2208.0
+dev_total_correct_sent: 1349.0
+dev_accuracy_sent: 0.6109601449275363
+dev_count_tok: 34211.0
+dev_total_correct_tok: 30433.0
+dev_accuracy_tok: 0.8895676829090059
+dev_label=c_precision_sent: 0.39644970414201186
+dev_label=c_recall_sent: 0.08131067961165049
+dev_label=c_f-score_sent: 0.13494461228600202
+dev_label=i_precision_sent: 0.6287395782246199
+dev_label=i_recall_sent: 0.9263005780346821
+dev_label=i_f-score_sent: 0.7490505404615835
+dev_precision_macro_sent: 0.5125946411833159
+dev_recall_macro_sent: 0.5038056288231663
+dev_f-score_macro_sent: 0.4419975763737928
+dev_precision_micro_sent: 0.6109601449275363
+dev_recall_micro_sent: 0.6109601449275363
+dev_f-score_micro_sent: 0.6109601449275363
+dev_label=c_precision_tok: 0.8911084187819509
+dev_label=c_recall_tok: 0.9989399761494634
+dev_label=c_f-score_tok: 0.9419481797310594
+dev_label=DET_precision_tok: 0.75
+dev_label=DET_recall_tok: 0.008333333333333333
+dev_label=DET_f-score_tok: 0.016483516483516484
+dev_label=NOUN_precision_tok: 0.5555555555555556
+dev_label=NOUN_recall_tok: 0.01529051987767584
+dev_label=NOUN_f-score_tok: 0.02976190476190476
+dev_label=OTHER_precision_tok: 0.0
+dev_label=OTHER_recall_tok: 0.0
+dev_label=OTHER_f-score_tok: 0.0
+dev_label=PREP_precision_tok: 0.0
+dev_label=PREP_recall_tok: 0.0
+dev_label=PREP_f-score_tok: 0.0
+dev_label=PRON_precision_tok: 0.0
+dev_label=PRON_recall_tok: 0.0
+dev_label=PRON_f-score_tok: 0.0
+dev_label=PUNCT_precision_tok: 0.25
+dev_label=PUNCT_recall_tok: 0.0028169014084507044
+dev_label=PUNCT_f-score_tok: 0.005571030640668524
+dev_label=SPELL_precision_tok: 0.775811209439528
+dev_label=SPELL_recall_tok: 0.48794063079777367
+dev_label=SPELL_f-score_tok: 0.5990888382687928
+dev_label=VERB_precision_tok: 0.4166666666666667
+dev_label=VERB_recall_tok: 0.007680491551459293
+dev_label=VERB_f-score_tok: 0.015082956259426848
+dev_precision_macro_tok: 0.40434909449374457
+dev_recall_macro_tok: 0.16900020590201736
+dev_f-score_macro_tok: 0.178659602905041
+dev_precision_micro_tok: 0.8895676829090059
+dev_recall_micro_tok: 0.8895676829090059
+dev_f-score_micro_tok: 0.8895676829090059
+dev_time: 8.77868914604187
+**************************************************
+Sentence pred: 
+              precision    recall  f1-score   support
+
+           c     0.3964    0.0813    0.1349       824
+           i     0.6287    0.9263    0.7491      1384
+
+   micro avg     0.6110    0.6110    0.6110      2208
+   macro avg     0.5126    0.5038    0.4420      2208
+weighted avg     0.5421    0.6110    0.5199      2208
+
+F1-macro sent:  0.4419975763737928
+F1-micro sent:  0.6109601449275363
+**************************************************
+Token pred: 
+              precision    recall  f1-score   support
+
+           c     0.8911    0.9989    0.9419     30188
+         DET     0.7500    0.0083    0.0165       360
+        NOUN     0.5556    0.0153    0.0298       327
+       OTHER     0.0000    0.0000    0.0000      1169
+        PREP     0.0000    0.0000    0.0000       362
+        PRON     0.0000    0.0000    0.0000       260
+       PUNCT     0.2500    0.0028    0.0056       355
+       SPELL     0.7758    0.4879    0.5991       539
+        VERB     0.4167    0.0077    0.0151       651
+
+   micro avg     0.8896    0.8896    0.8896     34211
+   macro avg     0.4043    0.1690    0.1787     34211
+weighted avg     0.8223    0.8896    0.8414     34211
+
+F1-macro tok:  0.178659602905041
+F1-micro tok:  0.8895676829090059
+**************************************************
+Best epoch: 2
+**************************************************
+
+EPOCH: 4
+Learning rate: 1.000000
+train_cost_sum: 200536.69110107422
+train_cost_avg: 7.023068260176305
+train_count_sent: 28554.0
+train_total_correct_sent: 14880.0
+train_accuracy_sent: 0.5211178819079638
+train_count_tok: 447001.0
+train_total_correct_tok: 399284.0
+train_accuracy_tok: 0.8932507980966485
+train_label=c_precision_sent: 0.29247402415051954
+train_label=c_recall_sent: 0.19434596006717672
+train_label=c_f-score_sent: 0.23352017937219732
+train_label=i_precision_sent: 0.5970977976857036
+train_label=i_recall_sent: 0.717481498093743
+train_label=i_f-score_sent: 0.651777528776612
+train_precision_macro_sent: 0.4447859109181116
+train_recall_macro_sent: 0.45591372908045985
+train_f-score_macro_sent: 0.4426488540744047
+train_precision_micro_sent: 0.5211178819079638
+train_recall_micro_sent: 0.5211178819079638
+train_f-score_micro_sent: 0.5211178819079638
+train_label=c_precision_tok: 0.8964969343926017
+train_label=c_recall_tok: 0.9975837307902814
+train_label=c_f-score_tok: 0.9443428391335905
+train_label=DET_precision_tok: 0.47058823529411764
+train_label=DET_recall_tok: 0.013111683446499649
+train_label=DET_f-score_tok: 0.0255125284738041
+train_label=NOUN_precision_tok: 0.3901345291479821
+train_label=NOUN_recall_tok: 0.021470878578479763
+train_label=NOUN_f-score_tok: 0.04070175438596491
+train_label=OTHER_precision_tok: 0.34375
+train_label=OTHER_recall_tok: 0.0007711181212758499
+train_label=OTHER_f-score_tok: 0.0015387843603553192
+train_label=PREP_precision_tok: 0.3424657534246575
+train_label=PREP_recall_tok: 0.0050200803212851405
+train_label=PREP_f-score_tok: 0.009895111814763506
+train_label=PRON_precision_tok: 0.0
+train_label=PRON_recall_tok: 0.0
+train_label=PRON_f-score_tok: 0.0
+train_label=PUNCT_precision_tok: 0.28
+train_label=PUNCT_recall_tok: 0.008555365436323637
+train_label=PUNCT_f-score_tok: 0.016603415559772298
+train_label=SPELL_precision_tok: 0.6927186387020182
+train_label=SPELL_recall_tok: 0.5332013402375876
+train_label=SPELL_f-score_tok: 0.6025817555938038
+train_label=VERB_precision_tok: 0.25668449197860965
+train_label=VERB_recall_tok: 0.005232748283004469
+train_label=VERB_f-score_tok: 0.010256410256410256
+train_precision_macro_tok: 0.40809317588222077
+train_recall_macro_tok: 0.17610521613497088
+train_f-score_macro_tok: 0.18349251106427386
+train_precision_micro_tok: 0.8932507980966485
+train_recall_micro_tok: 0.8932507980966485
+train_f-score_micro_tok: 0.8932507980966485
+train_time: 277.0024240016937
+**************************************************
+Sentence pred: 
+              precision    recall  f1-score   support
+
+           c     0.2925    0.1943    0.2335     10718
+           i     0.5971    0.7175    0.6518     17836
+
+   micro avg     0.5211    0.5211    0.5211     28554
+   macro avg     0.4448    0.4559    0.4426     28554
+weighted avg     0.4828    0.5211    0.4948     28554
+
+F1-macro sent:  0.4426488540744047
+F1-micro sent:  0.5211178819079638
+**************************************************
+Token pred: 
+              precision    recall  f1-score   support
+
+           c     0.8965    0.9976    0.9443    396479
+         DET     0.4706    0.0131    0.0255      4271
+        NOUN     0.3901    0.0215    0.0407      4052
+       OTHER     0.3438    0.0008    0.0015     14265
+        PREP     0.3425    0.0050    0.0099      4980
+        PRON     0.0000    0.0000    0.0000      3124
+       PUNCT     0.2800    0.0086    0.0166      4091
+       SPELL     0.6927    0.5332    0.6026      6566
+        VERB     0.2567    0.0052    0.0103      9173
+
+   micro avg     0.8933    0.8933    0.8933    447001
+   macro avg     0.4081    0.1761    0.1835    447001
+weighted avg     0.8360    0.8933    0.8476    447001
+
+F1-macro tok:  0.1834925110642739
+F1-micro tok:  0.8932507980966485
+**************************************************
+dev_cost_sum: 15691.959999084473
+dev_cost_avg: 7.106865941614345
+dev_count_sent: 2208.0
+dev_total_correct_sent: 1168.0
+dev_accuracy_sent: 0.5289855072463768
+dev_count_tok: 34211.0
+dev_total_correct_tok: 30516.0
+dev_accuracy_tok: 0.8919938031627255
+dev_label=c_precision_sent: 0.31443298969072164
+dev_label=c_recall_sent: 0.2220873786407767
+dev_label=c_f-score_sent: 0.26031294452347087
+dev_label=i_precision_sent: 0.6057810578105781
+dev_label=i_recall_sent: 0.7117052023121387
+dev_label=i_f-score_sent: 0.6544850498338871
+dev_precision_macro_sent: 0.4601070237506499
+dev_recall_macro_sent: 0.46689629047645775
+dev_f-score_macro_sent: 0.457398997178679
+dev_precision_micro_sent: 0.5289855072463768
+dev_recall_micro_sent: 0.5289855072463768
+dev_f-score_micro_sent: 0.5289855072463768
+dev_label=c_precision_tok: 0.8945540881436415
+dev_label=c_recall_tok: 0.9984762157148536
+dev_label=c_f-score_tok: 0.9436626332514128
+dev_label=DET_precision_tok: 0.75
+dev_label=DET_recall_tok: 0.03333333333333333
+dev_label=DET_f-score_tok: 0.06382978723404256
+dev_label=NOUN_precision_tok: 0.75
+dev_label=NOUN_recall_tok: 0.009174311926605505
+dev_label=NOUN_f-score_tok: 0.01812688821752266
+dev_label=OTHER_precision_tok: 1.0
+dev_label=OTHER_recall_tok: 0.000855431993156544
+dev_label=OTHER_f-score_tok: 0.0017094017094017092
+dev_label=PREP_precision_tok: 0.5
+dev_label=PREP_recall_tok: 0.0027624309392265192
+dev_label=PREP_f-score_tok: 0.005494505494505494
+dev_label=PRON_precision_tok: 0.0
+dev_label=PRON_recall_tok: 0.0
+dev_label=PRON_f-score_tok: 0.0
+dev_label=PUNCT_precision_tok: 0.2727272727272727
+dev_label=PUNCT_recall_tok: 0.008450704225352112
+dev_label=PUNCT_f-score_tok: 0.01639344262295082
+dev_label=SPELL_precision_tok: 0.7382978723404255
+dev_label=SPELL_recall_tok: 0.6437847866419295
+dev_label=SPELL_f-score_tok: 0.6878097125867195
+dev_label=VERB_precision_tok: 0.5833333333333334
+dev_label=VERB_recall_tok: 0.010752688172043012
+dev_label=VERB_f-score_tok: 0.021116138763197588
+dev_precision_macro_tok: 0.6098791740605193
+dev_recall_macro_tok: 0.1897322114385
+dev_f-score_macro_tok: 0.19534916776441702
+dev_precision_micro_tok: 0.8919938031627255
+dev_recall_micro_tok: 0.8919938031627255
+dev_f-score_micro_tok: 0.8919938031627255
+dev_time: 8.657773733139038
+**************************************************
+Sentence pred: 
+              precision    recall  f1-score   support
+
+           c     0.3144    0.2221    0.2603       824
+           i     0.6058    0.7117    0.6545      1384
+
+   micro avg     0.5290    0.5290    0.5290      2208
+   macro avg     0.4601    0.4669    0.4574      2208
+weighted avg     0.4971    0.5290    0.5074      2208
+
+F1-macro sent:  0.457398997178679
+F1-micro sent:  0.5289855072463768
+**************************************************
+Token pred: 
+              precision    recall  f1-score   support
+
+           c     0.8946    0.9985    0.9437     30188
+         DET     0.7500    0.0333    0.0638       360
+        NOUN     0.7500    0.0092    0.0181       327
+       OTHER     1.0000    0.0009    0.0017      1169
+        PREP     0.5000    0.0028    0.0055       362
+        PRON     0.0000    0.0000    0.0000       260
+       PUNCT     0.2727    0.0085    0.0164       355
+       SPELL     0.7383    0.6438    0.6878       539
+        VERB     0.5833    0.0108    0.0211       651
+
+   micro avg     0.8920    0.8920    0.8920     34211
+   macro avg     0.6099    0.1897    0.1953     34211
+weighted avg     0.8694    0.8920    0.8451     34211
+
+F1-macro tok:  0.19534916776441702
+F1-micro tok:  0.8919938031627255
+**************************************************
+Best epoch: 2
+**************************************************
+
+EPOCH: 5
+Learning rate: 1.000000
+train_cost_sum: 196075.42263793945
+train_cost_avg: 6.866828557748107
+train_count_sent: 28554.0
+train_total_correct_sent: 14826.0
+train_accuracy_sent: 0.5192267283042656
+train_count_tok: 447001.0
+train_total_correct_tok: 399604.0
+train_accuracy_tok: 0.8939666801640265
+train_label=c_precision_sent: 0.2865853658536585
+train_label=c_recall_sent: 0.18856129874976674
+train_label=c_f-score_sent: 0.22746201463140123
+train_label=i_precision_sent: 0.5955259975816203
+train_label=i_recall_sent: 0.717930029154519
+train_label=i_f-score_sent: 0.6510244547257105
+train_precision_macro_sent: 0.4410556817176394
+train_recall_macro_sent: 0.45324566395214283
+train_f-score_macro_sent: 0.43924323467855586
+train_precision_micro_sent: 0.5192267283042656
+train_recall_micro_sent: 0.5192267283042656
+train_f-score_micro_sent: 0.5192267283042656
+train_label=c_precision_tok: 0.8973675849861571
+train_label=c_recall_tok: 0.9973642992440962
+train_label=c_f-score_tok: 0.9447272197329237
+train_label=DET_precision_tok: 0.5459459459459459
+train_label=DET_recall_tok: 0.023647857644579724
+train_label=DET_f-score_tok: 0.045332136445242366
+train_label=NOUN_precision_tok: 0.48355263157894735
+train_label=NOUN_recall_tok: 0.03627838104639684
+train_label=NOUN_f-score_tok: 0.06749311294765842
+train_label=OTHER_precision_tok: 0.6451612903225806
+train_label=OTHER_recall_tok: 0.0028040658955485456
+train_label=OTHER_f-score_tok: 0.005583862636979131
+train_label=PREP_precision_tok: 0.36538461538461536
+train_label=PREP_recall_tok: 0.007630522088353414
+train_label=PREP_f-score_tok: 0.014948859166011016
+train_label=PRON_precision_tok: 0.0
+train_label=PRON_recall_tok: 0.0
+train_label=PRON_f-score_tok: 0.0
+train_label=PUNCT_precision_tok: 0.3582887700534759
+train_label=PUNCT_recall_tok: 0.016377413835248107
+train_label=PUNCT_f-score_tok: 0.031323048153342685
+train_label=SPELL_precision_tok: 0.7023088569265707
+train_label=SPELL_recall_tok: 0.5651842826682912
+train_label=SPELL_f-score_tok: 0.6263291139240508
+train_label=VERB_precision_tok: 0.3173076923076923
+train_label=VERB_recall_tok: 0.0071950288891311455
+train_label=VERB_f-score_tok: 0.014070994563479372
+train_precision_macro_tok: 0.47947970972288734
+train_recall_macro_tok: 0.18405353903462726
+train_f-score_macro_tok: 0.19442314972996524
+train_precision_micro_tok: 0.8939666801640265
+train_recall_micro_tok: 0.8939666801640265
+train_f-score_micro_tok: 0.8939666801640264
+train_time: 278.5682110786438
+**************************************************
+Sentence pred: 
+              precision    recall  f1-score   support
+
+           c     0.2866    0.1886    0.2275     10718
+           i     0.5955    0.7179    0.6510     17836
+
+   micro avg     0.5192    0.5192    0.5192     28554
+   macro avg     0.4411    0.4532    0.4392     28554
+weighted avg     0.4796    0.5192    0.4920     28554
+
+F1-macro sent:  0.43924323467855586
+F1-micro sent:  0.5192267283042656
+**************************************************
+Token pred: 
+              precision    recall  f1-score   support
+
+           c     0.8974    0.9974    0.9447    396479
+         DET     0.5459    0.0236    0.0453      4271
+        NOUN     0.4836    0.0363    0.0675      4052
+       OTHER     0.6452    0.0028    0.0056     14265
+        PREP     0.3654    0.0076    0.0149      4980
+        PRON     0.0000    0.0000    0.0000      3124
+       PUNCT     0.3583    0.0164    0.0313      4091
+       SPELL     0.7023    0.5652    0.6263      6566
+        VERB     0.3173    0.0072    0.0141      9173
+
+   micro avg     0.8940    0.8940    0.8940    447001
+   macro avg     0.4795    0.1841    0.1944    447001
+weighted avg     0.8503    0.8940    0.8491    447001
+
+F1-macro tok:  0.19442314972996524
+F1-micro tok:  0.8939666801640264
+**************************************************
+dev_cost_sum: 15415.867668151855
+dev_cost_avg: 6.981824125068775
+dev_count_sent: 2208.0
+dev_total_correct_sent: 1211.0
+dev_accuracy_sent: 0.5484601449275363
+dev_count_tok: 34211.0
+dev_total_correct_tok: 30514.0
+dev_accuracy_tok: 0.8919353424337202
+dev_label=c_precision_sent: 0.29055690072639223
+dev_label=c_recall_sent: 0.14563106796116504
+dev_label=c_f-score_sent: 0.19401778496362163
+dev_label=i_precision_sent: 0.6077994428969359
+dev_label=i_recall_sent: 0.7882947976878613
+dev_label=i_f-score_sent: 0.6863793645800567
+dev_precision_macro_sent: 0.4491781718116641
+dev_recall_macro_sent: 0.4669629328245132
+dev_f-score_macro_sent: 0.44019857477183916
+dev_precision_micro_sent: 0.5484601449275363
+dev_recall_micro_sent: 0.5484601449275363
+dev_f-score_micro_sent: 0.5484601449275363
+dev_label=c_precision_tok: 0.8947868706371602
+dev_label=c_recall_tok: 0.9978468265535975
+dev_label=c_f-score_tok: 0.9435108765445633
+dev_label=DET_precision_tok: 0.6153846153846154
+dev_label=DET_recall_tok: 0.022222222222222223
+dev_label=DET_f-score_tok: 0.04289544235924933
+dev_label=NOUN_precision_tok: 0.5555555555555556
+dev_label=NOUN_recall_tok: 0.03058103975535168
+dev_label=NOUN_f-score_tok: 0.057971014492753624
+dev_label=OTHER_precision_tok: 1.0
+dev_label=OTHER_recall_tok: 0.003421727972626176
+dev_label=OTHER_f-score_tok: 0.0068201193520886615
+dev_label=PREP_precision_tok: 0.25
+dev_label=PREP_recall_tok: 0.0027624309392265192
+dev_label=PREP_f-score_tok: 0.00546448087431694
+dev_label=PRON_precision_tok: 0.0
+dev_label=PRON_recall_tok: 0.0
+dev_label=PRON_f-score_tok: 0.0
+dev_label=PUNCT_precision_tok: 0.3793103448275862
+dev_label=PUNCT_recall_tok: 0.030985915492957747
+dev_label=PUNCT_f-score_tok: 0.057291666666666664
+dev_label=SPELL_precision_tok: 0.7593818984547461
+dev_label=SPELL_recall_tok: 0.6382189239332097
+dev_label=SPELL_f-score_tok: 0.6935483870967742
+dev_label=VERB_precision_tok: 0.52
+dev_label=VERB_recall_tok: 0.019969278033794162
+dev_label=VERB_f-score_tok: 0.038461538461538464
+dev_precision_macro_tok: 0.552713253873296
+dev_recall_macro_tok: 0.19400092943366504
+dev_f-score_macro_tok: 0.20510705842755017
+dev_precision_micro_tok: 0.8919353424337202
+dev_recall_micro_tok: 0.8919353424337202
+dev_f-score_micro_tok: 0.8919353424337202
+dev_time: 8.59127688407898
+**************************************************
+Sentence pred: 
+              precision    recall  f1-score   support
+
+           c     0.2906    0.1456    0.1940       824
+           i     0.6078    0.7883    0.6864      1384
+
+   micro avg     0.5485    0.5485    0.5485      2208
+   macro avg     0.4492    0.4670    0.4402      2208
+weighted avg     0.4894    0.5485    0.5026      2208
+
+F1-macro sent:  0.44019857477183916
+F1-micro sent:  0.5484601449275363
+**************************************************
+Token pred: 
+              precision    recall  f1-score   support
+
+           c     0.8948    0.9978    0.9435     30188
+         DET     0.6154    0.0222    0.0429       360
+        NOUN     0.5556    0.0306    0.0580       327
+       OTHER     1.0000    0.0034    0.0068      1169
+        PREP     0.2500    0.0028    0.0055       362
+        PRON     0.0000    0.0000    0.0000       260
+       PUNCT     0.3793    0.0310    0.0573       355
+       SPELL     0.7594    0.6382    0.6935       539
+        VERB     0.5200    0.0200    0.0385       651
+
+   micro avg     0.8919    0.8919    0.8919     34211
+   macro avg     0.5527    0.1940    0.2051     34211
+weighted avg     0.8640    0.8919    0.8461     34211
+
+F1-macro tok:  0.20510705842755017
+F1-micro tok:  0.8919353424337202
+**************************************************
+Best epoch: 2
+**************************************************
+
+EPOCH: 6
+Learning rate: 1.000000
+train_cost_sum: 192691.91695785522
+train_cost_avg: 6.748333577006907
+train_count_sent: 28554.0
+train_total_correct_sent: 15009.0
+train_accuracy_sent: 0.5256356377390208
+train_count_tok: 447001.0
+train_total_correct_tok: 399868.0
+train_accuracy_tok: 0.8945572828696132
+train_label=c_precision_sent: 0.27567052848754164
+train_label=c_recall_sent: 0.16206381787646948
+train_label=c_f-score_sent: 0.20412480169222633
+train_label=i_precision_sent: 0.5964139666561812
+train_label=i_recall_sent: 0.7441130298273155
+train_label=i_f-score_sent: 0.6621267679413305
+train_precision_macro_sent: 0.4360422475718614
+train_recall_macro_sent: 0.4530884238518925
+train_f-score_macro_sent: 0.43312578481677844
+train_precision_micro_sent: 0.5256356377390208
+train_recall_micro_sent: 0.5256356377390208
+train_f-score_micro_sent: 0.5256356377390208
+train_label=c_precision_tok: 0.8980571610251286
+train_label=c_recall_tok: 0.9973945656642597
+train_label=c_f-score_tok: 0.9451228110428362
+train_label=DET_precision_tok: 0.5760869565217391
+train_label=DET_recall_tok: 0.03722781549988293
+train_label=DET_f-score_tok: 0.06993622168462722
+train_label=NOUN_precision_tok: 0.4638888888888889
+train_label=NOUN_recall_tok: 0.0412142152023692
+train_label=NOUN_f-score_tok: 0.0757026291931097
+train_label=OTHER_precision_tok: 0.712
+train_label=OTHER_recall_tok: 0.006239046617595514
+train_label=OTHER_f-score_tok: 0.012369701181375956
+train_label=PREP_precision_tok: 0.4634146341463415
+train_label=PREP_recall_tok: 0.01144578313253012
+train_label=PREP_f-score_tok: 0.022339800117577892
+train_label=PRON_precision_tok: 0.0
+train_label=PRON_recall_tok: 0.0
+train_label=PRON_f-score_tok: 0.0
+train_label=PUNCT_precision_tok: 0.36134453781512604
+train_label=PUNCT_recall_tok: 0.02102175507210951
+train_label=PUNCT_f-score_tok: 0.03973203973203973
+train_label=SPELL_precision_tok: 0.7112450555660199
+train_label=SPELL_recall_tok: 0.5750837648492233
+train_label=SPELL_f-score_tok: 0.6359578947368422
+train_label=VERB_precision_tok: 0.38095238095238093
+train_label=VERB_recall_tok: 0.009593371852174862
+train_label=VERB_f-score_tok: 0.018715440238196514
+train_precision_macro_tok: 0.5074432905461806
+train_recall_macro_tok: 0.18880225754334942
+train_f-score_macro_tok: 0.20220850421406728
+train_precision_micro_tok: 0.8945572828696132
+train_recall_micro_tok: 0.8945572828696132
+train_f-score_micro_tok: 0.8945572828696132
+train_time: 277.2227656841278
+**************************************************
+Sentence pred: 
+              precision    recall  f1-score   support
+
+           c     0.2757    0.1621    0.2041     10718
+           i     0.5964    0.7441    0.6621     17836
+
+   micro avg     0.5256    0.5256    0.5256     28554
+   macro avg     0.4360    0.4531    0.4331     28554
+weighted avg     0.4760    0.5256    0.4902     28554
+
+F1-macro sent:  0.43312578481677844
+F1-micro sent:  0.5256356377390208
+**************************************************
+Token pred: 
+              precision    recall  f1-score   support
+
+           c     0.8981    0.9974    0.9451    396479
+         DET     0.5761    0.0372    0.0699      4271
+        NOUN     0.4639    0.0412    0.0757      4052
+       OTHER     0.7120    0.0062    0.0124     14265
+        PREP     0.4634    0.0114    0.0223      4980
+        PRON     0.0000    0.0000    0.0000      3124
+       PUNCT     0.3613    0.0210    0.0397      4091
+       SPELL     0.7112    0.5751    0.6360      6566
+        VERB     0.3810    0.0096    0.0187      9173
+
+   micro avg     0.8946    0.8946    0.8946    447001
+   macro avg     0.5074    0.1888    0.2022    447001
+weighted avg     0.8557    0.8946    0.8504    447001
+
+F1-macro tok:  0.20220850421406728
+F1-micro tok:  0.8945572828696132
+**************************************************
+dev_cost_sum: 15049.931648254395
+dev_cost_avg: 6.8160922319992725
+dev_count_sent: 2208.0
+dev_total_correct_sent: 988.0
+dev_accuracy_sent: 0.447463768115942
+dev_count_tok: 34211.0
+dev_total_correct_tok: 30539.0
+dev_accuracy_tok: 0.8926661015462862
+dev_label=c_precision_sent: 0.22950819672131148
+dev_label=c_recall_sent: 0.20388349514563106
+dev_label=c_f-score_sent: 0.2159383033419023
+dev_label=i_precision_sent: 0.5555555555555556
+dev_label=i_recall_sent: 0.5924855491329479
+dev_label=i_f-score_sent: 0.5734265734265733
+dev_precision_macro_sent: 0.39253187613843354
+dev_recall_macro_sent: 0.3981845221392895
+dev_f-score_macro_sent: 0.39468243838423783
+dev_precision_micro_sent: 0.447463768115942
+dev_recall_micro_sent: 0.447463768115942
+dev_f-score_micro_sent: 0.447463768115942
+dev_label=c_precision_tok: 0.8951557812824854
+dev_label=c_recall_tok: 0.9983768384788658
+dev_label=c_f-score_tok: 0.9439528947492053
+dev_label=DET_precision_tok: 0.7058823529411765
+dev_label=DET_recall_tok: 0.03333333333333333
+dev_label=DET_f-score_tok: 0.0636604774535809
+dev_label=NOUN_precision_tok: 0.6153846153846154
+dev_label=NOUN_recall_tok: 0.04892966360856269
+dev_label=NOUN_f-score_tok: 0.0906515580736544
+dev_label=OTHER_precision_tok: 0.9
+dev_label=OTHER_recall_tok: 0.007698887938408896
+dev_label=OTHER_f-score_tok: 0.015267175572519083
+dev_label=PREP_precision_tok: 0.3333333333333333
+dev_label=PREP_recall_tok: 0.0027624309392265192
+dev_label=PREP_f-score_tok: 0.005479452054794521
+dev_label=PRON_precision_tok: 0.0
+dev_label=PRON_recall_tok: 0.0
+dev_label=PRON_f-score_tok: 0.0
+dev_label=PUNCT_precision_tok: 0.375
+dev_label=PUNCT_recall_tok: 0.008450704225352112
+dev_label=PUNCT_f-score_tok: 0.01652892561983471
+dev_label=SPELL_precision_tok: 0.7569892473118279
+dev_label=SPELL_recall_tok: 0.6530612244897959
+dev_label=SPELL_f-score_tok: 0.7011952191235059
+dev_label=VERB_precision_tok: 0.5833333333333334
+dev_label=VERB_recall_tok: 0.010752688172043012
+dev_label=VERB_f-score_tok: 0.021116138763197588
+dev_precision_macro_tok: 0.573897629287419
+dev_recall_macro_tok: 0.19592953013173206
+dev_f-score_macro_tok: 0.20642798237892135
+dev_precision_micro_tok: 0.8926661015462862
+dev_recall_micro_tok: 0.8926661015462862
+dev_f-score_micro_tok: 0.8926661015462862
+dev_time: 8.692973375320435
+**************************************************
+Sentence pred: 
+              precision    recall  f1-score   support
+
+           c     0.2295    0.2039    0.2159       824
+           i     0.5556    0.5925    0.5734      1384
+
+   micro avg     0.4475    0.4475    0.4475      2208
+   macro avg     0.3925    0.3982    0.3947      2208
+weighted avg     0.4339    0.4475    0.4400      2208
+
+F1-macro sent:  0.39468243838423783
+F1-micro sent:  0.447463768115942
+**************************************************
+Token pred: 
+              precision    recall  f1-score   support
+
+           c     0.8952    0.9984    0.9440     30188
+         DET     0.7059    0.0333    0.0637       360
+        NOUN     0.6154    0.0489    0.0907       327
+       OTHER     0.9000    0.0077    0.0153      1169
+        PREP     0.3333    0.0028    0.0055       362
+        PRON     0.0000    0.0000    0.0000       260
+       PUNCT     0.3750    0.0085    0.0165       355
+       SPELL     0.7570    0.6531    0.7012       539
+        VERB     0.5833    0.0108    0.0211       651
+
+   micro avg     0.8927    0.8927    0.8927     34211
+   macro avg     0.5739    0.1959    0.2064     34211
+weighted avg     0.8644    0.8927    0.8467     34211
+
+F1-macro tok:  0.20642798237892138
+F1-micro tok:  0.8926661015462862
+**************************************************
+Best epoch: 2
+**************************************************
+
+EPOCH: 7
+Learning rate: 0.900000
+train_cost_sum: 189216.09616088867
+train_cost_avg: 6.62660559504408
+train_count_sent: 28554.0
+train_total_correct_sent: 14560.0
+train_accuracy_sent: 0.5099110457379001
+train_count_tok: 447001.0
+train_total_correct_tok: 400052.0
+train_accuracy_tok: 0.8949689150583556
+train_label=c_precision_sent: 0.26706484641638223
+train_label=c_recall_sent: 0.17521925732412763
+train_label=c_f-score_sent: 0.21160563380281688
+train_label=i_precision_sent: 0.5892575039494471
+train_label=i_recall_sent: 0.7110338640950886
+train_label=i_f-score_sent: 0.6444433152091061
+train_precision_macro_sent: 0.42816117518291463
+train_recall_macro_sent: 0.4431265607096081
+train_f-score_macro_sent: 0.4280244745059615
+train_precision_micro_sent: 0.5099110457379001
+train_recall_micro_sent: 0.5099110457379001
+train_f-score_micro_sent: 0.5099110457379001
+train_label=c_precision_tok: 0.898445737138702
+train_label=c_recall_tok: 0.9972482779668028
+train_label=c_f-score_tok: 0.9452722402125852
+train_label=DET_precision_tok: 0.5841584158415841
+train_label=DET_recall_tok: 0.04144228517911496
+train_label=DET_f-score_tok: 0.07739396589418451
+train_label=NOUN_precision_tok: 0.4758269720101781
+train_label=NOUN_recall_tok: 0.046150049358341556
+train_label=NOUN_f-score_tok: 0.08413948256467942
+train_label=OTHER_precision_tok: 0.6987179487179487
+train_label=OTHER_recall_tok: 0.007641079565369786
+train_label=OTHER_f-score_tok: 0.015116843492129533
+train_label=PREP_precision_tok: 0.5348837209302325
+train_label=PREP_recall_tok: 0.013855421686746987
+train_label=PREP_f-score_tok: 0.027011156782149146
+train_label=PRON_precision_tok: 0.4
+train_label=PRON_recall_tok: 0.0006402048655569782
+train_label=PRON_f-score_tok: 0.0012783636944710768
+train_label=PUNCT_precision_tok: 0.43983402489626555
+train_label=PUNCT_recall_tok: 0.025910535321437302
+train_label=PUNCT_f-score_tok: 0.04893813481071099
+train_label=SPELL_precision_tok: 0.7235065655631588
+train_label=SPELL_recall_tok: 0.5957965275662503
+train_label=SPELL_f-score_tok: 0.6534703081934352
+train_label=VERB_precision_tok: 0.3554006968641115
+train_label=VERB_recall_tok: 0.011119590101384498
+train_label=VERB_f-score_tok: 0.02156448202959831
+train_precision_macro_tok: 0.5678637868846867
+train_recall_macro_tok: 0.1933115524012228
+train_f-score_macro_tok: 0.20824277529710486
+train_precision_micro_tok: 0.8949689150583556
+train_recall_micro_tok: 0.8949689150583556
+train_f-score_micro_tok: 0.8949689150583556
+train_time: 493.60908555984497
+**************************************************
+Sentence pred: 
+              precision    recall  f1-score   support
+
+           c     0.2671    0.1752    0.2116     10718
+           i     0.5893    0.7110    0.6444     17836
+
+   micro avg     0.5099    0.5099    0.5099     28554
+   macro avg     0.4282    0.4431    0.4280     28554
+weighted avg     0.4683    0.5099    0.4820     28554
+
+F1-macro sent:  0.4280244745059615
+F1-micro sent:  0.5099110457379001
+**************************************************
+Token pred: 
+              precision    recall  f1-score   support
+
+           c     0.8984    0.9972    0.9453    396479
+         DET     0.5842    0.0414    0.0774      4271
+        NOUN     0.4758    0.0462    0.0841      4052
+       OTHER     0.6987    0.0076    0.0151     14265
+        PREP     0.5349    0.0139    0.0270      4980
+        PRON     0.4000    0.0006    0.0013      3124
+       PUNCT     0.4398    0.0259    0.0489      4091
+       SPELL     0.7235    0.5958    0.6535      6566
+        VERB     0.3554    0.0111    0.0216      9173
+
+   micro avg     0.8950    0.8950    0.8950    447001
+   macro avg     0.5679    0.1933    0.2082    447001
+weighted avg     0.8598    0.8950    0.8512    447001
+
+F1-macro tok:  0.20824277529710483
+F1-micro tok:  0.8949689150583556
+**************************************************
+dev_cost_sum: 14878.022026062012
+dev_cost_avg: 6.738234613252723
+dev_count_sent: 2208.0
+dev_total_correct_sent: 1160.0
+dev_accuracy_sent: 0.5253623188405797
+dev_count_tok: 34211.0
+dev_total_correct_tok: 30548.0
+dev_accuracy_tok: 0.8929291748268101
+dev_label=c_precision_sent: 0.22946859903381642
+dev_label=c_recall_sent: 0.11529126213592233
+dev_label=c_f-score_sent: 0.15347334410339256
+dev_label=i_precision_sent: 0.5936454849498328
+dev_label=i_recall_sent: 0.7695086705202312
+dev_label=i_f-score_sent: 0.6702328508495909
+dev_precision_macro_sent: 0.41155704199182463
+dev_recall_macro_sent: 0.44239996632807677
+dev_f-score_macro_sent: 0.41185309747649174
+dev_precision_micro_sent: 0.5253623188405797
+dev_recall_micro_sent: 0.5253623188405797
+dev_f-score_micro_sent: 0.5253623188405797
+dev_label=c_precision_tok: 0.8953326004931816
+dev_label=c_recall_tok: 0.998277461242878
+dev_label=c_f-score_tok: 0.944006766175388
+dev_label=DET_precision_tok: 0.6071428571428571
+dev_label=DET_recall_tok: 0.04722222222222222
+dev_label=DET_f-score_tok: 0.08762886597938144
+dev_label=NOUN_precision_tok: 0.7
+dev_label=NOUN_recall_tok: 0.021406727828746176
+dev_label=NOUN_f-score_tok: 0.04154302670623145
+dev_label=OTHER_precision_tok: 0.8823529411764706
+dev_label=OTHER_recall_tok: 0.01283147989734816
+dev_label=OTHER_f-score_tok: 0.025295109612141653
+dev_label=PREP_precision_tok: 0.6666666666666666
+dev_label=PREP_recall_tok: 0.0055248618784530384
+dev_label=PREP_f-score_tok: 0.010958904109589041
+dev_label=PRON_precision_tok: 0.5
+dev_label=PRON_recall_tok: 0.0038461538461538464
+dev_label=PRON_f-score_tok: 0.0076335877862595426
+dev_label=PUNCT_precision_tok: 0.42857142857142855
+dev_label=PUNCT_recall_tok: 0.016901408450704224
+dev_label=PUNCT_f-score_tok: 0.03252032520325203
+dev_label=SPELL_precision_tok: 0.7641921397379913
+dev_label=SPELL_recall_tok: 0.6493506493506493
+dev_label=SPELL_f-score_tok: 0.7021063189568706
+dev_label=VERB_precision_tok: 0.7
+dev_label=VERB_recall_tok: 0.021505376344086023
+dev_label=VERB_f-score_tok: 0.041728763040238454
+dev_precision_macro_tok: 0.6826954037542885
+dev_recall_macro_tok: 0.197429593451249
+dev_f-score_macro_tok: 0.21038018528548358
+dev_precision_micro_tok: 0.8929291748268101
+dev_recall_micro_tok: 0.8929291748268101
+dev_f-score_micro_tok: 0.8929291748268101
+dev_time: 20.780328273773193
+**************************************************
+Sentence pred: 
+              precision    recall  f1-score   support
+
+           c     0.2295    0.1153    0.1535       824
+           i     0.5936    0.7695    0.6702      1384
+
+   micro avg     0.5254    0.5254    0.5254      2208
+   macro avg     0.4116    0.4424    0.4119      2208
+weighted avg     0.4577    0.5254    0.4774      2208
+
+F1-macro sent:  0.41185309747649174
+F1-micro sent:  0.5253623188405797
+**************************************************
+Token pred: 
+              precision    recall  f1-score   support
+
+           c     0.8953    0.9983    0.9440     30188
+         DET     0.6071    0.0472    0.0876       360
+        NOUN     0.7000    0.0214    0.0415       327
+       OTHER     0.8824    0.0128    0.0253      1169
+        PREP     0.6667    0.0055    0.0110       362
+        PRON     0.5000    0.0038    0.0076       260
+       PUNCT     0.4286    0.0169    0.0325       355
+       SPELL     0.7642    0.6494    0.7021       539
+        VERB     0.7000    0.0215    0.0417       651
+
+   micro avg     0.8929    0.8929    0.8929     34211
+   macro avg     0.6827    0.1974    0.2104     34211
+weighted avg     0.8739    0.8929    0.8475     34211
+
+F1-macro tok:  0.21038018528548358
+F1-micro tok:  0.8929291748268101
+**************************************************
+Best epoch: 2
+**************************************************
+
+EPOCH: 8
+Learning rate: 0.810000
+train_cost_sum: 185939.74815368652
+train_cost_avg: 6.511863422066489
+train_count_sent: 28554.0
+train_total_correct_sent: 14822.0
+train_accuracy_sent: 0.5190866428521398
+train_count_tok: 447001.0
+train_total_correct_tok: 400228.0
+train_accuracy_tok: 0.8953626501954134
+train_label=c_precision_sent: 0.2564641241111829
+train_label=c_recall_sent: 0.148068669527897
+train_label=c_f-score_sent: 0.18774399621436175
+train_label=i_precision_sent: 0.5917464007869087
+train_label=i_recall_sent: 0.7420385736712267
+train_label=i_f-score_sent: 0.6584249539823889
+train_precision_macro_sent: 0.4241052624490458
+train_recall_macro_sent: 0.44505362159956185
+train_f-score_macro_sent: 0.4230844750983753
+train_precision_micro_sent: 0.5190866428521398
+train_recall_micro_sent: 0.5190866428521398
+train_f-score_micro_sent: 0.5190866428521398
+train_label=c_precision_tok: 0.8989839727846605
+train_label=c_recall_tok: 0.9971019902693459
+train_label=c_f-score_tok: 0.9455042924742086
+train_label=DET_precision_tok: 0.6052631578947368
+train_label=DET_recall_tok: 0.05385155701240927
+train_label=DET_f-score_tok: 0.09890346162115674
+train_label=NOUN_precision_tok: 0.4606986899563319
+train_label=NOUN_recall_tok: 0.05207305034550839
+train_label=NOUN_f-score_tok: 0.093569844789357
+train_label=OTHER_precision_tok: 0.6968325791855203
+train_label=OTHER_recall_tok: 0.010795653697861899
+train_label=OTHER_f-score_tok: 0.0212619080491509
+train_label=PREP_precision_tok: 0.5515151515151515
+train_label=PREP_recall_tok: 0.01827309236947791
+train_label=PREP_f-score_tok: 0.03537414965986394
+train_label=PRON_precision_tok: 0.2
+train_label=PRON_recall_tok: 0.0009603072983354673
+train_label=PRON_f-score_tok: 0.001911436763300414
+train_label=PUNCT_precision_tok: 0.45791245791245794
+train_label=PUNCT_recall_tok: 0.03324370569542899
+train_label=PUNCT_f-score_tok: 0.06198723792160437
+train_label=SPELL_precision_tok: 0.7319778188539742
+train_label=SPELL_recall_tok: 0.603106914407554
+train_label=SPELL_f-score_tok: 0.6613226452905812
+train_label=VERB_precision_tok: 0.37293729372937295
+train_label=VERB_recall_tok: 0.012318761582906356
+train_label=VERB_f-score_tok: 0.023849725622625585
+train_precision_macro_tok: 0.5529023468702452
+train_recall_macro_tok: 0.19796944807542535
+train_f-score_macro_tok: 0.2159649669102054
+train_precision_micro_tok: 0.8953626501954134
+train_recall_micro_tok: 0.8953626501954134
+train_f-score_micro_tok: 0.8953626501954134
+train_time: 560.3119971752167
+**************************************************
+Sentence pred: 
+              precision    recall  f1-score   support
+
+           c     0.2565    0.1481    0.1877     10718
+           i     0.5917    0.7420    0.6584     17836
+
+   micro avg     0.5191    0.5191    0.5191     28554
+   macro avg     0.4241    0.4451    0.4231     28554
+weighted avg     0.4659    0.5191    0.4818     28554
+
+F1-macro sent:  0.4230844750983753
+F1-micro sent:  0.5190866428521398
+**************************************************
+Token pred: 
+              precision    recall  f1-score   support
+
+           c     0.8990    0.9971    0.9455    396479
+         DET     0.6053    0.0539    0.0989      4271
+        NOUN     0.4607    0.0521    0.0936      4052
+       OTHER     0.6968    0.0108    0.0213     14265
+        PREP     0.5515    0.0183    0.0354      4980
+        PRON     0.2000    0.0010    0.0019      3124
+       PUNCT     0.4579    0.0332    0.0620      4091
+       SPELL     0.7320    0.6031    0.6613      6566
+        VERB     0.3729    0.0123    0.0238      9173
+
+   micro avg     0.8954    0.8954    0.8954    447001
+   macro avg     0.5529    0.1980    0.2160    447001
+weighted avg     0.8597    0.8954    0.8523    447001
+
+F1-macro tok:  0.2159649669102054
+F1-micro tok:  0.8953626501954134
+**************************************************
+dev_cost_sum: 14729.166221618652
+dev_cost_avg: 6.670818035153375
+dev_count_sent: 2208.0
+dev_total_correct_sent: 1284.0
+dev_accuracy_sent: 0.5815217391304348
+dev_count_tok: 34211.0
+dev_total_correct_tok: 30560.0
+dev_accuracy_tok: 0.8932799392008418
+dev_label=c_precision_sent: 0.2727272727272727
+dev_label=c_recall_sent: 0.07281553398058252
+dev_label=c_f-score_sent: 0.11494252873563218
+dev_label=i_precision_sent: 0.6156941649899397
+dev_label=i_recall_sent: 0.884393063583815
+dev_label=i_f-score_sent: 0.7259786476868326
+dev_precision_macro_sent: 0.4442107188586062
+dev_recall_macro_sent: 0.47860429878219873
+dev_f-score_macro_sent: 0.4204605882112324
+dev_precision_micro_sent: 0.5815217391304348
+dev_recall_micro_sent: 0.5815217391304348
+dev_f-score_micro_sent: 0.5815217391304348
+dev_label=c_precision_tok: 0.8963075366717248
+dev_label=c_recall_tok: 0.9978799522989267
+dev_label=c_f-score_tok: 0.9443704249416115
+dev_label=DET_precision_tok: 0.5833333333333334
+dev_label=DET_recall_tok: 0.058333333333333334
+dev_label=DET_f-score_tok: 0.10606060606060606
+dev_label=NOUN_precision_tok: 0.6923076923076923
+dev_label=NOUN_recall_tok: 0.05504587155963303
+dev_label=NOUN_f-score_tok: 0.1019830028328612
+dev_label=OTHER_precision_tok: 0.95
+dev_label=OTHER_recall_tok: 0.016253207869974338
+dev_label=OTHER_f-score_tok: 0.031959629941127
+dev_label=PREP_precision_tok: 0.7
+dev_label=PREP_recall_tok: 0.019337016574585635
+dev_label=PREP_f-score_tok: 0.03763440860215053
+dev_label=PRON_precision_tok: 0.0
+dev_label=PRON_recall_tok: 0.0
+dev_label=PRON_f-score_tok: 0.0
+dev_label=PUNCT_precision_tok: 0.5
+dev_label=PUNCT_recall_tok: 0.028169014084507043
+dev_label=PUNCT_f-score_tok: 0.05333333333333334
+dev_label=SPELL_precision_tok: 0.7620087336244541
+dev_label=SPELL_recall_tok: 0.647495361781076
+dev_label=SPELL_f-score_tok: 0.700100300902708
+dev_label=VERB_precision_tok: 0.3870967741935484
+dev_label=VERB_recall_tok: 0.018433179723502304
+dev_label=VERB_f-score_tok: 0.03519061583577713
+dev_precision_macro_tok: 0.6078948966811948
+dev_recall_macro_tok: 0.20454965969172648
+dev_f-score_macro_tok: 0.22340359138335275
+dev_precision_micro_tok: 0.8932799392008418
+dev_recall_micro_tok: 0.8932799392008418
+dev_f-score_micro_tok: 0.8932799392008418
+dev_time: 20.467543840408325
+**************************************************
+Sentence pred: 
+              precision    recall  f1-score   support
+
+           c     0.2727    0.0728    0.1149       824
+           i     0.6157    0.8844    0.7260      1384
+
+   micro avg     0.5815    0.5815    0.5815      2208
+   macro avg     0.4442    0.4786    0.4205      2208
+weighted avg     0.4877    0.5815    0.4979      2208
+
+F1-macro sent:  0.4204605882112324
+F1-micro sent:  0.5815217391304348
+**************************************************
+Token pred: 
+              precision    recall  f1-score   support
+
+           c     0.8963    0.9979    0.9444     30188
+         DET     0.5833    0.0583    0.1061       360
+        NOUN     0.6923    0.0550    0.1020       327
+       OTHER     0.9500    0.0163    0.0320      1169
+        PREP     0.7000    0.0193    0.0376       362
+        PRON     0.0000    0.0000    0.0000       260
+       PUNCT     0.5000    0.0282    0.0533       355
+       SPELL     0.7620    0.6475    0.7001       539
+        VERB     0.3871    0.0184    0.0352       651
+
+   micro avg     0.8933    0.8933    0.8933     34211
+   macro avg     0.6079    0.2045    0.2234     34211
+weighted avg     0.8681    0.8933    0.8492     34211
+
+F1-macro tok:  0.22340359138335275
+F1-micro tok:  0.8932799392008418
+**************************************************
+Best epoch: 2
+**************************************************
+
+EPOCH: 9
+Learning rate: 0.729000
+train_cost_sum: 183655.34504318237
+train_cost_avg: 6.431860511423351
+train_count_sent: 28554.0
+train_total_correct_sent: 14615.0
+train_accuracy_sent: 0.5118372207046298
+train_count_tok: 447001.0
+train_total_correct_tok: 400459.0
+train_accuracy_tok: 0.8958794275628019
+train_label=c_precision_sent: 0.24824136313897138
+train_label=c_recall_sent: 0.14816197051688748
+train_label=c_f-score_sent: 0.18556821501606777
+train_label=i_precision_sent: 0.5879406056776639
+train_label=i_recall_sent: 0.7303767660910518
+train_label=i_f-score_sent: 0.6514640062010852
+train_precision_macro_sent: 0.41809098440831766
+train_recall_macro_sent: 0.4392693683039697
+train_f-score_macro_sent: 0.4185161106085765
+train_precision_micro_sent: 0.5118372207046298
+train_recall_micro_sent: 0.5118372207046298
+train_f-score_micro_sent: 0.5118372207046298
+train_label=c_precision_tok: 0.8995721633061763
+train_label=c_recall_tok: 0.9970011022021343
+train_label=c_f-score_tok: 0.9457841198518003
+train_label=DET_precision_tok: 0.6212471131639723
+train_label=DET_recall_tok: 0.06298290798407867
+train_label=DET_f-score_tok: 0.11437074829931973
+train_label=NOUN_precision_tok: 0.46443514644351463
+train_label=NOUN_recall_tok: 0.05478775913129319
+train_label=NOUN_f-score_tok: 0.09801324503311258
+train_label=OTHER_precision_tok: 0.7786259541984732
+train_label=OTHER_recall_tok: 0.014300736067297582
+train_label=OTHER_f-score_tok: 0.02808563364769051
+train_label=PREP_precision_tok: 0.5871559633027523
+train_label=PREP_recall_tok: 0.02570281124497992
+train_label=PREP_f-score_tok: 0.04924971142747211
+train_label=PRON_precision_tok: 0.3333333333333333
+train_label=PRON_recall_tok: 0.0006402048655569782
+train_label=PRON_f-score_tok: 0.001277955271565495
+train_label=PUNCT_precision_tok: 0.46932515337423314
+train_label=PUNCT_recall_tok: 0.037399168907357616
+train_label=PUNCT_f-score_tok: 0.06927779035544489
+train_label=SPELL_precision_tok: 0.732386673948662
+train_label=SPELL_recall_tok: 0.6127017971367652
+train_label=SPELL_f-score_tok: 0.667219504104818
+train_label=VERB_precision_tok: 0.4602739726027397
+train_label=VERB_recall_tok: 0.018314618990515643
+train_label=VERB_f-score_tok: 0.035227511008597195
+train_precision_macro_tok: 0.594039497074873
+train_recall_macro_tok: 0.20264790072555325
+train_f-score_macro_tok: 0.22316735766664678
+train_precision_micro_tok: 0.8958794275628019
+train_recall_micro_tok: 0.8958794275628019
+train_f-score_micro_tok: 0.8958794275628019
+train_time: 578.458625793457
+**************************************************
+Sentence pred: 
+              precision    recall  f1-score   support
+
+           c     0.2482    0.1482    0.1856     10718
+           i     0.5879    0.7304    0.6515     17836
+
+   micro avg     0.5118    0.5118    0.5118     28554
+   macro avg     0.4181    0.4393    0.4185     28554
+weighted avg     0.4604    0.5118    0.4766     28554
+
+F1-macro sent:  0.4185161106085765
+F1-micro sent:  0.5118372207046298
+**************************************************
+Token pred: 
+              precision    recall  f1-score   support
+
+           c     0.8996    0.9970    0.9458    396479
+         DET     0.6212    0.0630    0.1144      4271
+        NOUN     0.4644    0.0548    0.0980      4052
+       OTHER     0.7786    0.0143    0.0281     14265
+        PREP     0.5872    0.0257    0.0492      4980
+        PRON     0.3333    0.0006    0.0013      3124
+       PUNCT     0.4693    0.0374    0.0693      4091
+       SPELL     0.7324    0.6127    0.6672      6566
+        VERB     0.4603    0.0183    0.0352      9173
+
+   micro avg     0.8959    0.8959    0.8959    447001
+   macro avg     0.5940    0.2026    0.2232    447001
+weighted avg     0.8663    0.8959    0.8535    447001
+
+F1-macro tok:  0.22316735766664678
+F1-micro tok:  0.8958794275628019
+**************************************************
+dev_cost_sum: 14630.33366394043
+dev_cost_avg: 6.626056913016499
+dev_count_sent: 2208.0
+dev_total_correct_sent: 1169.0
+dev_accuracy_sent: 0.5294384057971014
+dev_count_tok: 34211.0
+dev_total_correct_tok: 30553.0
+dev_accuracy_tok: 0.8930753266493233
+dev_label=c_precision_sent: 0.2371638141809291
+dev_label=c_recall_sent: 0.11771844660194175
+dev_label=c_f-score_sent: 0.1573398215733982
+dev_label=i_precision_sent: 0.5958866036687048
+dev_label=i_recall_sent: 0.7745664739884393
+dev_label=i_f-score_sent: 0.673578385171222
+dev_precision_macro_sent: 0.416525208924817
+dev_recall_macro_sent: 0.4461424602951905
+dev_f-score_macro_sent: 0.4154591033723101
+dev_precision_micro_sent: 0.5294384057971014
+dev_recall_micro_sent: 0.5294384057971014
+dev_f-score_micro_sent: 0.5294384057971014
+dev_label=c_precision_tok: 0.8967192109419232
+dev_label=c_recall_tok: 0.9968530541937194
+dev_label=c_f-score_tok: 0.9441385476963622
+dev_label=DET_precision_tok: 0.6451612903225806
+dev_label=DET_recall_tok: 0.05555555555555555
+dev_label=DET_f-score_tok: 0.10230179028132992
+dev_label=NOUN_precision_tok: 0.5227272727272727
+dev_label=NOUN_recall_tok: 0.07033639143730887
+dev_label=NOUN_f-score_tok: 0.12398921832884098
+dev_label=OTHER_precision_tok: 0.84
+dev_label=OTHER_recall_tok: 0.017964071856287425
+dev_label=OTHER_f-score_tok: 0.035175879396984924
+dev_label=PREP_precision_tok: 0.4782608695652174
+dev_label=PREP_recall_tok: 0.03038674033149171
+dev_label=PREP_f-score_tok: 0.05714285714285715
+dev_label=PRON_precision_tok: 0.0
+dev_label=PRON_recall_tok: 0.0
+dev_label=PRON_f-score_tok: 0.0
+dev_label=PUNCT_precision_tok: 0.4411764705882353
+dev_label=PUNCT_recall_tok: 0.04225352112676056
+dev_label=PUNCT_f-score_tok: 0.07712082262210797
+dev_label=SPELL_precision_tok: 0.7662337662337663
+dev_label=SPELL_recall_tok: 0.6567717996289425
+dev_label=SPELL_f-score_tok: 0.7072927072927073
+dev_label=VERB_precision_tok: 0.48484848484848486
+dev_label=VERB_recall_tok: 0.02457757296466974
+dev_label=VERB_f-score_tok: 0.04678362573099415
+dev_precision_macro_tok: 0.5639030405808312
+dev_recall_macro_tok: 0.21052207856608174
+dev_f-score_macro_tok: 0.23266060538802055
+dev_precision_micro_tok: 0.8930753266493233
+dev_recall_micro_tok: 0.8930753266493233
+dev_f-score_micro_tok: 0.8930753266493233
+dev_time: 20.591500997543335
+**************************************************
+Sentence pred: 
+              precision    recall  f1-score   support
+
+           c     0.2372    0.1177    0.1573       824
+           i     0.5959    0.7746    0.6736      1384
+
+   micro avg     0.5294    0.5294    0.5294      2208
+   macro avg     0.4165    0.4461    0.4155      2208
+weighted avg     0.4620    0.5294    0.4809      2208
+
+F1-macro sent:  0.4154591033723101
+F1-micro sent:  0.5294384057971014
+**************************************************
+Token pred: 
+              precision    recall  f1-score   support
+
+           c     0.8967    0.9969    0.9441     30188
+         DET     0.6452    0.0556    0.1023       360
+        NOUN     0.5227    0.0703    0.1240       327
+       OTHER     0.8400    0.0180    0.0352      1169
+        PREP     0.4783    0.0304    0.0571       362
+        PRON     0.0000    0.0000    0.0000       260
+       PUNCT     0.4412    0.0423    0.0771       355
+       SPELL     0.7662    0.6568    0.7073       539
+        VERB     0.4848    0.0246    0.0468       651
+
+   micro avg     0.8931    0.8931    0.8931     34211
+   macro avg     0.5639    0.2105    0.2327     34211
+weighted avg     0.8627    0.8931    0.8500     34211
+
+F1-macro tok:  0.2326606053880205
+F1-micro tok:  0.8930753266493233
+**************************************************
+Best epoch: 2
+**************************************************
+
+EPOCH: 10
+Learning rate: 0.656100
+train_cost_sum: 181100.9299697876
+train_cost_avg: 6.342401413804987
+train_count_sent: 28554.0
+train_total_correct_sent: 15112.0
+train_accuracy_sent: 0.52924283813126
+train_count_tok: 447001.0
+train_total_correct_tok: 400581.0
+train_accuracy_tok: 0.8961523576009897
+train_label=c_precision_sent: 0.2614711033274956
+train_label=c_recall_sent: 0.13929837656279156
+train_label=c_f-score_sent: 0.18176284392500605
+train_label=i_precision_sent: 0.5961740500787953
+train_label=i_recall_sent: 0.7635680645884727
+train_label=i_f-score_sent: 0.6695673549655851
+train_precision_macro_sent: 0.4288225767031455
+train_recall_macro_sent: 0.4514332205756321
+train_f-score_macro_sent: 0.42566509944529557
+train_precision_micro_sent: 0.52924283813126
+train_recall_micro_sent: 0.52924283813126
+train_f-score_micro_sent: 0.52924283813126
+train_label=c_precision_tok: 0.8999030041394008
+train_label=c_recall_tok: 0.9968548145046774
+train_label=c_f-score_tok: 0.9459010881050361
+train_label=DET_precision_tok: 0.6410256410256411
+train_label=DET_recall_tok: 0.07609459143057831
+train_label=DET_f-score_tok: 0.13604018417748012
+train_label=NOUN_precision_tok: 0.48863636363636365
+train_label=NOUN_recall_tok: 0.06367226061204344
+train_label=NOUN_f-score_tok: 0.11266375545851529
+train_label=OTHER_precision_tok: 0.7777777777777778
+train_label=OTHER_recall_tok: 0.016684192078513845
+train_label=OTHER_f-score_tok: 0.03266762747923959
+train_label=PREP_precision_tok: 0.5967741935483871
+train_label=PREP_recall_tok: 0.02971887550200803
+train_label=PREP_f-score_tok: 0.056618209640397855
+train_label=PRON_precision_tok: 0.0
+train_label=PRON_recall_tok: 0.0
+train_label=PRON_f-score_tok: 0.0
+train_label=PUNCT_precision_tok: 0.46808510638297873
+train_label=PUNCT_recall_tok: 0.04302126619408458
+train_label=PUNCT_f-score_tok: 0.07880008954555631
+train_label=SPELL_precision_tok: 0.7404232032105071
+train_label=SPELL_recall_tok: 0.618184587267743
+train_label=SPELL_f-score_tok: 0.6738047808764941
+train_label=VERB_precision_tok: 0.4084507042253521
+train_label=VERB_recall_tok: 0.015807260438242668
+train_label=VERB_f-score_tok: 0.030436607892527286
+train_precision_macro_tok: 0.5578973326607121
+train_recall_macro_tok: 0.20667087200309905
+train_f-score_macro_tok: 0.2296591492416941
+train_precision_micro_tok: 0.8961523576009897
+train_recall_micro_tok: 0.8961523576009897
+train_f-score_micro_tok: 0.8961523576009897
+train_time: 580.583297252655
+**************************************************
+Sentence pred: 
+              precision    recall  f1-score   support
+
+           c     0.2615    0.1393    0.1818     10718
+           i     0.5962    0.7636    0.6696     17836
+
+   micro avg     0.5292    0.5292    0.5292     28554
+   macro avg     0.4288    0.4514    0.4257     28554
+weighted avg     0.4705    0.5292    0.4865     28554
+
+F1-macro sent:  0.42566509944529557
+F1-micro sent:  0.52924283813126
+**************************************************
+Token pred: 
+              precision    recall  f1-score   support
+
+           c     0.8999    0.9969    0.9459    396479
+         DET     0.6410    0.0761    0.1360      4271
+        NOUN     0.4886    0.0637    0.1127      4052
+       OTHER     0.7778    0.0167    0.0327     14265
+        PREP     0.5968    0.0297    0.0566      4980
+        PRON     0.0000    0.0000    0.0000      3124
+       PUNCT     0.4681    0.0430    0.0788      4091
+       SPELL     0.7404    0.6182    0.6738      6566
+        VERB     0.4085    0.0158    0.0304      9173
+
+   micro avg     0.8962    0.8962    0.8962    447001
+   macro avg     0.5579    0.2067    0.2297    447001
+weighted avg     0.8638    0.8962    0.8542    447001
+
+F1-macro tok:  0.2296591492416941
+F1-micro tok:  0.8961523576009897
+**************************************************
+dev_cost_sum: 14497.255363464355
+dev_cost_avg: 6.565785943597987
+dev_count_sent: 2208.0
+dev_total_correct_sent: 1146.0
+dev_accuracy_sent: 0.5190217391304348
+dev_count_tok: 34211.0
+dev_total_correct_tok: 30589.0
+dev_accuracy_tok: 0.8941276197714185
+dev_label=c_precision_sent: 0.19010416666666666
+dev_label=c_recall_sent: 0.08859223300970874
+dev_label=c_f-score_sent: 0.12086092715231789
+dev_label=i_precision_sent: 0.5882675438596491
+dev_label=i_recall_sent: 0.7752890173410405
+dev_label=i_f-score_sent: 0.6689526184538653
+dev_precision_macro_sent: 0.38918585526315785
+dev_recall_macro_sent: 0.4319406251753746
+dev_f-score_macro_sent: 0.3949067728030916
+dev_precision_micro_sent: 0.5190217391304348
+dev_recall_micro_sent: 0.5190217391304348
+dev_f-score_micro_sent: 0.5190217391304348
+dev_label=c_precision_tok: 0.8972914990614106
+dev_label=c_recall_tok: 0.997548694845634
+dev_label=c_f-score_tok: 0.9447677610629187
+dev_label=DET_precision_tok: 0.6938775510204082
+dev_label=DET_recall_tok: 0.09444444444444444
+dev_label=DET_f-score_tok: 0.16625916870415647
+dev_label=NOUN_precision_tok: 0.6129032258064516
+dev_label=NOUN_recall_tok: 0.0581039755351682
+dev_label=NOUN_f-score_tok: 0.10614525139664803
+dev_label=OTHER_precision_tok: 0.8928571428571429
+dev_label=OTHER_recall_tok: 0.0213857998289136
+dev_label=OTHER_f-score_tok: 0.04177109440267335
+dev_label=PREP_precision_tok: 0.2857142857142857
+dev_label=PREP_recall_tok: 0.0055248618784530384
+dev_label=PREP_f-score_tok: 0.01084010840108401
+dev_label=PRON_precision_tok: 0.0
+dev_label=PRON_recall_tok: 0.0
+dev_label=PRON_f-score_tok: 0.0
+dev_label=PUNCT_precision_tok: 0.56
+dev_label=PUNCT_recall_tok: 0.03943661971830986
+dev_label=PUNCT_f-score_tok: 0.0736842105263158
+dev_label=SPELL_precision_tok: 0.757201646090535
+dev_label=SPELL_recall_tok: 0.6827458256029685
+dev_label=SPELL_f-score_tok: 0.7180487804878048
+dev_label=VERB_precision_tok: 0.5909090909090909
+dev_label=VERB_recall_tok: 0.019969278033794162
+dev_label=VERB_f-score_tok: 0.03863298662704309
+dev_precision_macro_tok: 0.5878616046065916
+dev_recall_macro_tok: 0.2132399444319651
+dev_f-score_macro_tok: 0.23334992906762717
+dev_precision_micro_tok: 0.8941276197714185
+dev_recall_micro_tok: 0.8941276197714185
+dev_f-score_micro_tok: 0.8941276197714185
+dev_time: 20.47240376472473
+**************************************************
+Sentence pred: 
+              precision    recall  f1-score   support
+
+           c     0.1901    0.0886    0.1209       824
+           i     0.5883    0.7753    0.6690      1384
+
+   micro avg     0.5190    0.5190    0.5190      2208
+   macro avg     0.3892    0.4319    0.3949      2208
+weighted avg     0.4397    0.5190    0.4644      2208
+
+F1-macro sent:  0.3949067728030916
+F1-micro sent:  0.5190217391304348
+**************************************************
+Token pred: 
+              precision    recall  f1-score   support
+
+           c     0.8973    0.9975    0.9448     30188
+         DET     0.6939    0.0944    0.1663       360
+        NOUN     0.6129    0.0581    0.1061       327
+       OTHER     0.8929    0.0214    0.0418      1169
+        PREP     0.2857    0.0055    0.0108       362
+        PRON     0.0000    0.0000    0.0000       260
+       PUNCT     0.5600    0.0394    0.0737       355
+       SPELL     0.7572    0.6827    0.7180       539
+        VERB     0.5909    0.0200    0.0386       651
+
+   micro avg     0.8941    0.8941    0.8941     34211
+   macro avg     0.5879    0.2132    0.2333     34211
+weighted avg     0.8675    0.8941    0.8508     34211
+
+F1-macro tok:  0.2333499290676271
+F1-micro tok:  0.8941276197714185
+**************************************************
+Best epoch: 2
+**************************************************
+
+EPOCH: 11
+Learning rate: 0.590490
+train_cost_sum: 178870.13773345947
+train_cost_avg: 6.264276029048801
+train_count_sent: 28554.0
+train_total_correct_sent: 13940.0
+train_accuracy_sent: 0.4881978006584016
+train_count_tok: 447001.0
+train_total_correct_tok: 400736.0
+train_accuracy_tok: 0.896499112977376
+train_label=c_precision_sent: 0.24688149688149688
+train_label=c_recall_sent: 0.17727187908191827
+train_label=c_f-score_sent: 0.20636472249375473
+train_label=i_precision_sent: 0.5772365519225238
+train_label=i_recall_sent: 0.6750392464678179
+train_label=i_f-score_sent: 0.6223187057424925
+train_precision_macro_sent: 0.4120590244020103
+train_recall_macro_sent: 0.4261555627748681
+train_f-score_macro_sent: 0.4143417141181236
+train_precision_micro_sent: 0.4881978006584016
+train_recall_micro_sent: 0.4881978006584016
+train_f-score_micro_sent: 0.4881978006584016
+train_label=c_precision_tok: 0.900477411268729
+train_label=c_recall_tok: 0.9966530383702542
+train_label=c_f-score_tok: 0.9461273979293767
+train_label=DET_precision_tok: 0.6075533661740559
+train_label=DET_recall_tok: 0.08663076562865839
+train_label=DET_f-score_tok: 0.15163934426229508
+train_label=NOUN_precision_tok: 0.5099099099099099
+train_label=NOUN_recall_tok: 0.06984205330700888
+train_label=NOUN_f-score_tok: 0.12285652268287386
+train_label=OTHER_precision_tok: 0.7318435754189944
+train_label=OTHER_recall_tok: 0.01836663161584297
+train_label=OTHER_f-score_tok: 0.035833960199685426
+train_label=PREP_precision_tok: 0.610236220472441
+train_label=PREP_recall_tok: 0.03112449799196787
+train_label=PREP_f-score_tok: 0.05922812380588461
+train_label=PRON_precision_tok: 0.2
+train_label=PRON_recall_tok: 0.0006402048655569782
+train_label=PRON_f-score_tok: 0.001276324186343331
+train_label=PUNCT_precision_tok: 0.46226415094339623
+train_label=PUNCT_recall_tok: 0.04791004644341237
+train_label=PUNCT_f-score_tok: 0.08682170542635659
+train_label=SPELL_precision_tok: 0.7429755043227666
+train_label=SPELL_recall_tok: 0.6282363691745355
+train_label=SPELL_f-score_tok: 0.6808054134345601
+train_label=VERB_precision_tok: 0.4613526570048309
+train_label=VERB_recall_tok: 0.020821977542788618
+train_label=VERB_f-score_tok: 0.03984562428288307
+train_precision_macro_tok: 0.5807347550572359
+train_recall_macro_tok: 0.21113617610444735
+train_f-score_macro_tok: 0.23604826846780652
+train_precision_micro_tok: 0.896499112977376
+train_recall_micro_tok: 0.896499112977376
+train_f-score_micro_tok: 0.896499112977376
+train_time: 581.8020966053009
+**************************************************
+Sentence pred: 
+              precision    recall  f1-score   support
+
+           c     0.2469    0.1773    0.2064     10718
+           i     0.5772    0.6750    0.6223     17836
+
+   micro avg     0.4882    0.4882    0.4882     28554
+   macro avg     0.4121    0.4262    0.4143     28554
+weighted avg     0.4532    0.4882    0.4662     28554
+
+F1-macro sent:  0.4143417141181236
+F1-micro sent:  0.4881978006584016
+**************************************************
+Token pred: 
+              precision    recall  f1-score   support
+
+           c     0.9005    0.9967    0.9461    396479
+         DET     0.6076    0.0866    0.1516      4271
+        NOUN     0.5099    0.0698    0.1229      4052
+       OTHER     0.7318    0.0184    0.0358     14265
+        PREP     0.6102    0.0311    0.0592      4980
+        PRON     0.2000    0.0006    0.0013      3124
+       PUNCT     0.4623    0.0479    0.0868      4091
+       SPELL     0.7430    0.6282    0.6808      6566
+        VERB     0.4614    0.0208    0.0398      9173
+
+   micro avg     0.8965    0.8965    0.8965    447001
+   macro avg     0.5807    0.2111    0.2360    447001
+weighted avg     0.8653    0.8965    0.8552    447001
+
+F1-macro tok:  0.23604826846780652
+F1-micro tok:  0.896499112977376
+**************************************************
+dev_cost_sum: 14350.761375427246
+dev_cost_avg: 6.4994390287261075
+dev_count_sent: 2208.0
+dev_total_correct_sent: 981.0
+dev_accuracy_sent: 0.44429347826086957
+dev_count_tok: 34211.0
+dev_total_correct_tok: 30580.0
+dev_accuracy_tok: 0.8938645464908948
+dev_label=c_precision_sent: 0.2117310443490701
+dev_label=c_recall_sent: 0.1796116504854369
+dev_label=c_f-score_sent: 0.1943532501641497
+dev_label=i_precision_sent: 0.5520212060967529
+dev_label=i_recall_sent: 0.601878612716763
+dev_label=i_f-score_sent: 0.5758727964051158
+dev_precision_macro_sent: 0.3818761252229115
+dev_recall_macro_sent: 0.39074513160109997
+dev_f-score_macro_sent: 0.38511302328463276
+dev_precision_micro_sent: 0.44429347826086957
+dev_recall_micro_sent: 0.44429347826086957
+dev_f-score_micro_sent: 0.44429347826086957
+dev_label=c_precision_tok: 0.8982549453176358
+dev_label=c_recall_tok: 0.9957930303431827
+dev_label=c_f-score_tok: 0.9445125208156597
+dev_label=DET_precision_tok: 0.6578947368421053
+dev_label=DET_recall_tok: 0.06944444444444445
+dev_label=DET_f-score_tok: 0.1256281407035176
+dev_label=NOUN_precision_tok: 0.5957446808510638
+dev_label=NOUN_recall_tok: 0.0856269113149847
+dev_label=NOUN_f-score_tok: 0.14973262032085563
+dev_label=OTHER_precision_tok: 0.6
+dev_label=OTHER_recall_tok: 0.023096663815226688
+dev_label=OTHER_f-score_tok: 0.04448105436573311
+dev_label=PREP_precision_tok: 0.5348837209302325
+dev_label=PREP_recall_tok: 0.06353591160220995
+dev_label=PREP_f-score_tok: 0.11358024691358026
+dev_label=PRON_precision_tok: 0.3333333333333333
+dev_label=PRON_recall_tok: 0.0038461538461538464
+dev_label=PRON_f-score_tok: 0.007604562737642586
+dev_label=PUNCT_precision_tok: 0.5294117647058824
+dev_label=PUNCT_recall_tok: 0.10140845070422536
+dev_label=PUNCT_f-score_tok: 0.1702127659574468
+dev_label=SPELL_precision_tok: 0.7672955974842768
+dev_label=SPELL_recall_tok: 0.6790352504638218
+dev_label=SPELL_f-score_tok: 0.7204724409448819
+dev_label=VERB_precision_tok: 0.5416666666666666
+dev_label=VERB_recall_tok: 0.019969278033794162
+dev_label=VERB_f-score_tok: 0.03851851851851852
+dev_precision_macro_tok: 0.6064983829034664
+dev_recall_macro_tok: 0.2268617882853382
+dev_f-score_macro_tok: 0.25719365236420405
+dev_precision_micro_tok: 0.8938645464908948
+dev_recall_micro_tok: 0.8938645464908948
+dev_f-score_micro_tok: 0.8938645464908949
+dev_time: 20.805007457733154
+**************************************************
+Sentence pred: 
+              precision    recall  f1-score   support
+
+           c     0.2117    0.1796    0.1944       824
+           i     0.5520    0.6019    0.5759      1384
+
+   micro avg     0.4443    0.4443    0.4443      2208
+   macro avg     0.3819    0.3907    0.3851      2208
+weighted avg     0.4250    0.4443    0.4335      2208
+
+F1-macro sent:  0.38511302328463276
+F1-micro sent:  0.44429347826086957
+**************************************************
+Token pred: 
+              precision    recall  f1-score   support
+
+           c     0.8983    0.9958    0.9445     30188
+         DET     0.6579    0.0694    0.1256       360
+        NOUN     0.5957    0.0856    0.1497       327
+       OTHER     0.6000    0.0231    0.0445      1169
+        PREP     0.5349    0.0635    0.1136       362
+        PRON     0.3333    0.0038    0.0076       260
+       PUNCT     0.5294    0.1014    0.1702       355
+       SPELL     0.7673    0.6790    0.7205       539
+        VERB     0.5417    0.0200    0.0385       651
+
+   micro avg     0.8939    0.8939    0.8939     34211
+   macro avg     0.6065    0.2269    0.2572     34211
+weighted avg     0.8618    0.8939    0.8528     34211
+
+F1-macro tok:  0.25719365236420405
+F1-micro tok:  0.8938645464908949
+**************************************************
+Best epoch: 2
+**************************************************
+
+EPOCH: 12
+Learning rate: 0.531441
+train_cost_sum: 177387.61042785645
+train_cost_avg: 6.212355902075242
+train_count_sent: 28554.0
+train_total_correct_sent: 13521.0
+train_accuracy_sent: 0.4735238495482244
+train_count_tok: 447001.0
+train_total_correct_tok: 400920.0
+train_accuracy_tok: 0.8969107451661182
+train_label=c_precision_sent: 0.24833780473579845
+train_label=c_recall_sent: 0.19863780556073896
+train_label=c_f-score_sent: 0.22072469027007413
+train_label=i_precision_sent: 0.5701416345528252
+train_label=i_recall_sent: 0.6387082305449653
+train_label=i_f-score_sent: 0.602480365972975
+train_precision_macro_sent: 0.40923971964431183
+train_recall_macro_sent: 0.4186730180528521
+train_f-score_macro_sent: 0.4116025281215246
+train_precision_micro_sent: 0.4735238495482244
+train_recall_micro_sent: 0.4735238495482244
+train_f-score_micro_sent: 0.4735238495482244
+train_label=c_precision_tok: 0.9008283867202815
+train_label=c_recall_tok: 0.996721137815622
+train_label=c_f-score_tok: 0.9463517900098544
+train_label=DET_precision_tok: 0.6371100164203612
+train_label=DET_recall_tok: 0.09084523530789042
+train_label=DET_f-score_tok: 0.15901639344262294
+train_label=NOUN_precision_tok: 0.5224913494809689
+train_label=NOUN_recall_tok: 0.07453109575518263
+train_label=NOUN_f-score_tok: 0.13045356371490283
+train_label=OTHER_precision_tok: 0.7139240506329114
+train_label=OTHER_recall_tok: 0.019768664563617245
+train_label=OTHER_f-score_tok: 0.03847203274215553
+train_label=PREP_precision_tok: 0.5741935483870968
+train_label=PREP_recall_tok: 0.0357429718875502
+train_label=PREP_f-score_tok: 0.06729678638941398
+train_label=PRON_precision_tok: 0.10526315789473684
+train_label=PRON_recall_tok: 0.0006402048655569782
+train_label=PRON_f-score_tok: 0.0012726694241170856
+train_label=PUNCT_precision_tok: 0.5133333333333333
+train_label=PUNCT_recall_tok: 0.056465411879736006
+train_label=PUNCT_f-score_tok: 0.1017397049108126
+train_label=SPELL_precision_tok: 0.7507230657989877
+train_label=SPELL_recall_tok: 0.6325007614986293
+train_label=SPELL_f-score_tok: 0.6865597619441229
+train_label=VERB_precision_tok: 0.4834905660377358
+train_label=VERB_recall_tok: 0.022348195791998256
+train_label=VERB_f-score_tok: 0.04272168385953944
+train_precision_macro_tok: 0.5779286083007125
+train_recall_macro_tok: 0.21439596437397587
+train_f-score_macro_tok: 0.24154270960417135
+train_precision_micro_tok: 0.8969107451661182
+train_recall_micro_tok: 0.8969107451661182
+train_f-score_micro_tok: 0.8969107451661184
+train_time: 581.4925038814545
+**************************************************
+Sentence pred: 
+              precision    recall  f1-score   support
+
+           c     0.2483    0.1986    0.2207     10718
+           i     0.5701    0.6387    0.6025     17836
+
+   micro avg     0.4735    0.4735    0.4735     28554
+   macro avg     0.4092    0.4187    0.4116     28554
+weighted avg     0.4493    0.4735    0.4592     28554
+
+F1-macro sent:  0.4116025281215246
+F1-micro sent:  0.4735238495482244
+**************************************************
+Token pred: 
+              precision    recall  f1-score   support
+
+           c     0.9008    0.9967    0.9464    396479
+         DET     0.6371    0.0908    0.1590      4271
+        NOUN     0.5225    0.0745    0.1305      4052
+       OTHER     0.7139    0.0198    0.0385     14265
+        PREP     0.5742    0.0357    0.0673      4980
+        PRON     0.1053    0.0006    0.0013      3124
+       PUNCT     0.5133    0.0565    0.1017      4091
+       SPELL     0.7507    0.6325    0.6866      6566
+        VERB     0.4835    0.0223    0.0427      9173
+
+   micro avg     0.8969    0.8969    0.8969    447001
+   macro avg     0.5779    0.2144    0.2415    447001
+weighted avg     0.8654    0.8969    0.8560    447001
+
+F1-macro tok:  0.2415427096041713
+F1-micro tok:  0.8969107451661184
+**************************************************
+dev_cost_sum: 14389.810272216797
+dev_cost_avg: 6.517124217489491
+dev_count_sent: 2208.0
+dev_total_correct_sent: 992.0
+dev_accuracy_sent: 0.4492753623188406
+dev_count_tok: 34211.0
+dev_total_correct_tok: 30577.0
+dev_accuracy_tok: 0.8937768553973868
+dev_label=c_precision_sent: 0.20303030303030303
+dev_label=c_recall_sent: 0.16262135922330098
+dev_label=c_f-score_sent: 0.18059299191374664
+dev_label=i_precision_sent: 0.5542635658914729
+dev_label=i_recall_sent: 0.619942196531792
+dev_label=i_f-score_sent: 0.5852660300136426
+dev_precision_macro_sent: 0.37864693446088793
+dev_recall_macro_sent: 0.3912817778775465
+dev_f-score_macro_sent: 0.38292951096369465
+dev_precision_micro_sent: 0.4492753623188406
+dev_recall_micro_sent: 0.4492753623188406
+dev_f-score_micro_sent: 0.4492753623188406
+dev_label=c_precision_tok: 0.8977611940298508
+dev_label=c_recall_tok: 0.9962567907777925
+dev_label=c_f-score_tok: 0.9444479336766738
+dev_label=DET_precision_tok: 0.6181818181818182
+dev_label=DET_recall_tok: 0.09444444444444444
+dev_label=DET_f-score_tok: 0.16385542168674697
+dev_label=NOUN_precision_tok: 0.6578947368421053
+dev_label=NOUN_recall_tok: 0.0764525993883792
+dev_label=NOUN_f-score_tok: 0.136986301369863
+dev_label=OTHER_precision_tok: 0.6590909090909091
+dev_label=OTHER_recall_tok: 0.02480752780153978
+dev_label=OTHER_f-score_tok: 0.047815333882934866
+dev_label=PREP_precision_tok: 0.7368421052631579
+dev_label=PREP_recall_tok: 0.03867403314917127
+dev_label=PREP_f-score_tok: 0.07349081364829396
+dev_label=PRON_precision_tok: 1.0
+dev_label=PRON_recall_tok: 0.0038461538461538464
+dev_label=PRON_f-score_tok: 0.007662835249042146
+dev_label=PUNCT_precision_tok: 0.4875
+dev_label=PUNCT_recall_tok: 0.10985915492957747
+dev_label=PUNCT_f-score_tok: 0.1793103448275862
+dev_label=SPELL_precision_tok: 0.7747747747747747
+dev_label=SPELL_recall_tok: 0.6382189239332097
+dev_label=SPELL_f-score_tok: 0.6998982706002034
+dev_label=VERB_precision_tok: 0.5333333333333333
+dev_label=VERB_recall_tok: 0.02457757296466974
+dev_label=VERB_f-score_tok: 0.04698972099853157
+dev_precision_macro_tok: 0.7072643190573278
+dev_recall_macro_tok: 0.22301524458165975
+dev_f-score_macro_tok: 0.25560633065998617
+dev_precision_micro_tok: 0.8937768553973868
+dev_recall_micro_tok: 0.8937768553973868
+dev_f-score_micro_tok: 0.8937768553973868
+dev_time: 20.372698545455933
+**************************************************
+Sentence pred: 
+              precision    recall  f1-score   support
+
+           c     0.2030    0.1626    0.1806       824
+           i     0.5543    0.6199    0.5853      1384
+
+   micro avg     0.4493    0.4493    0.4493      2208
+   macro avg     0.3786    0.3913    0.3829      2208
+weighted avg     0.4232    0.4493    0.4342      2208
+
+F1-macro sent:  0.38292951096369465
+F1-micro sent:  0.4492753623188406
+**************************************************
+Token pred: 
+              precision    recall  f1-score   support
+
+           c     0.8978    0.9963    0.9444     30188
+         DET     0.6182    0.0944    0.1639       360
+        NOUN     0.6579    0.0765    0.1370       327
+       OTHER     0.6591    0.0248    0.0478      1169
+        PREP     0.7368    0.0387    0.0735       362
+        PRON     1.0000    0.0038    0.0077       260
+       PUNCT     0.4875    0.1099    0.1793       355
+       SPELL     0.7748    0.6382    0.6999       539
+        VERB     0.5333    0.0246    0.0470       651
+
+   micro avg     0.8938    0.8938    0.8938     34211
+   macro avg     0.7073    0.2230    0.2556     34211
+weighted avg     0.8703    0.8938    0.8527     34211
+
+F1-macro tok:  0.25560633065998617
+F1-micro tok:  0.8937768553973868
+**************************************************
+Best epoch: 2
+**************************************************
+
+test0_cost_sum: 16388.52175140381
+test0_cost_avg: 7.422337749729985
+test0_count_sent: 2208.0
+test0_total_correct_sent: 1343.0
+test0_accuracy_sent: 0.6082427536231884
+test0_count_tok: 34211.0
+test0_total_correct_tok: 30444.0
+test0_accuracy_tok: 0.889889216918535
+test0_label=c_precision_sent: 0.44533333333333336
+test0_label=c_recall_sent: 0.20266990291262135
+test0_label=c_f-score_sent: 0.2785654712260217
+test0_label=i_precision_sent: 0.6415711947626841
+test0_label=i_recall_sent: 0.8497109826589595
+test0_label=i_f-score_sent: 0.7311159465340379
+test0_precision_macro_sent: 0.5434522640480087
+test0_recall_macro_sent: 0.5261904427857904
+test0_f-score_macro_sent: 0.5048407088800297
+test0_precision_micro_sent: 0.6082427536231884
+test0_recall_micro_sent: 0.6082427536231884
+test0_f-score_micro_sent: 0.6082427536231884
+test0_label=c_precision_tok: 0.8919854442176267
+test0_label=c_recall_tok: 0.9987412216774877
+test0_label=c_f-score_tok: 0.9423494663145227
+test0_label=DET_precision_tok: 0.0
+test0_label=DET_recall_tok: 0.0
+test0_label=DET_f-score_tok: 0.0
+test0_label=NOUN_precision_tok: 1.0
+test0_label=NOUN_recall_tok: 0.0030581039755351682
+test0_label=NOUN_f-score_tok: 0.006097560975609756
+test0_label=OTHER_precision_tok: 0.0
+test0_label=OTHER_recall_tok: 0.0
+test0_label=OTHER_f-score_tok: 0.0
+test0_label=PREP_precision_tok: 0.3333333333333333
+test0_label=PREP_recall_tok: 0.0027624309392265192
+test0_label=PREP_f-score_tok: 0.005479452054794521
+test0_label=PRON_precision_tok: 0.0
+test0_label=PRON_recall_tok: 0.0
+test0_label=PRON_f-score_tok: 0.0
+test0_label=PUNCT_precision_tok: 0.3333333333333333
+test0_label=PUNCT_recall_tok: 0.0028169014084507044
+test0_label=PUNCT_f-score_tok: 0.00558659217877095
+test0_label=SPELL_precision_tok: 0.732824427480916
+test0_label=SPELL_recall_tok: 0.5343228200371057
+test0_label=SPELL_f-score_tok: 0.6180257510729614
+test0_label=VERB_precision_tok: 0.75
+test0_label=VERB_recall_tok: 0.004608294930875576
+test0_label=VERB_f-score_tok: 0.00916030534351145
+test0_precision_macro_tok: 0.4490529487072455
+test0_recall_macro_tok: 0.17181219699652017
+test0_f-score_macro_tok: 0.17629990310446342
+test0_precision_micro_tok: 0.889889216918535
+test0_recall_micro_tok: 0.889889216918535
+test0_f-score_micro_tok: 0.889889216918535
+test0_time: 20.25969386100769
+**************************************************
+Sentence pred: 
+              precision    recall  f1-score   support
+
+           c     0.4453    0.2027    0.2786       824
+           i     0.6416    0.8497    0.7311      1384
+
+   micro avg     0.6082    0.6082    0.6082      2208
+   macro avg     0.5435    0.5262    0.5048      2208
+weighted avg     0.5683    0.6082    0.5622      2208
+
+F1-macro sent:  0.5048407088800297
+F1-micro sent:  0.6082427536231884
+**************************************************
+Token pred: 
+              precision    recall  f1-score   support
+
+           c     0.8920    0.9987    0.9423     30188
+         DET     0.0000    0.0000    0.0000       360
+        NOUN     1.0000    0.0031    0.0061       327
+       OTHER     0.0000    0.0000    0.0000      1169
+        PREP     0.3333    0.0028    0.0055       362
+        PRON     0.0000    0.0000    0.0000       260
+       PUNCT     0.3333    0.0028    0.0056       355
+       SPELL     0.7328    0.5343    0.6180       539
+        VERB     0.7500    0.0046    0.0092       651
+
+   micro avg     0.8899    0.8899    0.8899     34211
+   macro avg     0.4491    0.1718    0.1763     34211
+weighted avg     0.8295    0.8899    0.8416     34211
+
+F1-macro tok:  0.17629990310446342
+F1-micro tok:  0.889889216918535
+**************************************************
+test1_cost_sum: 21056.218032836914
+test1_cost_avg: 7.781307477027684
+test1_count_sent: 2706.0
+test1_total_correct_sent: 1709.0
+test1_accuracy_sent: 0.631559497413156
+test1_count_tok: 40787.0
+test1_total_correct_tok: 35790.0
+test1_accuracy_tok: 0.8774854733125751
+test1_label=c_precision_sent: 0.3790523690773067
+test1_label=c_recall_sent: 0.1688888888888889
+test1_label=c_f-score_sent: 0.23366641045349731
+test1_label=i_precision_sent: 0.6754880694143167
+test1_label=i_recall_sent: 0.8621262458471761
+test1_label=i_f-score_sent: 0.757479931890051
+test1_precision_macro_sent: 0.5272702192458117
+test1_recall_macro_sent: 0.5155075673680325
+test1_f-score_macro_sent: 0.4955731711717742
+test1_precision_micro_sent: 0.631559497413156
+test1_recall_micro_sent: 0.631559497413156
+test1_f-score_micro_sent: 0.631559497413156
+test1_label=c_precision_tok: 0.8805128332546526
+test1_label=c_recall_tok: 0.9975510204081632
+test1_label=c_f-score_tok: 0.9353851026764504
+test1_label=DET_precision_tok: 0.0
+test1_label=DET_recall_tok: 0.0
+test1_label=DET_f-score_tok: 0.0
+test1_label=NOUN_precision_tok: 1.0
+test1_label=NOUN_recall_tok: 0.024017467248908297
+test1_label=NOUN_f-score_tok: 0.046908315565031986
+test1_label=OTHER_precision_tok: 0.0
+test1_label=OTHER_recall_tok: 0.0
+test1_label=OTHER_f-score_tok: 0.0
+test1_label=PREP_precision_tok: 0.0
+test1_label=PREP_recall_tok: 0.0
+test1_label=PREP_f-score_tok: 0.0
+test1_label=PRON_precision_tok: 0.0
+test1_label=PRON_recall_tok: 0.0
+test1_label=PRON_f-score_tok: 0.0
+test1_label=PUNCT_precision_tok: 0.0
+test1_label=PUNCT_recall_tok: 0.0
+test1_label=PUNCT_f-score_tok: 0.0
+test1_label=SPELL_precision_tok: 0.6454720616570327
+test1_label=SPELL_recall_tok: 0.4272959183673469
+test1_label=SPELL_f-score_tok: 0.5141980046047583
+test1_label=VERB_precision_tok: 0.8571428571428571
+test1_label=VERB_recall_tok: 0.007308160779537149
+test1_label=VERB_f-score_tok: 0.014492753623188406
+test1_precision_macro_tok: 0.37590308356161584
+test1_recall_macro_tok: 0.1617969518671062
+test1_f-score_macro_tok: 0.16788713071882544
+test1_precision_micro_tok: 0.8774854733125751
+test1_recall_micro_tok: 0.8774854733125751
+test1_f-score_micro_tok: 0.8774854733125751
+test1_time: 24.518361806869507
+**************************************************
+Sentence pred: 
+              precision    recall  f1-score   support
+
+           c     0.3791    0.1689    0.2337       900
+           i     0.6755    0.8621    0.7575      1806
+
+   micro avg     0.6316    0.6316    0.6316      2706
+   macro avg     0.5273    0.5155    0.4956      2706
+weighted avg     0.5769    0.6316    0.5833      2706
+
+F1-macro sent:  0.4955731711717742
+F1-micro sent:  0.631559497413156
+**************************************************
+Token pred: 
+              precision    recall  f1-score   support
+
+           c     0.8805    0.9976    0.9354     35525
+         DET     0.0000    0.0000    0.0000       567
+        NOUN     1.0000    0.0240    0.0469       458
+       OTHER     0.0000    0.0000    0.0000      1408
+        PREP     0.0000    0.0000    0.0000       459
+        PRON     0.0000    0.0000    0.0000       324
+       PUNCT     0.0000    0.0000    0.0000       441
+       SPELL     0.6455    0.4273    0.5142       784
+        VERB     0.8571    0.0073    0.0145       821
+
+   micro avg     0.8775    0.8775    0.8775     40787
+   macro avg     0.3759    0.1618    0.1679     40787
+weighted avg     0.8078    0.8775    0.8254     40787
+
+F1-macro tok:  0.16788713071882544
+F1-micro tok:  0.8774854733125751
+**************************************************
