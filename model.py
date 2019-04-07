@@ -1,4 +1,5 @@
 from modules import single_head_attention, multi_head_attention, transformer_attention, transformer_attention_version2
+from modules import transformer_single_heads_multi_attention
 import collections
 import numpy
 import pickle
@@ -342,9 +343,9 @@ class Model(object):
                     dropout=self.config["dropout_attention"],
                     use_residual_connection=self.config["residual_connection"],
                     token_scoring_method=self.config["token_scoring_method"])
-            """
+            
             self.sentence_scores, self.sentence_predictions, \
-                self.token_scores, self.token_predictions, self.m, self.n, self.p = transformer_attention_version2(
+                self.token_scores, self.token_predictions = transformer_attention_version2(
                     inputs=lstm_outputs,
                     initializer=self.initializer,
                     attention_activation=self.config["attention_activation"],
@@ -354,6 +355,17 @@ class Model(object):
                     dropout=self.config["dropout_attention"],
                     sentence_lengths=self.sentence_lengths,
                     normalize_sentence=self.config["normalize_sentence"],
+                    token_scoring_method=self.config["token_scoring_method"])
+            """
+
+            self.sentence_scores, self.sentence_predictions, \
+                self.token_scores, self.token_predictions = transformer_single_heads_multi_attention(
+                    inputs=lstm_outputs,
+                    initializer=self.initializer,
+                    attention_activation=self.config["attention_activation"],
+                    num_sentence_labels=len(self.label2id_sent),
+                    num_heads=len(self.label2id_tok),
+                    sentence_lengths=self.sentence_lengths,
                     token_scoring_method=self.config["token_scoring_method"])
 
             # Token-level loss
@@ -671,23 +683,22 @@ class Model(object):
 
     def process_batch(self, batch, is_training, learning_rate):
         feed_dict = self.create_input_dictionary_for_batch(batch, is_training, learning_rate)
-        cost, sentence_scores, token_scores, sentence_pred, token_pred, sent_lengths, m, n, p = self.session.run(
+        cost, sentence_scores, token_scores, sentence_pred, token_pred = self.session.run(
             [self.loss, self.sentence_scores, self.token_scores,
-             self.sentence_predictions, self.token_predictions,
-             self.sentence_lengths, self.m, self.n, self.p] +
-            ([self.train_op] if is_training else []), feed_dict=feed_dict)[:9]
+             self.sentence_predictions, self.token_predictions] +
+            ([self.train_op] if is_training else []), feed_dict=feed_dict)[:5]
         # print("Sentence scores:\n", sentence_scores, "\n", "*" * 50, "\n")
         # print("Token scores:\n", token_scores, "\n", "*" * 50, "\n")
         # print("Sentence pred:\n", sentence_pred, "\n", "*" * 50, "\n")
         # print("Token pred:\n", token_pred, "\n", "*" * 50, "\n")
-        print("Sent lengths: ", sent_lengths.shape)
-        print("M of shape ", m.shape)
-        print("N of shape ", n.shape)
-        print("P of shape ", p.shape)
-        print("Sent lengths = ", sent_lengths)
-        print("*" * 50, "\nM =\n", "\n\n".join(["\n".join([str(elem) for elem in e]) for e in m]))
-        print("*" * 50, "\nN =\n", "\n\n".join(["\n".join([str(elem) for elem in e]) for e in n]))
-        print("*" * 50, "\nP =\n", "\n\n".join(["\n".join([str(elem) for elem in e]) for e in p]))
+        # print("Sent lengths: ", sent_lengths.shape)
+        # print("M of shape ", m.shape)
+        # print("N of shape ", n.shape)
+        # print("P of shape ", p.shape)
+        # print("Sent lengths = ", sent_lengths)
+        # print("*" * 50, "\nM =\n", "\n\n".join(["\n".join([str(elem) for elem in e]) for e in m]))
+        # print("*" * 50, "\nN =\n", "\n\n".join(["\n".join([str(elem) for elem in e]) for e in n]))
+        # print("*" * 50, "\nP =\n", "\n\n".join(["\n".join([str(elem) for elem in e]) for e in p]))
         return cost, sentence_pred, token_pred
 
     def initialize_session(self):

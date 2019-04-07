@@ -4,7 +4,12 @@ import tensorflow_probability as tfp
 
 
 def kl_divergence_loss(expected_logits, actual_logits):
-    """KL divergence loss"""
+    """
+    KL divergence loss
+    :param expected_logits: the expected logits
+    :param actual_logits: the true logits
+    :return KL-divergence between the two distributions (expected and true)
+    """
     p = tfp.distributions.Categorical(logits=expected_logits)
     q = tfp.distributions.Categorical(logits=actual_logits)
     return tfp.distributions.kl_divergence(p, q)
@@ -21,6 +26,12 @@ def combine_attentions(attention_list):
 
 
 def mse_loss(expected_logits, actual_weights):
+    """
+    Mean Squared Error (MSE) loss
+    :param expected_logits: the estimated values
+    :param actual_weights: the actual values
+    :return: the MSE error between the true and the computed values
+    """
     expected_weights = tf.nn.softmax(expected_logits)
     return tf.losses.mean_squared_error(expected_weights, actual_weights)
 
@@ -148,7 +159,7 @@ def transformer_attention(inputs, initializer,
                           use_residual_connection,
                           token_scoring_method):
     """
-    Compute the multi-head transformer architecture.
+    Implementation for the multi-head transformer architecture.
     :param inputs: 3D floats of shape [B x M x E]
     :param initializer: type of initializer (best if glorot or xavier)
     :param hidden_units: number of units to use for the processed vector
@@ -201,7 +212,7 @@ def transformer_attention(inputs, initializer,
             name="dropout_transducer_attention_weights")    # [(heads * B) x M x M]
 
         product = tf.matmul(attention_weights, values)  # [(heads * B) x M x (num_units / heads)]
-        product = tf.concat(tf.split(product, num_heads, axis=0), axis=2)  # [B x M x num_units]
+        product = tf.concat(tf.split(product, num_heads), axis=2)  # [B x M x num_units]
 
         # Add a residual connection, followed by layer normalization.
         if use_residual_connection:
@@ -227,7 +238,7 @@ def transformer_attention(inputs, initializer,
             token_scores = tf.expand_dims(tf.reduce_max(attention_evidence, axis=1), axis=2)  # [B x M x 1]
         else:
             token_scores = tf.expand_dims(tf.reduce_mean(attention_evidence, axis=1), axis=2)  # [B x M x 1]
-        token_scores = tf.concat(tf.split(token_scores, num_heads, axis=0), axis=2)  # [B x M x num_heads]
+        token_scores = tf.concat(tf.split(token_scores, num_heads), axis=2)  # [B x M x num_heads]
         token_proba = tf.nn.softmax(token_scores)
         token_predictions = tf.argmax(token_proba, axis=2, output_type=tf.int32)  # [B x M]
 
@@ -236,7 +247,7 @@ def transformer_attention(inputs, initializer,
 
 def layer_normalization(layer, epsilon=1e-8):
     """
-    Implementation of layer normalization.
+    Implementation for layer normalization.
     :param layer: has at least 2D shape, with the first one being batch_size
     :param epsilon: a small number to avoid numerical issues, such as zero division.
     :return: normalized tensor, of the same shape as the input
@@ -283,9 +294,10 @@ def transformer_attention_version2(
         sentence_lengths,
         normalize_sentence,
         token_scoring_method,
+        activation=None,
         separate_heads_for_sentence_scores=True):
     """
-    Compute the multi-head transformer architecture.
+    Implementation for the multi-head transformer architecture.
     :param inputs: 3D floats of shape [B x M x E]
     :param initializer: type of initializer (best if glorot or xavier)
     :param attention_activation: type of attention activation (linear, softmax or sigmoid)
@@ -296,6 +308,7 @@ def transformer_attention_version2(
     :param sentence_lengths: the true sentence lengths, used for masking
     :param normalize_sentence: if set to True, the last weighted sentence layer is normalized
     :param token_scoring_method: can be either max, sum or avg
+    :param activation: used in computing the sentence scores from the token scores (per-head)
     :param separate_heads_for_sentence_scores: boolean value; when set to False, all heads
     are used to obtain the sentence scores; when set to True, the default and non-default heads
     from the token scores are used to obtain the sentence scores.
@@ -392,29 +405,220 @@ def transformer_attention_version2(
 
         # Obtain the sentence scores as a weighted sum between the inputs and the attention weights.
         weighted_sum_representation = tf.matmul(token_probabilities, values)  # [B, num_heads, num_units]
-        m = weighted_sum_representation
-
         if normalize_sentence:
             weighted_sum_representation = layer_normalization(weighted_sum_representation)
-
         processed_tensor = tf.reduce_sum(weighted_sum_representation, axis=2)  # [B, num_heads]
-        n = processed_tensor
 
         if separate_heads_for_sentence_scores:
             sentence_default_score = tf.expand_dims(processed_tensor[:, 0], axis=-1)
             sentence_non_default_scores = tf.layers.dense(
                 inputs=processed_tensor[:, 1:], units=num_sentence_labels-1,
-                activation=None, kernel_initializer=initializer,
+                activation=activation, kernel_initializer=initializer,
                 name="ff_sentence_default_scores")
             sentence_scores = tf.concat([sentence_default_score, sentence_non_default_scores],
                                         axis=-1, name="sentence_scores_concatenation")
         else:
             sentence_scores = tf.layers.dense(
                 inputs=processed_tensor, units=num_sentence_labels,
-                activation=None, kernel_initializer=initializer,
+                activation=activation, kernel_initializer=initializer,
                 name="ff_sentence_scores")  # [B, num_unique_sent_labels]
-        p = sentence_scores
+
         sentence_probabilities = tf.nn.softmax(sentence_scores)
         sentence_predictions = tf.argmax(sentence_probabilities, axis=1)  # [B]
-        return sentence_scores, sentence_predictions, tf.transpose(token_scores, [0, 2, 1]), token_predictions, m, n, p
+        return sentence_scores, sentence_predictions, tf.transpose(token_scores, [0, 2, 1]), token_predictions
+
+
+def compute_attention_classic(inputs, initializer, attention_size,
+                              sentence_lengths, hidden_units):
+    """
+    Compute single head attention (just normal, vanilla, soft attention).
+    :param inputs: 3D floats of shape [B x M x E]
+    :param initializer: type of initializer (best if glorot or xavier)
+    :param attention_size: number of units to use for the attention evidence
+    :param sentence_lengths: 2D ints of shape [B x M]
+    :param hidden_units: number of units to use for the processed vector
+    :return sentence_scores: result of the attention * input; floats of shape [B]
+    :return token_scores: result of the un-normalized attention weights; floats of shape [B x M]
+    """
+    with tf.variable_scope("compute_classic_single_head_attention"):
+        attention_evidence = tf.layers.dense(
+            inputs=inputs, units=attention_size,
+            activation=tf.tanh, kernel_initializer=initializer)  # [B, M, attention_size]
+        attention_weights = tf.layers.dense(
+            inputs=attention_evidence, units=1,
+            activation=None, kernel_initializer=initializer)  # [B, M, 1]
+        attention_weights = tf.squeeze(attention_weights, axis=-1)  # [B, M]
+        attention_weights = tf.sigmoid(attention_weights)
+        attention_weights = tf.where(
+            tf.sequence_mask(sentence_lengths),
+            attention_weights, tf.zeros_like(attention_weights))
+        token_scores = attention_weights  # [B, M]
+        attention_weights = attention_weights / tf.reduce_sum(
+            attention_weights, axis=1, keep_dims=True)  # [B, M]
+        product = inputs * tf.expand_dims(attention_weights, axis=-1)  # [B, M, E]
+        processed_tensor = tf.reduce_sum(product, axis=1)  # [B, E]
+
+        if hidden_units > 0:
+            processed_tensor = tf.layers.dense(
+                inputs=processed_tensor, units=hidden_units,
+                activation=tf.tanh, kernel_initializer=initializer)  # [B, hidden_units]
+
+        sentence_scores = tf.layers.dense(
+            inputs=processed_tensor, units=1,
+            activation=tf.sigmoid, kernel_initializer=initializer,
+            name="output_sent_single_head_ff")  # [B, 1]
+        sentence_scores = tf.squeeze(sentence_scores, axis=-1)
+        return sentence_scores, token_scores
+
+
+def compute_attention_transformer(
+        inputs,
+        initializer,
+        attention_activation,
+        sentence_lengths,
+        token_scoring_method):
+    """
+    Implementation for the multi-head transformer architecture.
+    :param inputs: 3D floats of shape [B x M x E]
+    :param initializer: type of initializer (best if glorot or xavier)
+    :param attention_activation: type of attention activation (linear, softmax or sigmoid)
+    :param sentence_lengths: 2D ints of shape [B x M]
+    :param token_scoring_method: can be either max, sum or avg
+    :return sentence_scores: 2D floats of shape [B x num_sentence_labels]
+    :return token_scores: 3D floats of shape [B x M x num_heads]
+    """
+    with tf.variable_scope("compute_transformer_single_head_attention"):
+        num_units = inputs.get_shape().as_list()[-1]
+
+        # Project to get the queries, keys, and values, all of them of shape [B, M, num_units].
+        queries = tf.layers.dense(
+            inputs, num_units, activation=tf.tanh,
+            kernel_initializer=initializer)
+        keys = tf.layers.dense(
+            inputs, num_units, activation=tf.tanh,
+            kernel_initializer=initializer)
+        values = tf.layers.dense(
+            inputs, num_units, activation=tf.tanh,
+            kernel_initializer=initializer)
+
+        # Scaled dot-product attention.
+        attention_evidence = tf.matmul(queries, tf.transpose(keys, [0, 2, 1]))  # [B, M, M]
+        attention_evidence = tf.math.divide(attention_evidence, tf.constant(num_units ** 0.5))
+
+        # Mask out the 0 values in the attention_evidence before proceeding to the non-linear activation.
+        attention_evidence = tf.where(
+            tf.equal(attention_evidence, 0),
+            tf.ones_like(attention_evidence) * (-2 ** 32 + 1),
+            attention_evidence)  # [B, M, M]
+
+        # Obtain the un-normalized attention weights.
+        if attention_activation == "soft":
+            attention_weights = tf.nn.sigmoid(attention_evidence)
+        elif attention_activation == "sharp":
+            attention_weights = tf.exp(attention_evidence)
+        elif attention_activation == "linear":
+            attention_weights = attention_evidence
+        else:
+            raise ValueError("Unknown/unsupported activation for attention: %s"
+                             % attention_activation)
+
+        # Obtain the token scores from the attention weights.
+        # The token_scores below will have shape [B, M].
+        if token_scoring_method == "sum":
+            token_scores = tf.reduce_sum(attention_weights, axis=1)
+        elif token_scoring_method == "max":
+            token_scores = tf.reduce_max(attention_weights, axis=1)
+        elif token_scoring_method == "avg":
+            token_scores = tf.reduce_mean(attention_weights, axis=1)
+        else:
+            raise ValueError("Unknown/unsupported token scoring method: %s" % token_scoring_method)
+
+        # Mask the token scores
+        token_scores_mask = tf.sequence_mask(sentence_lengths)  # [B, M]
+
+        token_scores = tf.where(token_scores_mask, token_scores, tf.zeros_like(token_scores))
+
+        token_probabilities = division_masking(
+            inputs=token_scores, axis=-1, multiplies=[1, tf.shape(token_scores)[1]])  # [B, M]
+        token_probabilities = tf.expand_dims(token_probabilities, axis=1)  # [B, 1, M]
+
+        # Obtain the sentence scores as a weighted sum between the inputs and the attention weights.
+        weighted_sum_representation = tf.matmul(token_probabilities, values)  # [B, 1, num_units]
+        sentence_scores = tf.reduce_sum(weighted_sum_representation, axis=-1)  # [B, 1]
+        sentence_scores = tf.squeeze(sentence_scores, axis=-1)
+        return sentence_scores, token_scores
+
+
+def transformer_single_heads_multi_attention(
+        inputs,
+        initializer,
+        attention_activation,
+        num_sentence_labels,
+        num_heads,
+        sentence_lengths,
+        token_scoring_method,
+        activation=None,
+        how_to_compute_attention="transformer",
+        separate_heads_for_sentence_scores=True):
+    """
+    Implementation for the multi-head transformer architecture.
+    :param inputs: 3D floats of shape [B x M x E]
+    :param initializer: type of initializer (best if glorot or xavier)
+    :param attention_activation
+    :param num_sentence_labels: number of unique sentence labels
+    :param num_heads: number of unique token labels
+    :param sentence_lengths: the true sentence lengths, used for masking
+    :param token_scoring_method
+    :param activation
+    :param how_to_compute_attention: compute attention in the classic way (Marek) or as in transformer
+    :param separate_heads_for_sentence_scores: boolean value; when set to False, all heads
+    are used to obtain the sentence scores; when set to True, the default and non-default heads
+    from the token scores are used to obtain the sentence scores.
+    :return sentence_scores: 2D floats of shape [B x num_sentence_labels]
+    :return sentence_predictions: predicted labels for each sentence in the batch; ints of shape [B]
+    :return token_scores: 3D floats of shape [B x M x num_heads]
+    :return token_predictions: predicted labels for each token in each sentence; ints of shape [B x M]
+    """
+    with tf.variable_scope("transformer_single_heads_multi_attention"):
+        token_scores_per_head = []
+        sentence_scores_per_head = []
+        for i in range(num_heads):
+            with tf.variable_scope("num_head_{}".format(i), reuse=tf.AUTO_REUSE):
+                if how_to_compute_attention == "classic":
+                    sentence_scores_head_i, token_scores_head_i = compute_attention_classic(
+                        inputs=inputs, initializer=initializer, attention_size=50,
+                        sentence_lengths=sentence_lengths, hidden_units=100)
+                else:
+                    sentence_scores_head_i, token_scores_head_i = compute_attention_transformer(
+                        inputs=inputs, initializer=initializer, attention_activation=attention_activation,
+                        sentence_lengths=sentence_lengths, token_scoring_method=token_scoring_method)
+                sentence_scores_per_head.append(sentence_scores_head_i)
+                token_scores_per_head.append(token_scores_head_i)
+
+        sentence_scores = tf.stack(sentence_scores_per_head, axis=-1)  # [B, num_heads]
+
+        if separate_heads_for_sentence_scores:
+            sentence_default_score = tf.layers.dense(
+                inputs=tf.expand_dims(sentence_scores[:, 0], axis=-1), units=1,
+                activation=activation, kernel_initializer=initializer,
+                name="ff_non_default_sentence_scores")
+            sentence_non_default_scores = tf.layers.dense(
+                inputs=sentence_scores[:, 1:], units=num_sentence_labels-1,
+                activation=activation, kernel_initializer=initializer,
+                name="ff_default_sentence_scores")
+            sentence_scores = tf.concat([sentence_default_score, sentence_non_default_scores],
+                                        axis=-1, name="sentence_scores_concatenation")
+        else:
+            sentence_scores = tf.layers.dense(
+                inputs=sentence_scores, units=num_sentence_labels,
+                activation=activation, kernel_initializer=initializer,
+                name="ff_sentence_scores")  # [B, num_sentence_labels]
+
+        sentence_probabilities = tf.nn.softmax(sentence_scores)
+        sentence_predictions = tf.argmax(sentence_probabilities, axis=1)  # [B]
+
+        token_scores = tf.stack(token_scores_per_head, axis=-1)  # [B, M, num_heads]
+        token_predictions = tf.argmax(token_scores, axis=-1)  # [B, M]
+
+        return sentence_scores, sentence_predictions, token_scores, token_predictions
 
