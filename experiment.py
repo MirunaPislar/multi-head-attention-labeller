@@ -366,7 +366,10 @@ class Experiment:
         
         if data_train:
             model_selector_splits = self.config["model_selector"].split(":")
-            model_selector_ratios_splits = [float(val) for val in self.config["model_selector_ratio"].split(":")]
+            if type(self.config["model_selector_ratio"]) == str:
+                model_selector_ratios_splits = [float(val) for val in self.config["model_selector_ratio"].split(":")]
+            else:
+                model_selector_ratios_splits = [self.config["model_selector_ratio"]]
             model_selector_type = model_selector_splits[-1]
             model_selector_values = model_selector_splits[:-1]
             assert (len(model_selector_values) == len(model_selector_ratios_splits)

@@ -1,4 +1,4 @@
-from modules import single_head_attention, multi_head_attention, transformer_attention
+from modules import single_head_attention, multi_head_attention, transformer_attention, transformer_attention_version2
 import collections
 import numpy
 import pickle
@@ -214,7 +214,7 @@ class Model(object):
         dropout_input = (self.config["dropout_input"] * tf.cast(self.is_training, tf.float32)
                          + (1.0 - tf.cast(self.is_training, tf.float32)))
         word_input_tensor = tf.nn.dropout(
-            x=word_input_tensor, rate=1 - dropout_input, name="dropout_word")
+            word_input_tensor, dropout_input, name="dropout_word")
 
         word_lstm_cell_fw = tf.nn.rnn_cell.LSTMCell(
             self.config["word_recurrent_size"],
@@ -243,7 +243,7 @@ class Model(object):
                              + (1.0 - tf.cast(self.is_training, tf.float32)))
 
         lstm_outputs_fw = tf.nn.dropout(
-            x=lstm_outputs_fw, rate=1 - dropout_word_lstm,
+            lstm_outputs_fw, dropout_word_lstm,
             noise_shape=tf.convert_to_tensor(
                 [tf.shape(self.word_ids)[0], 1, self.config["word_recurrent_size"]], dtype=tf.int32))
         lstm_outputs_bw = tf.nn.dropout(
@@ -251,16 +251,17 @@ class Model(object):
             noise_shape=tf.convert_to_tensor(
                 [tf.shape(self.word_ids)[0], 1, self.config["word_recurrent_size"]], dtype=tf.int32))
 
-        # Note the -1: the states are concatenated at every token position.
-        lstm_outputs = tf.concat([lstm_outputs_fw, lstm_outputs_bw], -1)  # B x Max_len x 2 * Emb_size
-
-        if self.config["whidden_layer_size"] > 0:
-            lstm_outputs = tf.layers.dense(
-                inputs=lstm_outputs, units=self.config["whidden_layer_size"],
-                activation=tf.tanh, kernel_initializer=self.initializer)  # B x Max_len x Hidden_size
+        # The states are concatenated at every token position.
+        lstm_outputs = tf.concat([lstm_outputs_fw, lstm_outputs_bw], -1)  # [B, M, 2 * Emb_size]
 
         if self.config["model_type"] == "previous" \
                 and len(self.label2id_tok) == 2 and len(self.label2id_sent) == 2:
+
+            if self.config["whidden_layer_size"] > 0:
+                lstm_outputs = tf.layers.dense(
+                    inputs=lstm_outputs, units=self.config["whidden_layer_size"],
+                    activation=tf.tanh, kernel_initializer=self.initializer)  # [B, M, Hidden_size]
+
             self.sentence_scores, self.sentence_predictions, \
                 self.token_scores, self.token_predictions = single_head_attention(
                     lstm_outputs, self.initializer, self.config["attention_evidence_size"],
@@ -310,8 +311,6 @@ class Model(object):
             # Token-level loss
             word_objective_loss = tf.nn.sparse_softmax_cross_entropy_with_logits(
                 logits=self.token_scores, labels=tf.cast(self.word_labels, tf.int32))
-            # mask = tf.sequence_mask(self.sentence_lengths, maxlen=tf.shape(self.word_ids)[1])
-            # word_objective_loss = tf.boolean_mask(word_objective_loss, mask)
             word_objective_loss = tf.where(
                 tf.sequence_mask(self.sentence_lengths),
                 word_objective_loss, tf.zeros_like(word_objective_loss))
@@ -325,37 +324,58 @@ class Model(object):
                 self.sentence_objective_weights * sentence_objective_loss)
 
         elif self.config["model_type"] == "transformer":
+            lstm_outputs = tf.layers.dense(
+                inputs=lstm_outputs, units=5,
+                #units=len(self.label2id_tok) * self.config["whidden_layer_size"],
+                activation=tf.nn.relu, kernel_initializer=self.initializer)  # [B, M, num_heads * hidden_size]
+
+            """
             self.sentence_scores, self.sentence_predictions,\
                 self.token_scores, self.token_predictions, token_probabilities = transformer_attention(
                     inputs=lstm_outputs,
                     initializer=self.initializer,
-                    attention_size=self.config["attention_evidence_size"],
+                    attention_activation=self.config["attention_activation"],
                     hidden_units=self.config["hidden_layer_size"],
                     num_sentence_labels=len(self.label2id_sent),
                     num_heads=len(self.label2id_tok),
-                    shrink_input=self.config["shrink_input"],
                     is_training=self.is_training,
                     dropout=self.config["dropout_attention"],
                     use_residual_connection=self.config["residual_connection"],
                     token_scoring_method=self.config["token_scoring_method"])
+            """
+            self.sentence_scores, self.sentence_predictions, \
+                self.token_scores, self.token_predictions, self.m, self.n, self.p = transformer_attention_version2(
+                    inputs=lstm_outputs,
+                    initializer=self.initializer,
+                    attention_activation=self.config["attention_activation"],
+                    num_sentence_labels=len(self.label2id_sent),
+                    num_heads=len(self.label2id_tok),
+                    is_training=self.is_training,
+                    dropout=self.config["dropout_attention"],
+                    sentence_lengths=self.sentence_lengths,
+                    normalize_sentence=self.config["normalize_sentence"],
+                    token_scoring_method=self.config["token_scoring_method"])
 
             # Token-level loss
-            word_objective_loss = tf.nn.sparse_softmax_cross_entropy_with_logits(
-                logits=self.token_scores, labels=tf.cast(self.word_labels, tf.int32))
-            word_objective_loss = tf.where(
-                tf.sequence_mask(self.sentence_lengths),
-                word_objective_loss, tf.zeros_like(word_objective_loss))
-            self.loss += self.config["word_objective_weight"] * tf.reduce_sum(
-                self.word_objective_weights * word_objective_loss)
+            if self.config["word_objective_weight"] > 0:
+                word_objective_loss = tf.nn.sparse_softmax_cross_entropy_with_logits(
+                    logits=self.token_scores, labels=tf.cast(self.word_labels, tf.int32))
+                word_objective_loss = tf.where(
+                    tf.sequence_mask(self.sentence_lengths),
+                    word_objective_loss, tf.zeros_like(word_objective_loss))
+                self.loss += self.config["word_objective_weight"] * tf.reduce_sum(
+                    self.word_objective_weights * word_objective_loss)
 
             # Sentence-level loss
-            sentence_objective_loss = tf.nn.sparse_softmax_cross_entropy_with_logits(
-                logits=self.sentence_scores, labels=tf.cast(self.sentence_labels, tf.int32))
-            self.loss += self.config["sentence_objective_weight"] * tf.reduce_sum(
-                self.sentence_objective_weights * sentence_objective_loss)
+            if self.config["sentence_objective_weight"] > 0:
+                sentence_objective_loss = tf.nn.sparse_softmax_cross_entropy_with_logits(
+                    logits=self.sentence_scores, labels=tf.cast(self.sentence_labels, tf.int32))
+                self.loss += self.config["sentence_objective_weight"] * tf.reduce_sum(
+                    self.sentence_objective_weights * sentence_objective_loss)
 
-            # Prepare the mask for the token scores outside the true sentence length
-            # for each head (change shape from [B x M] to [B  x M x num_heads]).
+            """
+            # Mask the token scores that do not fall in the range of the true sentence length.
+            # Do this for each head (change shape from [B, M] to [B, M, num_heads]).
             masked_sentence_lengths = tf.tile(
                 input=tf.expand_dims(
                     tf.sequence_mask(self.sentence_lengths), axis=-1),
@@ -427,7 +447,7 @@ class Model(object):
                                 tf.math.abs(
                                     tf.math.subtract(max_head_token_scores_default_head,
                                                      max_head_token_scores_non_default_heads))))))
-
+            """
         # This is the token-level language modelling objective, L_LM
         if self.config["lmcost_lstm_gamma"] > 0.0:
             self.loss += self.config["lmcost_lstm_gamma"] * self.construct_lmcost(
@@ -651,14 +671,23 @@ class Model(object):
 
     def process_batch(self, batch, is_training, learning_rate):
         feed_dict = self.create_input_dictionary_for_batch(batch, is_training, learning_rate)
-        cost, sentence_scores, token_scores, sentence_pred, token_pred = self.session.run(
+        cost, sentence_scores, token_scores, sentence_pred, token_pred, sent_lengths, m, n, p = self.session.run(
             [self.loss, self.sentence_scores, self.token_scores,
-             self.sentence_predictions, self.token_predictions] +
-            ([self.train_op] if is_training else []), feed_dict=feed_dict)[:5]
+             self.sentence_predictions, self.token_predictions,
+             self.sentence_lengths, self.m, self.n, self.p] +
+            ([self.train_op] if is_training else []), feed_dict=feed_dict)[:9]
         # print("Sentence scores:\n", sentence_scores, "\n", "*" * 50, "\n")
         # print("Token scores:\n", token_scores, "\n", "*" * 50, "\n")
         # print("Sentence pred:\n", sentence_pred, "\n", "*" * 50, "\n")
         # print("Token pred:\n", token_pred, "\n", "*" * 50, "\n")
+        print("Sent lengths: ", sent_lengths.shape)
+        print("M of shape ", m.shape)
+        print("N of shape ", n.shape)
+        print("P of shape ", p.shape)
+        print("Sent lengths = ", sent_lengths)
+        print("*" * 50, "\nM =\n", "\n\n".join(["\n".join([str(elem) for elem in e]) for e in m]))
+        print("*" * 50, "\nN =\n", "\n\n".join(["\n".join([str(elem) for elem in e]) for e in n]))
+        print("*" * 50, "\nP =\n", "\n\n".join(["\n".join([str(elem) for elem in e]) for e in p]))
         return cost, sentence_pred, token_pred
 
     def initialize_session(self):
