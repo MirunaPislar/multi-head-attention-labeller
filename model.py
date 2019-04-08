@@ -1,5 +1,4 @@
-from modules import single_head_attention, multi_head_attention, transformer_attention, transformer_attention_version2
-from modules import transformer_single_heads_multi_attention
+from modules import *
 import collections
 import numpy
 import pickle
@@ -255,18 +254,28 @@ class Model(object):
         # The states are concatenated at every token position.
         lstm_outputs = tf.concat([lstm_outputs_fw, lstm_outputs_bw], -1)  # [B, M, 2 * Emb_size]
 
-        if self.config["model_type"] == "previous" \
-                and len(self.label2id_tok) == 2 and len(self.label2id_sent) == 2:
+        if self.config["whidden_layer_size"] > 0:
+            lstm_output_units = self.config["whidden_layer_size"]
+            if self.config["scale_whidden_layer_size_by_num_heads"]:
+                lstm_output_units *= len(self.label2id_tok)
+            lstm_outputs = tf.layers.dense(
+                inputs=lstm_outputs, units=lstm_output_units,
+                activation=tf.tanh, kernel_initializer=self.initializer)  # [B, M, lstm_output_units]
 
-            if self.config["whidden_layer_size"] > 0:
-                lstm_outputs = tf.layers.dense(
-                    inputs=lstm_outputs, units=self.config["whidden_layer_size"],
-                    activation=tf.tanh, kernel_initializer=self.initializer)  # [B, M, Hidden_size]
+        if self.config["model_type"] == "single_head_attention_binary_labels":
+            if not(len(self.label2id_tok) == 2 and len(self.label2id_sent) == 2):
+                raise ValueError(
+                    "The model_type you selected (%s) is only available for binary labels! "
+                    "Currently, the no. of sentence labels = %d and the no. of token labels = %d."
+                    % (self.config["model_type"], len(self.label2id_sent), len(self.label2id_tok)))
 
             self.sentence_scores, self.sentence_predictions, \
-                self.token_scores, self.token_predictions = single_head_attention(
-                    lstm_outputs, self.initializer, self.config["attention_evidence_size"],
-                    self.sentence_lengths, self.config["hidden_layer_size"])
+                self.token_scores, self.token_predictions = single_head_attention_binary_labels(
+                    inputs=lstm_outputs,
+                    initializer=self.initializer,
+                    attention_size=self.config["attention_evidence_size"],
+                    sentence_lengths=self.sentence_lengths,
+                    hidden_units=self.config["hidden_layer_size"])
 
             # Token-level loss
             word_objective_loss = tf.square(self.token_scores - self.word_labels)
@@ -301,72 +310,75 @@ class Model(object):
                                     self.token_scores,
                                     tf.zeros_like(self.token_scores) + 1e6),
                                 axis=-1) - 0.0)))
+        else:
+            if self.config["scoring_activation"]:
+                if self.config["scoring_activation"] == "tanh":
+                    scoring_activation = tf.tanh
+                elif self.config["scoring_activation"] == "sigmoid":
+                    scoring_activation = tf.sigmoid
+                elif self.config["scoring_activation"] == "relu":
+                    scoring_activation = tf.relu
+                elif self.config["scoring_activation"] == "None":
+                    scoring_activation = None
+                else:
+                    raise ValueError("Unknown/Unsupported scoring activation %s" %
+                                     self.config["scoring_activation"])
+            else:
+                scoring_activation = None
 
-        elif self.config["model_type"] == "multi-head":
-            self.sentence_scores, self.sentence_predictions, \
-                self.token_scores, self.token_predictions = multi_head_attention(
-                    lstm_outputs, self.initializer, self.config["attention_evidence_size"],
-                    self.sentence_lengths, self.config["hidden_layer_size"],
-                    len(self.label2id_sent), len(self.label2id_tok))
-
-            # Token-level loss
-            word_objective_loss = tf.nn.sparse_softmax_cross_entropy_with_logits(
-                logits=self.token_scores, labels=tf.cast(self.word_labels, tf.int32))
-            word_objective_loss = tf.where(
-                tf.sequence_mask(self.sentence_lengths),
-                word_objective_loss, tf.zeros_like(word_objective_loss))
-            self.loss += self.config["word_objective_weight"] * tf.reduce_sum(
-                self.word_objective_weights * word_objective_loss)
-
-            # Sentence-level loss
-            sentence_objective_loss = tf.nn.sparse_softmax_cross_entropy_with_logits(
-                logits=self.sentence_scores, labels=tf.cast(self.sentence_labels, tf.int32))
-            self.loss += self.config["sentence_objective_weight"] * tf.reduce_sum(
-                self.sentence_objective_weights * sentence_objective_loss)
-
-        elif self.config["model_type"] == "transformer":
-            lstm_outputs = tf.layers.dense(
-                inputs=lstm_outputs, units=5,
-                #units=len(self.label2id_tok) * self.config["whidden_layer_size"],
-                activation=tf.nn.relu, kernel_initializer=self.initializer)  # [B, M, num_heads * hidden_size]
-
-            """
-            self.sentence_scores, self.sentence_predictions,\
-                self.token_scores, self.token_predictions, token_probabilities = transformer_attention(
-                    inputs=lstm_outputs,
-                    initializer=self.initializer,
-                    attention_activation=self.config["attention_activation"],
-                    hidden_units=self.config["hidden_layer_size"],
-                    num_sentence_labels=len(self.label2id_sent),
-                    num_heads=len(self.label2id_tok),
-                    is_training=self.is_training,
-                    dropout=self.config["dropout_attention"],
-                    use_residual_connection=self.config["residual_connection"],
-                    token_scoring_method=self.config["token_scoring_method"])
-            
-            self.sentence_scores, self.sentence_predictions, \
-                self.token_scores, self.token_predictions = transformer_attention_version2(
-                    inputs=lstm_outputs,
-                    initializer=self.initializer,
-                    attention_activation=self.config["attention_activation"],
-                    num_sentence_labels=len(self.label2id_sent),
-                    num_heads=len(self.label2id_tok),
-                    is_training=self.is_training,
-                    dropout=self.config["dropout_attention"],
-                    sentence_lengths=self.sentence_lengths,
-                    normalize_sentence=self.config["normalize_sentence"],
-                    token_scoring_method=self.config["token_scoring_method"])
-            """
-
-            self.sentence_scores, self.sentence_predictions, \
-                self.token_scores, self.token_predictions = transformer_single_heads_multi_attention(
-                    inputs=lstm_outputs,
-                    initializer=self.initializer,
-                    attention_activation=self.config["attention_activation"],
-                    num_sentence_labels=len(self.label2id_sent),
-                    num_heads=len(self.label2id_tok),
-                    sentence_lengths=self.sentence_lengths,
-                    token_scoring_method=self.config["token_scoring_method"])
+            if self.config["model_type"] == "single_head_attention_multiple_labels":
+                self.sentence_scores, self.sentence_predictions, self.token_scores, self.token_predictions, \
+                    token_probabilities = single_head_attention_multiple_labels(
+                        inputs=lstm_outputs,
+                        initializer=self.initializer,
+                        attention_size=self.config["attention_evidence_size"],
+                        sentence_lengths=self.sentence_lengths,
+                        hidden_units=self.config["hidden_layer_size"],
+                        num_sentence_labels=len(self.label2id_sent),
+                        num_token_labels=len(self.label2id_tok))
+            elif self.config["model_type"] == "multi_head_attention_without_masking":
+                self.sentence_scores, self.sentence_predictions, self.token_scores, self.token_predictions, \
+                    token_probabilities = multi_head_attention_without_masking(
+                        inputs=lstm_outputs,
+                        initializer=self.initializer,
+                        attention_activation=self.config["attention_activation"],
+                        hidden_units=self.config["hidden_layer_size"],
+                        num_sentence_labels=len(self.label2id_sent),
+                        num_heads=len(self.label2id_tok),
+                        is_training=self.is_training,
+                        dropout=self.config["dropout_attention"],
+                        use_residual_connection=self.config["residual_connection"],
+                        token_scoring_method=self.config["token_scoring_method"])
+            elif self.config["model_type"] == "multi_head_attention_with_masking":
+                self.sentence_scores, self.sentence_predictions, self.token_scores, self.token_predictions, \
+                    token_probabilities = multi_head_attention_with_masking(
+                        inputs=lstm_outputs,
+                        initializer=self.initializer,
+                        attention_activation=self.config["attention_activation"],
+                        num_sentence_labels=len(self.label2id_sent),
+                        num_heads=len(self.label2id_tok),
+                        is_training=self.is_training,
+                        dropout=self.config["dropout_attention"],
+                        sentence_lengths=self.sentence_lengths,
+                        normalize_sentence=self.config["normalize_sentence"],
+                        token_scoring_method=self.config["token_scoring_method"],
+                        scoring_activation=scoring_activation,
+                        separate_heads_for_sentence_scores=self.config["separate_heads"])
+            elif self.config["model_type"] == "single_head_attention_multiple_transformations":
+                self.sentence_scores, self.sentence_predictions, self.token_scores, self.token_predictions, \
+                    token_probabilities = single_head_attention_multiple_transformations(
+                        inputs=lstm_outputs,
+                        initializer=self.initializer,
+                        attention_activation=self.config["attention_activation"],
+                        num_sentence_labels=len(self.label2id_sent),
+                        num_heads=len(self.label2id_tok),
+                        sentence_lengths=self.sentence_lengths,
+                        token_scoring_method=self.config["token_scoring_method"],
+                        scoring_activation=scoring_activation,
+                        how_to_compute_attention=self.config["how_to_compute_attention"],
+                        separate_heads_for_sentence_scores=self.config["separate_heads"])
+            else:
+                raise ValueError("Unknown/unsupported model type: %s" % self.config["model_type"])
 
             # Token-level loss
             if self.config["word_objective_weight"] > 0:
@@ -385,7 +397,6 @@ class Model(object):
                 self.loss += self.config["sentence_objective_weight"] * tf.reduce_sum(
                     self.sentence_objective_weights * sentence_objective_loss)
 
-            """
             # Mask the token scores that do not fall in the range of the true sentence length.
             # Do this for each head (change shape from [B, M] to [B, M, num_heads]).
             masked_sentence_lengths = tf.tile(
@@ -400,7 +411,13 @@ class Model(object):
                     tf.zeros_like(token_probabilities) - 1e6),
                 axis=1)
 
-            # Attention-level loss
+            # Attention-level loss -- currently, implementation possible only in two cases:
+            #   1. The number of sentence labels is equal to the number of token labels.
+            #      In this case, the attention loss is computed element-wise.
+            #   2. The number of sentence labels is 2, while the number of tokens is arbitrary.
+            #      In this case, two scores are computed from the token scores:
+            #           * one corresponding to the default label
+            #           * one corresponding to the rest of labels (non-default labels)
             if (self.config["attention_objective_weight"] > 0.0
                and (len(self.label2id_sent) == len(self.label2id_sent) or len(self.label2id_sent) == 2)):
                 if len(self.label2id_sent) == 2 and len(self.label2id_tok) > 2:
@@ -438,7 +455,8 @@ class Model(object):
                                         one_hot_sentence_labels),
                                     one_hot_sentence_labels))))
 
-            # Gap loss: the gap between the default and non-default scores should be bigger than a threshold.
+            # Gap-distance loss. The intuition is that the gap between
+            # the default and non-default scores should be bigger than a certain threshold.
             if self.config["gap_objective_weight"]:
                 # Maximum value of the first head (corresponding to the default label).
                 max_head_token_scores_default_head = tf.squeeze(tf.gather(
@@ -449,18 +467,18 @@ class Model(object):
                     max_head_token_scores, indices=[[i] for i in range(1, len(self.label2id_tok))],
                     axis=-1), axis=1), axis=-1)  # [B]
 
-                # Gap loss = weighted sum over sent_obj * max(0, threshold - |max_default_head - max_non_default_head|)
+                # Gap loss = max(0, threshold - |max_default_head - max_non_default_head|).
                 self.loss += self.config["gap_objective_weight"] * (
                     tf.reduce_sum(
                         self.sentence_objective_weights * tf.math.maximum(
                             0.0,
                             tf.math.subtract(
-                                self.config["maximum_gap_threshold"],
+                                self.config["maximum_gap_distance"],
                                 tf.math.abs(
                                     tf.math.subtract(max_head_token_scores_default_head,
                                                      max_head_token_scores_non_default_heads))))))
-            """
-        # This is the token-level language modelling objective, L_LM
+
+        # Token-level language modelling objective
         if self.config["lmcost_lstm_gamma"] > 0.0:
             self.loss += self.config["lmcost_lstm_gamma"] * self.construct_lmcost(
                 input_tensor_fw=lstm_outputs_fw,
