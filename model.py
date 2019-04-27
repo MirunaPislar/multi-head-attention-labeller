@@ -369,9 +369,9 @@ class Model(object):
                         hidden_units=self.config["hidden_layer_size"],
                         num_sentence_labels=len(self.label2id_sent),
                         num_token_labels=len(self.label2id_tok))
-            elif self.config["model_type"] == "multi_head_attention_without_masking":
+            elif self.config["model_type"] == "multi_head_attention_with_scores_from_shared_heads":
                 self.sentence_scores, self.sentence_predictions, self.token_scores, self.token_predictions, \
-                    token_probabilities, self.m, self.n, self.p = multi_head_attention_original_variant(
+                    token_probabilities, self.m, self.n, self.p = multi_head_attention_with_scores_from_shared_heads(
                         inputs=lstm_outputs,
                         initializer=self.initializer,
                         attention_activation=self.config["attention_activation"],
@@ -383,9 +383,9 @@ class Model(object):
                         sentence_lengths=self.sentence_lengths,
                         use_residual_connection=self.config["residual_connection"],
                         token_scoring_method=self.config["token_scoring_method"])
-            elif self.config["model_type"] == "multi_head_attention_with_masking":
+            elif self.config["model_type"] == "multi_head_attention_with_scores_from_separate_heads":
                 self.sentence_scores, self.sentence_predictions, self.token_scores, self.token_predictions, \
-                    token_probabilities = multi_head_attention_with_scores_from_separate_heads(
+                    token_probabilities, self.m, self.n, self.p = multi_head_attention_with_scores_from_separate_heads(
                         inputs=lstm_outputs,
                         initializer=self.initializer,
                         attention_activation=self.config["attention_activation"],
@@ -398,6 +398,7 @@ class Model(object):
                         token_scoring_method=self.config["token_scoring_method"],
                         scoring_activation=scoring_activation,
                         separate_heads_for_sentence_scores=self.config["separate_heads"])
+
             elif self.config["model_type"] == "single_head_attention_multiple_transformations":
                 self.sentence_scores, self.sentence_predictions, self.token_scores, self.token_predictions, \
                     token_probabilities = single_head_attention_multiple_transformations(
@@ -745,13 +746,13 @@ class Model(object):
         print("Sentence pred:\n", sentence_pred, "\n", "*" * 50, "\n")
         print("Token pred:\n", token_pred, "\n", "*" * 50, "\n")
         print("Sent lengths: ", sent_lengths.shape)
-        print("M = attention weight, of shape ", m.shape)
-        print("N = product, of shape ", n.shape)
+        print("M = token_probabilities, of shape ", m.shape)
+        print("N = weighted_sum_representation, of shape ", n.shape)
         print("P = processed_tensor, of shape ", p.shape)
         print("Sent lengths = ", sent_lengths)
         print("*" * 50, "\nM =\n", "\n\n".join(["\n".join([str(elem) for elem in e]) for e in m]))
         print("*" * 50, "\nN =\n", "\n\n".join(["\n".join([str(elem) for elem in e]) for e in
-                                                         [n[0], n[1], n[-2], n[-1]]]))
+                                                [n[0], n[1], n[-2], n[-1]]]))
         print("*" * 50, "\nP =\n", "\n\n".join(["\n".join([str(elem) for elem in e]) for e in p]))
         return cost, sentence_pred, token_pred
 

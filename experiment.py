@@ -343,8 +343,12 @@ class Experiment:
 
         self.label2id_sent = self.create_labels_mapping(Sentence.unique_labels_sent)
         self.label2id_tok = self.create_labels_mapping(Token.unique_labels_tok)
-        print(self.label2id_sent)
-        print(self.label2id_tok)
+        print("Sentence labels to id: ", self.label2id_sent)
+        print("Token labels to id: ", self.label2id_tok)
+
+        data_train = data_train[:400]
+        data_test = data_test[:800]
+        data_dev = data_dev[:400]
 
         data_train = self.convert_labels(data_train)
         data_dev = self.convert_labels(data_dev)
@@ -482,5 +486,24 @@ def initialize_writer(to_write_filename):
 
 if __name__ == "__main__":
     experiment = Experiment()
-    experiment.run_experiment(sys.argv[1])
+
+    test_loaded = True
+
+    if not test_loaded:
+        experiment.run_experiment(sys.argv[1])
+    else:
+        experiment.config = experiment.parse_config("config", sys.argv[1])
+        filename = "models/final/my_mha_model_shared"
+        model = Model.load(filename)
+
+        experiment.label2id_sent = model.label2id_sent
+        experiment.label2id_tok = model.label2id_tok
+        print("Sentence labels to id: ", experiment.label2id_sent)
+        print("Token labels to id: ", experiment.label2id_tok)
+
+        data_test = experiment.read_input_files("test.txt")
+        data_test = experiment.convert_labels(data_test)
+        experiment.process_sentences(
+            data_test, model, is_training=False,
+            learning_rate=0.0, name="test" + "0")
 

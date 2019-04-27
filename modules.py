@@ -235,7 +235,7 @@ def single_head_attention_multiple_labels(
         return sentence_scores, sentence_predictions, token_scores, token_predictions, token_probabilities
 
 
-def multi_head_attention_original_variant(
+def multi_head_attention_with_scores_from_shared_heads(
         inputs,
         initializer,
         attention_activation,
@@ -496,25 +496,39 @@ def multi_head_attention_with_scores_from_separate_heads(
             inputs=token_scores, axis=1, multiplies=[1, num_heads, 1])  # [B, num_heads, M]
         token_predictions = tf.argmax(token_probabilities, axis=1, output_type=tf.int32)  # [B, M]
 
+        # token_weights = token_scores / tf.reduce_sum(token_scores, axis=-1, keep_dims=True)  # [B, num_heads, M]
+
         # Obtain the sentence scores as a weighted sum between the inputs and the attention weights.
-        weighted_sum_representation = tf.matmul(token_probabilities, values)  # [B, num_heads, num_units]
+        weighted_sum_representation = tf.matmul(token_scores, values)  # [B, num_heads, num_units]
         if normalize_sentence:
             weighted_sum_representation = layer_normalization(weighted_sum_representation)
-        processed_tensor = tf.reduce_sum(weighted_sum_representation, axis=2)  # [B, num_heads]
 
         if separate_heads_for_sentence_scores:
+            # Get the sentence representations corresponding to the default head.
             default_head = tf.gather(
-                processed_tensor, indices=[0], axis=-1)
+                weighted_sum_representation,
+                indices=[0], axis=1)  # [B, 1, num_units]
+
+            # Get the sentence representations corresponding to the default head.
             non_default_heads = tf.gather(
-                processed_tensor, indices=[i for i in range(1, num_heads)], axis=-1)
+                weighted_sum_representation,
+                indices=[i for i in range(1, num_heads)], axis=1)  # [B, num_heads - 1, num_units]
+
+            # Project onto one unit (corresponding to the default sentence label score).
             sentence_default_scores = tf.layers.dense(
                 default_head, units=1,
                 activation=scoring_activation, kernel_initializer=initializer,
-                name="ff_sentence_default_scores")
+                name="ff_sentence_default_scores")  # [B, 1, 1]
+            sentence_default_scores = tf.squeeze(sentence_default_scores, axis=1)  # [B, 1]
+
+            # Project onto num_sentence_labels - 1 units, corresponding to
+            # the non-default sentence label scores.
             sentence_non_default_scores = tf.layers.dense(
                 non_default_heads, units=num_sentence_labels-1,
                 activation=scoring_activation, kernel_initializer=initializer,
-                name="ff_sentence_nondefault_scores")
+                name="ff_sentence_nondefault_scores")  # [B, num_heads - 1, num_sentence_labels-1]
+            sentence_non_default_scores = tf.reduce_mean(sentence_non_default_scores, axis=1)  # [B, num_sent_labels-1]
+
             """
             sentence_default_score = tf.expand_dims(processed_tensor[:, 0], axis=-1)
             sentence_non_default_scores = tf.layers.dense(
@@ -524,12 +538,14 @@ def multi_head_attention_with_scores_from_separate_heads(
             """
             sentence_scores = tf.concat(
                 [sentence_default_scores, sentence_non_default_scores],
-                axis=-1, name="sentence_scores_concatenation")  # [B, num_unique_sent_labels]
+                axis=-1, name="sentence_scores_concatenation")  # [B, num_sent_labels]
         else:
-            sentence_scores = tf.layers.dense(
-                inputs=processed_tensor, units=num_sentence_labels,
+            processed_tensor = tf.layers.dense(
+                inputs=weighted_sum_representation, units=num_sentence_labels,
                 activation=scoring_activation, kernel_initializer=initializer,
-                name="ff_sentence_scores")  # [B, num_unique_sent_labels]
+                name="ff_sentence_scores")  # [B, num_heads, num_unique_sent_labels]
+
+            sentence_scores = tf.reduce_sum(processed_tensor, axis=1)  # [B, num_sent_labels]
 
         sentence_probabilities = tf.nn.softmax(sentence_scores)
         sentence_predictions = tf.argmax(sentence_probabilities, axis=1)  # [B]
@@ -537,7 +553,8 @@ def multi_head_attention_with_scores_from_separate_heads(
         token_scores = tf.transpose(token_scores, [0, 2, 1])  # [B, M, num_heads]
         token_probabilities = tf.transpose(token_probabilities, [0, 2, 1])  # [B, M, num_heads]
 
-        return sentence_scores, sentence_predictions, token_scores, token_predictions, token_probabilities
+        return sentence_scores, sentence_predictions, token_scores, token_predictions, token_probabilities, \
+               token_probabilities, weighted_sum_representation, sentence_scores
 
 
 def compute_scores_from_additive_attention(
