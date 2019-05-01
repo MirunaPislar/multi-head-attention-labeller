@@ -4,10 +4,13 @@ from collections import Counter
 from collections import OrderedDict
 import gc
 import math
-import numpy
+import numpy as np
 import os
 import random
 import sys
+import time
+import visualize
+
 if sys.version_info[0] < 3:
     import ConfigParser as configparser
 else:
@@ -298,19 +301,58 @@ class Experiment:
         if is_training:
             random.shuffle(batches_of_sentence_ids)
 
+        all_batches, all_sentence_probs, all_token_probs = [], [], []
+
         for sentence_ids_in_batch in batches_of_sentence_ids:
             batch = [sentences[i] for i in sentence_ids_in_batch]
-            cost, sentence_scores, token_scores_list = model.process_batch(
-                batch, is_training, learning_rate)
-            evaluator.append_data(cost, batch, sentence_scores, token_scores_list)
+            cost, sentence_scores, token_scores, sentence_pred, token_pred, \
+                token_probs, sentence_probs, attention_weights \
+                = model.process_batch(batch, is_training, learning_rate)
+
+            if "test" in name:
+                all_batches.append(batch)
+                all_sentence_probs.append(sentence_probs)
+                all_token_probs.append(token_probs)
+
+            """
+            # Print attention weight scores for each token (to and from).
+            for sentence, sentence_attention_weights in zip(batch, attention_weights):
+                for token1, token1_attn_weights in zip(sentence.tokens, sentence_attention_weights):
+                    print("\nAttention from word ", token1.value, "to : ")
+                    for token2, token2_attn_weights in zip(sentence.tokens, token1_attn_weights):
+                        print("word = ", token2.value, "with label ", token2.label_tok,
+                              " and with head scores: ",
+                              " ".join(["%.10f" % head_score for head_score in token2_attn_weights]))
+                print("*" * 30)
+            """
+
+            # Plot the token scores with probability 0.5 for each sentence in the batch.
+            if "test" in name and self.config["plot_token_scores"]:
+                for sentence, token_proba_per_sentence in zip(batch, token_probs):
+                    visualize.plot_token_scores(
+                        token_probs=token_proba_per_sentence,
+                        sentence=sentence,
+                        plot_name="plots/token_vis/token_heads_vis")
+
+            evaluator.append_data(cost, batch, sentence_pred, token_pred)
 
             while self.config["garbage_collection"] and gc.collect() > 0:
                 pass
-
         results = evaluator.get_results(name)
         for key in results:
             print(key + ": " + str(results[key]))
-        evaluator.get_scikit_results()
+        evaluator.get_results_nice_print()
+
+        # Create html visualizations of the predictions for the test set.
+        if "test" in name and self.config["plot_predictions_html"]:
+            save_name = (self.config["to_write_filename"].split("/")[-1]).split(".")[0]
+            visualize.plot_predictions(
+                all_sentences=all_batches,
+                all_sentence_probs=all_sentence_probs,
+                all_token_probs=all_token_probs,
+                html_file="plots/html_vis/%s" % save_name,
+                sent_binary=len(self.label2id_sent) == 2)
+
         return results
 
     def run_experiment(self, config_path):
@@ -321,14 +363,14 @@ class Experiment:
         """
         self.config = self.parse_config("config", config_path)
         initialize_writer(self.config["to_write_filename"])
-        temp_model_path = "models/temp_model_%.3f" % (random.random() * 100) + ".model"
+        temp_model_path = "models/temp_model_%d" % int(time.time()) + ".model"
 
         if "random_seed" in self.config:
             random.seed(self.config["random_seed"])
-            numpy.random.seed(self.config["random_seed"])
+            np.random.seed(self.config["random_seed"])
 
         for key, val in self.config.items():
-            print(str(key) + ": " + str(val))
+            print(str(key) + " = " + str(val))
 
         data_train, data_dev, data_test = None, None, None
         if self.config["path_train"] and len(self.config["path_train"]) > 0:
@@ -346,13 +388,12 @@ class Experiment:
         print("Sentence labels to id: ", self.label2id_sent)
         print("Token labels to id: ", self.label2id_tok)
 
-        data_train = data_train[:400]
-        data_test = data_test[:800]
-        data_dev = data_dev[:400]
-
         data_train = self.convert_labels(data_train)
         data_dev = self.convert_labels(data_dev)
         data_test = self.convert_labels(data_test)
+
+        data_train = data_train[:400]
+        data_dev = data_dev[:400]
 
         model = Model(self.config, self.label2id_sent, self.label2id_tok)
         model.build_vocabs(data_train, data_dev, data_test,
@@ -371,16 +412,19 @@ class Experiment:
         if data_train:
             model_selector_splits = self.config["model_selector"].split(":")
             if type(self.config["model_selector_ratio"]) == str:
-                model_selector_ratios_splits = [float(val) for val in self.config["model_selector_ratio"].split(":")]
+                model_selector_ratios_splits = [
+                    float(val) for val in self.config["model_selector_ratio"].split(":")]
             else:
                 model_selector_ratios_splits = [self.config["model_selector_ratio"]]
             model_selector_type = model_selector_splits[-1]
             model_selector_values = model_selector_splits[:-1]
             assert (len(model_selector_values) == len(model_selector_ratios_splits)
-                    or len(model_selector_ratios_splits) == 1), "Model selector values and ratios don't match!"
+                    or len(model_selector_ratios_splits) == 1), \
+                "Model selector values and ratios don't match!"
 
-            # Each model_selector_value contributes in proportion to its corresponding (normalized) weight value.
-            # If just one ratio is specified, all model_selector_values receive equal weight.
+            # Each model_selector_value contributes in proportion to its
+            # corresponding (normalized) weight value. If just one ratio is specified,
+            # all model_selector_values receive equal weight.
             if len(model_selector_ratios_splits) == 1:
                 normalized_ratio = model_selector_ratios_splits[0] / sum(
                     model_selector_ratios_splits * len(model_selector_values))
@@ -453,6 +497,7 @@ class Experiment:
                 for path_test in self.config["path_test"].strip().split(":"):
                     data_test = self.read_input_files(path_test)
                     data_test = self.convert_labels(data_test)
+                    data_test = data_test[:100] + data_test[-100:]
                     self.process_sentences(
                         data_test, model, is_training=False,
                         learning_rate=0.0, name="test" + str(i))
@@ -487,23 +532,26 @@ def initialize_writer(to_write_filename):
 if __name__ == "__main__":
     experiment = Experiment()
 
-    test_loaded = True
+    test_loaded = False
 
     if not test_loaded:
         experiment.run_experiment(sys.argv[1])
     else:
         experiment.config = experiment.parse_config("config", sys.argv[1])
-        filename = "models/final/my_mha_model_shared"
-        model = Model.load(filename)
+        filename = "models/final/mha_model_1may"
+        loaded_model = Model.load(filename)
 
-        experiment.label2id_sent = model.label2id_sent
-        experiment.label2id_tok = model.label2id_tok
+        experiment.label2id_sent = loaded_model.label2id_sent
+        experiment.label2id_tok = loaded_model.label2id_tok
         print("Sentence labels to id: ", experiment.label2id_sent)
         print("Token labels to id: ", experiment.label2id_tok)
 
-        data_test = experiment.read_input_files("test.txt")
-        data_test = experiment.convert_labels(data_test)
+        # test_examples = experiment.read_input_files("test.txt")
+        test_examples = experiment.read_input_files(
+            "../mltagger/data/SST_complete/stanford_sentiment.test.complete.tsv")
+        test_examples = experiment.convert_labels(test_examples)
+        test_examples = test_examples[50:100] + test_examples[-50:]
         experiment.process_sentences(
-            data_test, model, is_training=False,
+            test_examples, loaded_model, is_training=False,
             learning_rate=0.0, name="test" + "0")
 
