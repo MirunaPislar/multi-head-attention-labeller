@@ -118,8 +118,8 @@ def single_head_attention_binary_labels(
         attention_weights = tf.where(
             tf.sequence_mask(sentence_lengths),
             attention_weights, tf.zeros_like(attention_weights))
-        attention_weights = attention_weights / tf.reduce_sum(attention_weights, axis=1,
-                                                              keep_dims=True)  # [B, M]
+        attention_weights = attention_weights / tf.reduce_sum(
+            attention_weights, axis=1, keep_dims=True)  # [B, M]
         product = inputs * tf.expand_dims(attention_weights, axis=-1)  # [B, M, E]
         processed_tensor = tf.reduce_sum(product, axis=1)  # [B, E]
 
@@ -153,8 +153,8 @@ def baseline_lstm_last_contexts(
     """
     Compute token and sentence scores/predictions solely from the last context 
     vectors that the Bi-LSTM has produced. Works for flexible no. of labels.
-    :param last_token_contexts: the last Bi-LSTM context per-token 
-    :param last_context: the last Bi-LSTM context of the sentence
+    :param last_token_contexts: the (concatenated) Bi-LSTM outputs per-token.
+    :param last_context: the (concatenated) Bi-LSTM final state.
     :param initializer: type of initializer (best if glorot or xavier)
     :param scoring_activation: used in computing the sentence scores from the token scores (per-head)
     :param sentence_lengths: 2D ints of shape [B, M]
@@ -385,9 +385,9 @@ def multi_head_attention_with_scores_from_shared_heads(
             raise ValueError("Unknown/unsupported attention activation: %s."
                              % attention_activation)
 
-        # Normalize attention weights.
         attention_weights_unnormalized = attention_weights
 
+        # Normalize attention weights.
         if attention_activation != "softmax":
             attention_weights /= tf.reduce_sum(
                 attention_weights, axis=-1, keep_dims=True)
@@ -475,7 +475,7 @@ def multi_head_attention_with_scores_from_separate_heads(
         normalize_sentence,
         token_scoring_method,
         scoring_activation=None,
-        separate_heads_for_sentence_scores=True):
+        separate_heads=True):
     """
     Compute multi-head attention (mainly inspired by the transformer architecture).
     This version of the implementation applies masking at several levels:
@@ -497,7 +497,7 @@ def multi_head_attention_with_scores_from_separate_heads(
     :param normalize_sentence: if set to True, the last weighted sentence layer is normalized
     :param token_scoring_method: can be either max, sum or avg
     :param scoring_activation: used in computing the sentence scores from the token scores (per-head)
-    :param separate_heads_for_sentence_scores: boolean value; when set to False, all heads
+    :param separate_heads: boolean value; when set to False, all heads
     are used to obtain the sentence scores; when set to True, the default and non-default heads
     from the token scores are used to obtain the sentence scores.
     :return sentence_scores: 2D floats of shape [B, num_sentence_labels]
@@ -614,7 +614,7 @@ def multi_head_attention_with_scores_from_separate_heads(
         if normalize_sentence:
             weighted_sum_representation = layer_normalization(weighted_sum_representation)
 
-        if separate_heads_for_sentence_scores:
+        if separate_heads:
             # Get the sentence representations corresponding to the default head.
             default_head = tf.gather(
                 weighted_sum_representation,
@@ -847,7 +847,7 @@ def single_head_attention_multiple_transformations(
         token_scoring_method,
         scoring_activation=None,
         how_to_compute_attention="dot",
-        separate_heads_for_sentence_scores=True):
+        separate_heads=True):
     """
     Compute token and sentence scores using a single-head attention mechanism,
     which can either be additive (mainly inspired by the single-head binary-label
@@ -863,7 +863,7 @@ def single_head_attention_multiple_transformations(
     :param token_scoring_method
     :param scoring_activation: activation used for scoring, default is None.
     :param how_to_compute_attention: compute attention in the classic way (Marek) or as in transformer
-    :param separate_heads_for_sentence_scores: boolean value; when set to False, all heads
+    :param separate_heads: boolean value; when set to False, all heads
     are used to obtain the sentence scores; when set to True, the default and non-default heads
     from the token scores are used to obtain the sentence scores.
     :return sentence_scores: 2D floats of shape [B, num_sentence_labels]
@@ -899,7 +899,7 @@ def single_head_attention_multiple_transformations(
 
         sentence_scores = tf.stack(sentence_scores_per_head, axis=-1)  # [B, num_heads]
 
-        if separate_heads_for_sentence_scores:
+        if separate_heads:
             sentence_default_score = tf.layers.dense(
                 inputs=tf.expand_dims(sentence_scores[:, 0], axis=-1), units=1,
                 activation=scoring_activation, kernel_initializer=initializer,
@@ -908,8 +908,9 @@ def single_head_attention_multiple_transformations(
                 inputs=sentence_scores[:, 1:], units=num_sentence_labels-1,
                 activation=scoring_activation, kernel_initializer=initializer,
                 name="ff_default_sentence_scores")
-            sentence_scores = tf.concat([sentence_default_score, sentence_non_default_scores],
-                                        axis=-1, name="sentence_scores_concatenation")
+            sentence_scores = tf.concat(
+                [sentence_default_score, sentence_non_default_scores],
+                axis=-1, name="sentence_scores_concatenation")
         else:
             sentence_scores = tf.layers.dense(
                 inputs=sentence_scores, units=num_sentence_labels,
@@ -929,4 +930,198 @@ def single_head_attention_multiple_transformations(
 
         return sentence_scores, sentence_predictions, token_scores, token_predictions, \
             token_probabilities, sentence_probabilities, attention_weights
+
+
+def get_token_representative_values(token_probabilities, approach):
+    if "max" in approach:
+        token_representative_values = tf.reduce_max(
+            token_probabilities, axis=1)
+    elif "avg" in approach:
+        token_representative_values = tf.reduce_max(
+            token_probabilities, axis=1)
+    elif "log" in approach:
+        token_representative_values = tf.reduce_logsumexp(
+            token_probabilities, axis=1)
+    else:
+        raise ValueError("Unknown approach for getting "
+                         "token representative values: %s." % approach)
+    return token_representative_values  # [B, num_heads]
+
+
+def get_one_hot_of_token_labels_length(
+        sentence_labels, num_sent_labels, num_tok_labels):
+    one_hot_sentence_labels = tf.one_hot(
+        tf.cast(sentence_labels, tf.int64),
+        depth=num_sent_labels)
+
+    if num_sent_labels == 2 and num_sent_labels != num_tok_labels:
+        # Get the default and non-default sentence labels.
+        default_sentence_labels = tf.gather(
+            one_hot_sentence_labels, indices=[0], axis=-1)  # [B x 1]
+        non_default_sentence_labels = tf.gather(
+            one_hot_sentence_labels, indices=[1], axis=-1)  # [B x 1]
+
+        # Tile the non-default one (num_tok_labels - 1) times.
+        tiled_non_default_sentence_labels = tf.tile(
+            input=non_default_sentence_labels,
+            multiples=[1, num_tok_labels - 1])
+
+        # Get one-hot sentence labels of shape [B, num_tok_labels].
+        one_hot_sentence_labels = tf.concat(
+            [default_sentence_labels, tiled_non_default_sentence_labels],
+            axis=-1, name="one_hot_sentence_labels_concatenation")
+    return one_hot_sentence_labels  # [B, num_tok_labels]
+
+
+def compute_attention_loss(
+        token_probabilities, sentence_labels,
+        num_sent_labels, num_tok_labels,
+        approach, compute_pairwise=False):
+    """
+    Attention-level loss -- currently, implementation possible only in two cases:
+      1. The number of sentence labels is equal to the number of token labels.
+         In this case, the attention loss is computed element-wise (for each label).
+      2. The number of sentence labels is 2, while the number of tokens is arbitrary.
+         In this case, two scores are computed from the token scores:
+              * one corresponding to the default label
+              * one corresponding to the rest of labels (non-default labels)
+    :param token_probabilities: 3D tensor, shape [B, M, num_tok_labels]
+                                that are normalized across heads (last axis).
+    :param sentence_labels: 2D tensor, shape [B, num_labels_tok]
+    :param num_sent_labels: number of unique sentence labels.
+    :param num_tok_labels: number of unique token labels.
+    :param approach: method to extract token representation values.
+    :param compute_pairwise: whether to compute the loss pairwise or not.
+    :return: a number representing the sum over attention losses computed.
+    """
+    if num_sent_labels == num_tok_labels or num_sent_labels == 2:
+        # Compute the token representations based on the approach selected.
+        token_representative_values = get_token_representative_values(
+            token_probabilities, approach)  # [B, num_heads]
+
+        one_hot_sentence_labels = get_one_hot_of_token_labels_length(
+            sentence_labels, num_sent_labels, num_tok_labels)
+        if compute_pairwise:
+            attention_loss = tf.losses.mean_pairwise_squared_error(
+                labels=label_smoothing(one_hot_sentence_labels, epsilon=0.15),
+                predictions=token_representative_values, weights=1.15)
+        else:
+            attention_loss = tf.square(
+                token_representative_values -
+                label_smoothing(one_hot_sentence_labels, epsilon=0.15))
+    else:
+        raise ValueError(
+            "Wow, you have different number of token labels (%d) and "
+            "sentence labels (%d, which is non-binary). "
+            "We don't support attention loss for such a case!"
+            % (num_tok_labels, num_sent_labels))
+    return attention_loss
+
+
+def compute_gap_distance_loss(
+        token_probabilities, sentence_labels,
+        num_sent_labels, num_tok_labels,
+        minimum_gap_distance, approach,
+        type_distance):
+    """
+    Gap-distance loss: the intuition is that the gap between the default
+    and non-default scores should be wider than a certain threshold.
+    :param token_probabilities: 3D tensor, shape [B, M, num_tok_labels]
+                                that are normalized across heads (last axis).
+    :param sentence_labels: 2D tensor, shape [B, num_labels_tok]
+    :param num_sent_labels: number of unique sentence labels.
+    :param num_tok_labels: number of unique token labels.
+    :param minimum_gap_distance: the minimum distance gap imposed between
+    scores corresponding tot he default or non-default gold sentence label.
+    :param approach: method to extract token representation values.
+    :param type_distance: type of gap distance loss that you want.
+    :return: a number representing the sum over gap-distance losses.
+    """
+    if num_sent_labels == num_tok_labels or num_sent_labels == 2:
+        # Compute the token representations based on the approach selected.
+        token_representative_values = get_token_representative_values(
+            token_probabilities, approach)  # [B, num_heads]
+
+        one_hot_sentence_labels = get_one_hot_of_token_labels_length(
+            sentence_labels, num_sent_labels, num_tok_labels)
+        valid_tokens = tf.multiply(
+            tf.cast(one_hot_sentence_labels, tf.float32),
+            token_representative_values)  # [B, num_tok_labels]
+
+        tokens_default_head_correct = tf.squeeze(tf.gather(
+            valid_tokens, indices=[0], axis=-1), axis=-1)  # [B]
+        tokens_default_head_incorrect = tf.squeeze(tf.gather(
+            token_representative_values, indices=[0], axis=-1), axis=-1)  # [B]
+
+        tokens_non_default_head_correct = tf.squeeze(
+            tf.reduce_max(tf.gather(
+                valid_tokens,
+                indices=[[i] for i in range(1, num_tok_labels)],
+                axis=-1), axis=1), axis=-1)
+        tokens_non_default_head_incorrect = tf.squeeze(
+            tf.reduce_max(tf.gather(
+                token_representative_values,
+                indices=[[i] for i in range(1, num_tok_labels)],
+                axis=-1), axis=1), axis=-1)
+
+        heads_correct = tf.stack(
+            [tokens_default_head_correct, tokens_non_default_head_correct],
+            axis=-1)  # [B, 2]
+        heads_incorrect = tf.stack(
+            [tokens_default_head_incorrect, tokens_non_default_head_incorrect],
+            axis=-1)  # [B, 2]
+        y_heads = tf.where(
+            tf.equal(tf.cast(tokens_non_default_head_correct, tf.int32), 0),
+            one_hot_sentence_labels,
+            tf.ones_like(one_hot_sentence_labels) - one_hot_sentence_labels)
+
+        """
+        heads_correct = tf.where(
+            tf.equal(tf.cast(tokens_non_default_head, tf.int32), 0),
+            tokens_default_head,
+            tokens_non_default_head)
+
+        heads_incorrect = tf.where(
+            tf.equal(tf.cast(tokens_default_head, tf.int32), 0),
+            tokens_default_head,
+            tokens_non_default_head)
+        """
+
+        if type_distance == "distance_only":
+            # loss = max(0.0, threshold - |correct - incorrect|).
+            gap_loss = tf.math.maximum(
+                0.0,
+                tf.math.subtract(
+                    minimum_gap_distance,
+                    tf.math.abs(tf.subtract(
+                        tokens_default_head_incorrect,
+                        tokens_non_default_head_incorrect))))
+        elif type_distance == "contrastive":
+            squared_euclidean_distance = tf.reduce_sum(
+                tf.square(heads_correct - heads_incorrect))
+            # loss = y * dist + (1 - y) * max(0.0, threshold - d).
+            gap_loss = tf.add(
+                tf.multiply(tf.ones_like(y_heads) - y_heads,
+                            squared_euclidean_distance),
+                tf.multiply(y_heads,
+                            tf.maximum(0.0,
+                                       minimum_gap_distance - squared_euclidean_distance)))
+        else:
+            # loss =
+            # [exp(max(0.0, threshold - |correct - incorrect|))
+            #   * (1.0 + max(correct, incorrect) - x_correct)
+            #   * (1.0 + incorrect - min(correct, incorrect))] - 1.0
+            gap_loss = tf.subtract(
+                tf.math.exp(tf.math.maximum(
+                    0.0, minimum_gap_distance - tf.math.abs(heads_correct - heads_incorrect)))
+                * tf.add(1.0, tf.math.maximum(heads_correct, heads_incorrect) - heads_correct)
+                * tf.add(1.0, heads_incorrect - tf.math.minimum(heads_correct, heads_incorrect)),
+                1.0)
+    else:
+        raise ValueError(
+            "Wow, you have different number of token labels (%d) and "
+            "sentence labels (%d, which is non-binary). "
+            "We don't support attention loss for such a case!"
+            % (num_tok_labels, num_sent_labels))
+    return gap_loss
 
