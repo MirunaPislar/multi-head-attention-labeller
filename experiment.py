@@ -6,10 +6,14 @@ import gc
 import math
 import numpy as np
 import os
+import pandas as pd
 import random
 import sys
 import time
 import visualize
+import warnings
+
+warnings.filterwarnings("ignore")
 
 if sys.version_info[0] < 3:
     import ConfigParser as configparser
@@ -128,9 +132,10 @@ class Experiment:
         """
         sentences = []
         line_length = None
+        sentence = Sentence()
+
         for file_path in file_paths.strip().split(","):
             with open(file_path) as f:
-                sentence = Sentence()
                 for line in f:
                     line = line.strip()
                     if len(line) > 0:
@@ -138,8 +143,8 @@ class Experiment:
                         assert len(line_parts) >= 2, \
                             "Line parts less than 2: %s\n" % line
                         assert len(line_parts) == line_length or line_length is None, \
-                            "Inconsistent line parts: expected %d, but got %d." % (
-                                len(line_parts), line_length)
+                            "Inconsistent line parts: expected %d, but got %d for line %s." % (
+                                len(line_parts), line_length, line)
                         line_length = len(line_parts)
                         # The first element on the line is the token value, the last is the token label
                         sentence.add_token(
@@ -294,9 +299,7 @@ class Experiment:
         """
         evaluator = Evaluator(self.config, self.label2id_sent, self.label2id_tok)
         batches_of_sentence_ids = self.create_batches_of_sentence_ids(
-            sentences,
-            self.config["batch_equal_size"],
-            self.config["max_batch_size"])
+            sentences, self.config["batch_equal_size"], self.config["max_batch_size"])
 
         if is_training:
             random.shuffle(batches_of_sentence_ids)
@@ -309,10 +312,19 @@ class Experiment:
                 token_probs, sentence_probs, attention_weights \
                 = model.process_batch(batch, is_training, learning_rate)
 
-            if "test" in name:
+            if "test" in name and self.config["plot_predictions_html"]:
                 all_batches.append(batch)
                 all_sentence_probs.append(sentence_probs)
                 all_token_probs.append(token_probs)
+
+            # Plot the token scores with probability 0.5 for each sentence in the batch.
+            if "test" in name and self.config["plot_token_scores"]:
+                for sentence, token_proba_per_sentence in zip(batch, token_probs):
+                    visualize.plot_token_scores(
+                        token_probs=token_proba_per_sentence,
+                        sentence=sentence,
+                        head_labels=evaluator.id2label_tok,
+                        plot_name="plots/token_vis/token_heads_vis")
 
             """
             # Print attention weight scores for each token (to and from).
@@ -326,21 +338,14 @@ class Experiment:
                 print("*" * 30)
             """
 
-            # Plot the token scores with probability 0.5 for each sentence in the batch.
-            if "test" in name and self.config["plot_token_scores"]:
-                for sentence, token_proba_per_sentence in zip(batch, token_probs):
-                    visualize.plot_token_scores(
-                        token_probs=token_proba_per_sentence,
-                        sentence=sentence,
-                        plot_name="plots/token_vis/token_heads_vis")
-
             evaluator.append_data(cost, batch, sentence_pred, token_pred)
 
             while self.config["garbage_collection"] and gc.collect() > 0:
                 pass
         results = evaluator.get_results(name)
         for key in results:
-            print(key + ": " + str(results[key]))
+            print("%s_%s: %s" % (name, key, str(results[key])))
+
         evaluator.get_results_nice_print()
 
         # Create html visualizations of the predictions for the test set.
@@ -350,7 +355,7 @@ class Experiment:
                 all_sentences=all_batches,
                 all_sentence_probs=all_sentence_probs,
                 all_token_probs=all_token_probs,
-                html_file="plots/html_vis/%s" % save_name,
+                html_name="plots/html_vis/%s" % save_name,
                 sent_binary=len(self.label2id_sent) == 2)
 
         return results
@@ -373,11 +378,19 @@ class Experiment:
             print(str(key) + " = " + str(val))
 
         data_train, data_dev, data_test = None, None, None
+
         if self.config["path_train"] and len(self.config["path_train"]) > 0:
-            data_train = self.read_input_files(
-                self.config["path_train"], self.config["max_train_sent_length"])
+            data_train = []
+            for path_train in self.config["path_train"].strip().split(":"):
+                data_train += self.read_input_files(
+                    file_paths=path_train,
+                    max_sentence_length=self.config["max_train_sent_length"])
+
         if self.config["path_dev"] and len(self.config["path_dev"]) > 0:
-            data_dev = self.read_input_files(self.config["path_dev"])
+            data_dev = []
+            for path_dev in self.config["path_dev"].strip().split(":"):
+                data_dev += self.read_input_files(file_paths=path_dev)
+
         if self.config["path_test"] and len(self.config["path_test"]) > 0:
             data_test = []
             for path_test in self.config["path_test"].strip().split(":"):
@@ -392,8 +405,9 @@ class Experiment:
         data_dev = self.convert_labels(data_dev)
         data_test = self.convert_labels(data_test)
 
-        data_train = data_train[:400]
-        data_dev = data_dev[:400]
+        # data_train = data_train[:32]
+        # data_dev = data_dev[32:64]
+        # data_test = data_test[32:64]
 
         model = Model(self.config, self.label2id_sent, self.label2id_tok)
         model.build_vocabs(data_train, data_dev, data_test,
@@ -409,99 +423,113 @@ class Experiment:
         print("Parameter count without word embeddings: %d."
               % model.get_parameter_count_without_word_embeddings())
         
-        if data_train:
-            model_selector_splits = self.config["model_selector"].split(":")
-            if type(self.config["model_selector_ratio"]) == str:
-                model_selector_ratios_splits = [
-                    float(val) for val in self.config["model_selector_ratio"].split(":")]
-            else:
-                model_selector_ratios_splits = [self.config["model_selector_ratio"]]
-            model_selector_type = model_selector_splits[-1]
-            model_selector_values = model_selector_splits[:-1]
-            assert (len(model_selector_values) == len(model_selector_ratios_splits)
-                    or len(model_selector_ratios_splits) == 1), \
-                "Model selector values and ratios don't match!"
+        if data_train is None:
+            raise ValueError("No training set provided!")
 
-            # Each model_selector_value contributes in proportion to its
-            # corresponding (normalized) weight value. If just one ratio is specified,
-            # all model_selector_values receive equal weight.
-            if len(model_selector_ratios_splits) == 1:
-                normalized_ratio = model_selector_ratios_splits[0] / sum(
-                    model_selector_ratios_splits * len(model_selector_values))
-                model_selector_to_ratio = {value: normalized_ratio for value in model_selector_values}
-            else:
-                sum_ratios = sum(model_selector_ratios_splits)
-                normalized_ratios = [ratio / sum_ratios for ratio in model_selector_ratios_splits]
-                model_selector_to_ratio = {value: ratio for value, ratio in
-                                           zip(model_selector_values, normalized_ratios)}
+        model_selector_splits = self.config["model_selector"].split(":")
+        if type(self.config["model_selector_ratio"]) == str:
+            model_selector_ratios_splits = [
+                float(val) for val in self.config["model_selector_ratio"].split(":")]
+        else:
+            model_selector_ratios_splits = [self.config["model_selector_ratio"]]
+        model_selector_type = model_selector_splits[-1]
+        model_selector_values = model_selector_splits[:-1]
+        assert (len(model_selector_values) == len(model_selector_ratios_splits)
+                or len(model_selector_ratios_splits) == 1), \
+            "Model selector values and ratios don't match!"
 
-            best_selector_value = 0.0
-            if model_selector_type == "low":
-                best_selector_value = float("inf")
-            best_epoch = -1
-            learning_rate = self.config["learning_rate"]
+        # Each model_selector_value contributes in proportion to its
+        # corresponding (normalized) weight value. If just one ratio is specified,
+        # all model_selector_values receive equal weight.
+        if len(model_selector_ratios_splits) == 1:
+            normalized_ratio = model_selector_ratios_splits[0] / sum(
+                model_selector_ratios_splits * len(model_selector_values))
+            model_selector_to_ratio = {value: normalized_ratio for value in model_selector_values}
+        else:
+            sum_ratios = sum(model_selector_ratios_splits)
+            normalized_ratios = [ratio / sum_ratios for ratio in model_selector_ratios_splits]
+            model_selector_to_ratio = {value: ratio for value, ratio in
+                                       zip(model_selector_values, normalized_ratios)}
 
-            for epoch in range(self.config["epochs"]):
-                print("EPOCH: %d" % epoch)
-                print("Learning rate: %f" % learning_rate)
-                random.shuffle(data_train)
+        best_selector_value = 0.0
+        if model_selector_type == "low":
+            best_selector_value = float("inf")
+        best_epoch = -1
+        learning_rate = self.config["learning_rate"]
 
-                self.process_sentences(
-                    data_train, model, is_training=True,
-                    learning_rate=learning_rate, name="train")
+        df_results = None
 
-                if data_dev:
-                    results_dev = self.process_sentences(
-                        data_dev, model, is_training=False,
-                        learning_rate=0.0, name="dev")
+        for epoch in range(self.config["epochs"]):
+            print("EPOCH: %d" % epoch)
+            print("Learning rate: %f" % learning_rate)
+            random.shuffle(data_train)
 
-                    if math.isnan(results_dev["dev_cost_sum"]) or math.isinf(results_dev["dev_cost_sum"]):
-                        raise ValueError("Cost is NaN or Inf. Exiting.")
+            results_train = self.process_sentences(
+                data_train, model, is_training=True,
+                learning_rate=learning_rate, name="train_epoch%d" % epoch)
 
-                    results_dev_for_model_selector = sum([
-                        results_dev[model_selector] * ratio
-                        for model_selector, ratio in model_selector_to_ratio.items()])
+            if df_results is None:
+                df_results = pd.DataFrame(columns=results_train.keys())
+            df_results = df_results.append(results_train, ignore_index=True)
 
-                    if (epoch == 0
-                        or (model_selector_type == "high" and results_dev_for_model_selector > best_selector_value)
-                        or (model_selector_type == "low" and results_dev_for_model_selector < best_selector_value)):
-                        best_epoch = epoch
-                        best_selector_value = results_dev_for_model_selector
-                        model.saver.save(sess=model.session, save_path=temp_model_path,
-                                         latest_filename=os.path.basename(temp_model_path) + ".checkpoint")
+            if data_dev:
+                results_dev = self.process_sentences(
+                    data_dev, model, is_training=False,
+                    learning_rate=0.0, name="dev_epoch%d" % epoch)
+                df_results = df_results.append(results_dev, ignore_index=True)
 
-                    print("Best epoch: %d" % best_epoch)
-                    print("*" * 50 + "\n")
+                if math.isnan(results_dev["cost_sum"]) or math.isinf(results_dev["cost_sum"]):
+                    raise ValueError("Cost is NaN or Inf. Exiting.")
 
-                    if 0 < self.config["stop_if_no_improvement_for_epochs"] <= epoch - best_epoch:
-                        break
+                results_dev_for_model_selector = sum([
+                    results_dev[model_selector] * ratio
+                    for model_selector, ratio in model_selector_to_ratio.items()])
 
-                    if epoch - best_epoch > 3:
-                        learning_rate *= self.config["learning_rate_decay"]
+                if epoch == 0 or (model_selector_type == "high"
+                                  and results_dev_for_model_selector > best_selector_value) \
+                        or (model_selector_type == "low"
+                            and results_dev_for_model_selector < best_selector_value):
+                    best_epoch = epoch
+                    best_selector_value = results_dev_for_model_selector
+                    model.saver.save(sess=model.session, save_path=temp_model_path,
+                                     latest_filename=os.path.basename(temp_model_path) + ".checkpoint")
 
-                while self.config["garbage_collection"] and gc.collect() > 0:
-                    pass
+                print("Best epoch: %d" % best_epoch)
+                print("*" * 50 + "\n")
 
-            if data_dev and best_epoch >= 0:
-                model.saver.restore(model.session, temp_model_path)
-                os.remove(temp_model_path + ".checkpoint")
-                os.remove(temp_model_path + ".data-00000-of-00001")
-                os.remove(temp_model_path + ".index")
-                os.remove(temp_model_path + ".meta")
+                if 0 < self.config["stop_if_no_improvement_for_epochs"] <= epoch - best_epoch:
+                    break
 
-            if self.config["save"] is not None and len(self.config["save"]) > 0:
-                model.save(self.config["save"])
+                if epoch - best_epoch > 3:
+                    learning_rate *= self.config["learning_rate_decay"]
 
-            if self.config["path_test"] is not None:
-                i = 0
-                for path_test in self.config["path_test"].strip().split(":"):
-                    data_test = self.read_input_files(path_test)
-                    data_test = self.convert_labels(data_test)
-                    data_test = data_test[:100] + data_test[-100:]
-                    self.process_sentences(
-                        data_test, model, is_training=False,
-                        learning_rate=0.0, name="test" + str(i))
-                    i += 1
+            while self.config["garbage_collection"] and gc.collect() > 0:
+                pass
+
+        if data_dev and best_epoch >= 0:
+            model.saver.restore(model.session, temp_model_path)
+            os.remove(temp_model_path + ".checkpoint")
+            os.remove(temp_model_path + ".data-00000-of-00001")
+            os.remove(temp_model_path + ".index")
+            os.remove(temp_model_path + ".meta")
+
+        if self.config["save"] is not None and len(self.config["save"]) > 0:
+            model.save(self.config["save"])
+
+        if self.config["path_test"] is not None:
+            i = 0
+            for path_test in self.config["path_test"].strip().split(":"):
+                data_test = self.read_input_files(path_test)
+                data_test = self.convert_labels(data_test)
+                results_test = self.process_sentences(
+                    data_test, model, is_training=False,
+                    learning_rate=0.0, name="test" + str(i))
+                df_results = df_results.append(results_test, ignore_index=True)
+                i += 1
+
+        # Save data frame with all the training and testing results
+        df_results.to_csv(self.config["to_write_filename"].split(".")[0] + "_df_results.txt",
+                          index=False, sep="\t", encoding="utf-8")
 
 
 class Writer:
@@ -525,20 +553,20 @@ def initialize_writer(to_write_filename):
     :param to_write_filename: name of the file where the output will be written.
     :return: None.
     """
-    file_out = open(to_write_filename, 'wt')
+    file_out = open(to_write_filename, "wt")
     sys.stdout = Writer(sys.stdout, file_out)
 
 
 if __name__ == "__main__":
     experiment = Experiment()
+    load_pretrained = False
 
-    test_loaded = False
-
-    if not test_loaded:
+    if not load_pretrained:
         experiment.run_experiment(sys.argv[1])
     else:
         experiment.config = experiment.parse_config("config", sys.argv[1])
-        filename = "models/final/mha_model_1may"
+        filename = experiment.config["save"]
+        print("Loaded model %s" % filename)
         loaded_model = Model.load(filename)
 
         experiment.label2id_sent = loaded_model.label2id_sent
@@ -546,12 +574,14 @@ if __name__ == "__main__":
         print("Sentence labels to id: ", experiment.label2id_sent)
         print("Token labels to id: ", experiment.label2id_tok)
 
-        # test_examples = experiment.read_input_files("test.txt")
-        test_examples = experiment.read_input_files(
-            "../mltagger/data/SST_complete/stanford_sentiment.test.complete.tsv")
-        test_examples = experiment.convert_labels(test_examples)
-        test_examples = test_examples[50:100] + test_examples[-50:]
-        experiment.process_sentences(
-            test_examples, loaded_model, is_training=False,
-            learning_rate=0.0, name="test" + "0")
+        if experiment.config["path_test"] is not None:
+            d = 0
+            for path_data_test in experiment.config["path_test"].strip().split(":"):
+                data_test_loaded = experiment.read_input_files(path_data_test)
+                data_test_loaded = experiment.convert_labels(data_test_loaded)
+                # data_test_loaded = data_test_loaded[:50]
+                experiment.process_sentences(
+                    data_test_loaded, loaded_model, is_training=False,
+                    learning_rate=0.0, name="test" + str(d))
+                d += 1
 
