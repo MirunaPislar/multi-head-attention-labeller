@@ -56,24 +56,25 @@ def label_smoothing(labels, epsilon=0.1):
 def mask(inputs, queries=None, keys=None, mask_type=None):
     """
     Generate masks and apply them to the inputs.
-    inputs: 3D tensor. (N, T_q, T_k)
-    queries: 3D tensor. (N, T_q, d)
-    keys: 3D tensor. (N, T_k, d)
+    inputs: 3D tensor. [B, M, M]
+    queries: 3D tensor. [B, M, E]
+    keys: 3D tensor. [B, M, E]
     """
     padding_num = -2 ** 32 + 1
     if "key" in mask_type:
-        masks = tf.sign(tf.reduce_sum(tf.abs(keys), axis=-1))  # (N, T_k)
-        masks = tf.expand_dims(masks, 1)  # (N, 1, T_k)
-        masks = tf.tile(masks, [1, tf.shape(queries)[1], 1])  # (N, T_q, T_k)
+        masks = tf.sign(tf.reduce_sum(tf.abs(keys), axis=-1))  # [B, M]
+        masks = tf.expand_dims(masks, 1)  # [B, 1, M]
+        masks = tf.tile(masks, [1, tf.shape(queries)[1], 1])  # [B, M, M]
         paddings = tf.ones_like(inputs) * padding_num
-        outputs = tf.where(tf.equal(masks, 0), paddings, inputs)  # (N, T_q, T_k)
+        outputs = tf.where(tf.equal(masks, 0), paddings, inputs)  # [B, M, M]
     elif "query" in mask_type:
-        masks = tf.sign(tf.reduce_sum(tf.abs(queries), axis=-1))  # (N, T_q)
-        masks = tf.expand_dims(masks, -1)  # (N, T_q, 1)
-        masks = tf.tile(masks, [1, 1, tf.shape(keys)[1]])  # (N, T_q, T_k)
+        masks = tf.sign(tf.reduce_sum(tf.abs(queries), axis=-1))  # [B, M]
+        masks = tf.expand_dims(masks, -1)  # [B, M, 1]
+        masks = tf.tile(masks, [1, 1, tf.shape(keys)[1]])  # [B, M, M]
         outputs = inputs * masks
     else:
-        raise ValueError("Check if you entered type correctly!")
+        raise ValueError("Unknown mask type: %s. You need to choose "
+                         "between \"keys\" and \"query\"." % mask_type)
     return outputs
 
 
@@ -354,17 +355,17 @@ def multi_head_attention_with_scores_from_shared_heads(
         # Split and concat as many projections as the number of heads.
         queries = tf.concat(
             tf.split(queries, num_heads, axis=2),
-            axis=0)  # [(num_heads * B), M, (num_units / num_heads)]
+            axis=0)  # [B*num_heads, M, num_units/num_heads]
         keys = tf.concat(
             tf.split(keys, num_heads, axis=2),
-            axis=0)  # [(num_heads * B), M, (num_units / num_heads)]
+            axis=0)  # [B*num_heads, M, num_units/num_heads]
         values = tf.concat(
             tf.split(values, num_heads, axis=2),
-            axis=0)  # [(num_heads * B), M, (num_units / num_heads)]
+            axis=0)  # [B*num_heads, M, num_units/num_heads]
 
         # Transpose multiplication and scale
         attention_evidence = tf.matmul(
-            queries, tf.transpose(keys, [0, 2, 1]))  # [(num_heads * B), M, M]
+            queries, tf.transpose(keys, [0, 2, 1]))  # [B*num_heads, M, M]
         attention_evidence = tf.math.divide(
             attention_evidence, tf.constant(num_units ** 0.5))
 
@@ -404,9 +405,9 @@ def multi_head_attention_with_scores_from_shared_heads(
                                  + (1.0 - tf.cast(is_training, tf.float32)))
             attention_weights = tf.nn.dropout(
                 attention_weights, dropout_attention,
-                name="dropout_attention_weights")    # [(num_heads * B), M, M]
+                name="dropout_attention_weights")    # [B*num_heads, M, M]
 
-        # [(num_heads * B), M, (num_units / num_heads)]
+        # [B*num_heads, M, num_units/num_heads]
         product = tf.matmul(attention_weights, values)
         product = tf.concat(
             tf.split(product, num_heads), axis=2)  # [B, M, num_units]
@@ -431,7 +432,7 @@ def multi_head_attention_with_scores_from_shared_heads(
         sentence_predictions = tf.argmax(sentence_probabilities, axis=1)  # [B]
 
         # Obtain token scores from the attention weights.
-        # The token scores will have shape [(num_heads * B), M, 1].
+        # The token scores will have shape [B*num_heads, M, 1].
         if token_scoring_method == "sum":
             token_scores = tf.expand_dims(tf.reduce_sum(
                 attention_weights_unnormalized, axis=1), axis=2)
@@ -534,14 +535,14 @@ def multi_head_attention_with_scores_from_separate_heads(
         # Split and concat as many projections as the number of heads.
         queries = tf.concat(
             tf.split(queries, num_heads, axis=2),
-            axis=0)  # [(num_heads * B), M, (num_units / num_heads)]
+            axis=0)  # [B*num_heads, M, num_units/num_heads]
         keys = tf.concat(
             tf.split(keys, num_heads, axis=2),
-            axis=0)  # [(num_heads * B), M, (num_units / num_heads)]
+            axis=0)  # [B*num_heads, M, num_units/num_heads]
 
         # Transpose multiplication and scale
         attention_evidence = tf.matmul(
-            queries, tf.transpose(keys, [0, 2, 1]))  # [(num_heads * B), M, M]
+            queries, tf.transpose(keys, [0, 2, 1]))  # [B*num_heads, M, M]
         attention_evidence = tf.math.divide(
             attention_evidence, tf.constant(num_units ** 0.5))
 
@@ -577,10 +578,10 @@ def multi_head_attention_with_scores_from_separate_heads(
                                  + (1.0 - tf.cast(is_training, tf.float32)))
             attention_weights = tf.nn.dropout(
                 attention_weights, dropout_attention,
-                name="dropout_attention_weights")  # [(num_heads * B), M, M]
+                name="dropout_attention_weights")  # [B*num_heads, M, M]
 
         # Obtain the token scores from the attention weights.
-        # The token_scores below will have shape [(num_heads * B), 1, M].
+        # The token_scores below will have shape [B*num_heads, 1, M].
         if token_scoring_method == "sum":
             token_scores = tf.reduce_sum(
                 attention_weights, axis=1, keep_dims=True)
