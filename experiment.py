@@ -297,7 +297,8 @@ class Experiment:
         :type name: str
         :rtype: List[floats]
         """
-        evaluator = Evaluator(self.config, self.label2id_sent, self.label2id_tok)
+        evaluator = Evaluator(self.label2id_sent, self.label2id_tok,
+                              self.config["conll03_eval"])
         batches_of_sentence_ids = self.create_batches_of_sentence_ids(
             sentences, self.config["batch_equal_size"], self.config["max_batch_size"])
 
@@ -342,11 +343,13 @@ class Experiment:
 
             while self.config["garbage_collection"] and gc.collect() > 0:
                 pass
-        results = evaluator.get_results(name)
+        results = evaluator.get_results(
+            name=name, token_labels_available=self.config["token_labels_available"])
         for key in results:
             print("%s_%s: %s" % (name, key, str(results[key])))
 
-        evaluator.get_results_nice_print()
+        evaluator.get_results_nice_print(
+            name=name, token_labels_available=self.config["token_labels_available"])
 
         # Create html visualizations of the predictions for the test set.
         if "test" in name and self.config["plot_predictions_html"]:
@@ -405,9 +408,9 @@ class Experiment:
         data_dev = self.convert_labels(data_dev)
         data_test = self.convert_labels(data_test)
 
-        # data_train = data_train[:32]
-        # data_dev = data_dev[32:64]
-        # data_test = data_test[32:64]
+        # data_train = data_train[:200]
+        # data_dev = data_dev[:100]
+        # data_test = data_test[:100]
 
         model = Model(self.config, self.label2id_sent, self.label2id_tok)
         model.build_vocabs(data_train, data_dev, data_test,
@@ -528,7 +531,7 @@ class Experiment:
                 i += 1
 
         # Save data frame with all the training and testing results
-        df_results.to_csv(self.config["to_write_filename"].split(".")[0] + "_df_results.txt",
+        df_results.to_csv("".join(self.config["to_write_filename"].split(".")[:-1]) + "_df_results.txt",
                           index=False, sep="\t", encoding="utf-8")
 
 

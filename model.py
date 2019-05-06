@@ -252,7 +252,7 @@ class Model(object):
                     cell_fw=word_lstm_cell_fw, cell_bw=word_lstm_cell_bw, inputs=word_input_tensor,
                     sequence_length=self.sentence_lengths, dtype=tf.float32, time_major=False)
 
-        lstm_output = tf.concat([lstm_output_fw, lstm_output_bw], -1)
+        lstm_output_states = tf.concat([lstm_output_fw, lstm_output_bw], -1)
 
         if self.config["dropout_word_lstm"] > 0.0:
             dropout_word_lstm = (self.config["dropout_word_lstm"] * tf.cast(self.is_training, tf.float32)
@@ -265,10 +265,10 @@ class Model(object):
                 lstm_outputs_bw, dropout_word_lstm,
                 noise_shape=tf.convert_to_tensor(
                     [tf.shape(self.word_ids)[0], 1, self.config["word_recurrent_size"]], dtype=tf.int32))
-            lstm_output = tf.nn.dropout(lstm_output, dropout_word_lstm)
+            lstm_output_states = tf.nn.dropout(lstm_output_states, dropout_word_lstm)
 
         # The states are concatenated at every token position.
-        lstm_outputs = tf.concat([lstm_outputs_fw, lstm_outputs_bw], -1)  # [B, M, 2 * emb_size]
+        lstm_outputs_states = tf.concat([lstm_outputs_fw, lstm_outputs_bw], -1)  # [B, M, 2 * emb_size]
 
         if self.config["whidden_layer_size"] > 0:
             lstm_output_units = self.config["whidden_layer_size"]
@@ -279,8 +279,10 @@ class Model(object):
                 lstm_output_units = ceil(lstm_output_units / num_heads) * num_heads
 
             lstm_outputs = tf.layers.dense(
-                inputs=lstm_outputs, units=lstm_output_units,
+                inputs=lstm_outputs_states, units=lstm_output_units,
                 activation=tf.tanh, kernel_initializer=self.initializer)  # [B, M, lstm_output_units]
+        else:
+            lstm_outputs = lstm_outputs_states
 
         if self.config["model_type"] == "single_head_attention_binary_labels":
             if not (len(self.label2id_tok) == 2 and len(self.label2id_sent) == 2):
@@ -350,8 +352,8 @@ class Model(object):
                     self.token_scores, self.token_predictions, \
                     self.token_probabilities, self.sentence_probabilities, \
                     self.attention_weights = baseline_lstm_last_contexts(
-                        last_token_contexts=lstm_outputs,
-                        last_context=lstm_output,
+                        last_token_contexts=lstm_outputs_states,
+                        last_context=lstm_output_states,
                         initializer=self.initializer,
                         scoring_activation=scoring_activation,
                         sentence_lengths=self.sentence_lengths,
@@ -516,13 +518,19 @@ class Model(object):
 
             # Token-level loss
             if self.config["word_objective_weight"] > 0:
-                word_objective_loss = tf.nn.sparse_softmax_cross_entropy_with_logits(
-                    logits=self.token_scores, labels=tf.cast(self.word_labels, tf.int32))
-                word_objective_loss = tf.where(
-                    tf.sequence_mask(self.sentence_lengths),
-                    word_objective_loss, tf.zeros_like(word_objective_loss))
-                self.loss += self.config["word_objective_weight"] * tf.reduce_sum(
-                    self.word_objective_weights * word_objective_loss)
+                if self.config["token_labels_available"]:
+                    word_objective_loss = tf.nn.sparse_softmax_cross_entropy_with_logits(
+                        logits=self.token_scores, labels=tf.cast(self.word_labels, tf.int32))
+                    word_objective_loss = tf.where(
+                        tf.sequence_mask(self.sentence_lengths),
+                        word_objective_loss, tf.zeros_like(word_objective_loss))
+                    self.loss += self.config["word_objective_weight"] * tf.reduce_sum(
+                        self.word_objective_weights * word_objective_loss)
+                else:
+                    raise ValueError(
+                        "No token labels available! You cannot supervise on the token-level"
+                        " so please change \"word_objective_weight\" to 0"
+                        " or provide token-annotated files.")
 
             # Sentence-level loss
             if self.config["sentence_objective_weight"] > 0:
@@ -758,9 +766,9 @@ class Model(object):
             self.char_ids: char_ids,
             self.sentence_lengths: sentence_lengths,
             self.word_lengths: word_lengths,
+            self.sentence_labels: sentence_labels,
             self.word_labels: word_labels,
             self.word_objective_weights: word_objective_weights,
-            self.sentence_labels: sentence_labels,
             self.sentence_objective_weights: sentence_objective_weights,
             self.learning_rate: learning_rate,
             self.is_training: is_training}
@@ -774,10 +782,6 @@ class Model(object):
              self.sentence_predictions, self.token_predictions,
              self.token_probabilities, self.sentence_probabilities, self.attention_weights] +
             ([self.train_op] if is_training else []), feed_dict=feed_dict)[:8]
-        # print("Sentence scores:\n", sentence_scores, "\n", "*" * 50, "\n")
-        # print("Token scores:\n", token_scores, "\n", "*" * 50, "\n")
-        # print("Sentence pred:\n", sentence_pred, "\n", "*" * 50, "\n")
-        # print("Token pred:\n", token_pred, "\n", "*" * 50, "\n")
         # print("Sent lengths: ", sent_lengths.shape)
         # print("M = self.token_probabilities, of shape ", m.shape)
         # print("N = weighted_sum_representation, of shape ", n.shape)

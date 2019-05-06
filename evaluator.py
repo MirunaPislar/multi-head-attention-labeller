@@ -1,14 +1,17 @@
 from collections import OrderedDict
 from sklearn.metrics import classification_report
+import conlleval
 import time
 
 
 class Evaluator:
 
-    def __init__(self, config, label2id_sent, label2id_tok):
-        self.config = config
+    def __init__(self, label2id_sent, label2id_tok, conll03_eval):
         self.id2label_sent = {v: k for k, v in label2id_sent.items()}
         self.id2label_tok = {v: k for k, v in label2id_tok.items()}
+
+        self.conll03_eval = conll03_eval
+        self.conll_format = []
 
         self.true_sent = []
         self.pred_sent = []
@@ -31,14 +34,14 @@ class Evaluator:
 
         self.start_time = time.time()
 
-    def append_token_data_for_sentence(self, true_labels_tok, pred_labels_tok):
+    def append_token_data_for_sentence(self, tokens, true_labels_tok, pred_labels_tok):
         """
         Get statistical results from the tokens in a certain sentence.
         """
         self.count_tok += len(true_labels_tok)
 
         # For each token, calculate the same metrics as for the sentence scores
-        for true_label, pred_label in zip(true_labels_tok, pred_labels_tok):
+        for token, true_label, pred_label in zip(tokens, true_labels_tok, pred_labels_tok):
             self.true_tok.append(true_label)
             self.pred_tok.append(pred_label)
 
@@ -55,6 +58,12 @@ class Evaluator:
             # Calculate TP.
             if true_label == pred_label:
                 self.token_correct[true_label] += 1.0
+
+            self.conll_format.append(
+                token + "\t"
+                + self.id2label_tok[true_label] + "\t"
+                + self.id2label_tok[pred_label])
+        self.conll_format.append("")
 
     def append_data(self, cost, batch, sentence_scores, token_scores):
         """
@@ -85,6 +94,7 @@ class Evaluator:
 
             # Get the scores for the tokens in this sentence
             self.append_token_data_for_sentence(
+                [token.value for token in sentence.tokens],
                 true_labels_tok, list(token_scores[i])[:len(true_labels_tok)])
 
     @staticmethod
@@ -102,11 +112,12 @@ class Evaluator:
         f05 = (1 + 0.5 * 0.5) * p * r / (0.5 * 0.5 * p + r) if 0.5 * 0.5 * p + r else 0.0
         return p, r, f, f05
 
-    def get_results(self, name):
+    def get_results(self, name, token_labels_available=True):
         """
         Obtain the statistical results for a certain dataset
         both at the sentence and at the token level.
         :param name: train, dev or test
+        :param token_labels_available: whether there are token annotations
         :return: an ordered dictionary containing the collection of results
         """
         results = OrderedDict()
@@ -121,11 +132,6 @@ class Evaluator:
         results["accuracy_sent"] = (self.correct_binary_sent / float(self.count_sent)
                                     if self.count_sent else 0.0)
 
-        results["count_tok"] = self.count_tok
-        results["total_correct_tok"] = self.correct_binary_tok
-        results["accuracy_tok"] = (self.correct_binary_tok / float(self.count_tok)
-                                   if self.count_tok else 0.0)
-
         # Calculate the micro and macro averages for the sentence predictions
         f_macro_sent, p_macro_sent, r_macro_sent, f05_macro_sent = 0.0, 0.0, 0.0, 0.0
         f_non_default_macro_sent, p_non_default_macro_sent, \
@@ -135,13 +141,13 @@ class Evaluator:
             p, r, f, f05 = self.calculate_metrics(
                 self.sentence_correct[key], self.sentence_predicted[key], self.sentence_total[key])
             label = "label=%s" % self.id2label_sent[key]
-            results[label + "predicted_sent"] = self.sentence_predicted[key]
-            results[label + "correct_sent"] = self.sentence_correct[key]
-            results[label + "total_sent"] = self.sentence_total[key]
-            results[label + "precision_sent"] = p
-            results[label + "recall_sent"] = r
-            results[label + "f-score_sent"] = f
-            results[label + "f05-score_sent"] = f05
+            results[label + "_predicted_sent"] = self.sentence_predicted[key]
+            results[label + "_correct_sent"] = self.sentence_correct[key]
+            results[label + "_total_sent"] = self.sentence_total[key]
+            results[label + "_precision_sent"] = p
+            results[label + "_recall_sent"] = r
+            results[label + "_f-score_sent"] = f
+            results[label + "_f05-score_sent"] = f05
             p_macro_sent += p
             r_macro_sent += r
             f_macro_sent += f
@@ -193,77 +199,92 @@ class Evaluator:
         results["f-score_non_default_micro_sent"] = f_non_default_micro_sent
         results["f05-score_non_default_micro_sent"] = f05_non_default_micro_sent
 
-        # Calculate the micro and macro averages for the token predictions
-        f_tok_macro, p_tok_macro, r_tok_macro, f05_tok_macro = 0.0, 0.0, 0.0, 0.0
-        f_non_default_macro_tok, p_non_default_macro_tok, \
-            r_non_default_macro_tok, f05_non_default_macro_tok = 0.0, 0.0, 0.0, 0.0
+        if token_labels_available or "test" in name:
+            results["count_tok"] = self.count_tok
+            results["total_correct_tok"] = self.correct_binary_tok
+            results["accuracy_tok"] = (self.correct_binary_tok / float(self.count_tok)
+                                       if self.count_tok else 0.0)
 
-        for key in self.id2label_tok.keys():
-            p, r, f, f05 = self.calculate_metrics(
-                self.token_correct[key], self.token_predicted[key], self.token_total[key])
-            label = "label=%s" % self.id2label_tok[key]
-            results[label + "_predicted_tok"] = self.token_predicted[key]
-            results[label + "_correct_tok"] = self.token_correct[key]
-            results[label + "_total_tok"] = self.token_total[key]
-            results[label + "_precision_tok"] = p
-            results[label + "_recall_tok"] = r
-            results[label + "_f-score_tok"] = f
-            results[label + "_tok_f05"] = f05
-            p_tok_macro += p
-            r_tok_macro += r
-            f_tok_macro += f
-            f05_tok_macro += f05
-            if key != 0:
-                p_non_default_macro_tok += p
-                r_non_default_macro_tok += r
-                f_non_default_macro_tok += f
-                f05_non_default_macro_tok += f05
+            # Calculate the micro and macro averages for the token predictions
+            f_tok_macro, p_tok_macro, r_tok_macro, f05_tok_macro = 0.0, 0.0, 0.0, 0.0
+            f_non_default_macro_tok, p_non_default_macro_tok, \
+                r_non_default_macro_tok, f05_non_default_macro_tok = 0.0, 0.0, 0.0, 0.0
 
-        p_tok_macro /= len(self.id2label_tok.keys())
-        r_tok_macro /= len(self.id2label_tok.keys())
-        f_tok_macro /= len(self.id2label_tok.keys())
-        f05_tok_macro /= len(self.id2label_tok.keys())
+            for key in self.id2label_tok.keys():
+                p, r, f, f05 = self.calculate_metrics(
+                    self.token_correct[key], self.token_predicted[key], self.token_total[key])
+                label = "label=%s" % self.id2label_tok[key]
+                results[label + "_predicted_tok"] = self.token_predicted[key]
+                results[label + "_correct_tok"] = self.token_correct[key]
+                results[label + "_total_tok"] = self.token_total[key]
+                results[label + "_precision_tok"] = p
+                results[label + "_recall_tok"] = r
+                results[label + "_f-score_tok"] = f
+                results[label + "_tok_f05"] = f05
+                p_tok_macro += p
+                r_tok_macro += r
+                f_tok_macro += f
+                f05_tok_macro += f05
+                if key != 0:
+                    p_non_default_macro_tok += p
+                    r_non_default_macro_tok += r
+                    f_non_default_macro_tok += f
+                    f05_non_default_macro_tok += f05
 
-        p_non_default_macro_tok /= (len(self.id2label_tok.keys()) - 1)
-        r_non_default_macro_tok /= (len(self.id2label_tok.keys()) - 1)
-        f_non_default_macro_tok /= (len(self.id2label_tok.keys()) - 1)
-        f05_non_default_macro_tok /= (len(self.id2label_tok.keys()) - 1)
+            p_tok_macro /= len(self.id2label_tok.keys())
+            r_tok_macro /= len(self.id2label_tok.keys())
+            f_tok_macro /= len(self.id2label_tok.keys())
+            f05_tok_macro /= len(self.id2label_tok.keys())
 
-        p_tok_micro, r_tok_micro, f_tok_micro, f05_tok_micro = self.calculate_metrics(
-            sum(self.token_correct.values()),
-            sum(self.token_predicted.values()),
-            sum(self.token_total.values()))
+            p_non_default_macro_tok /= (len(self.id2label_tok.keys()) - 1)
+            r_non_default_macro_tok /= (len(self.id2label_tok.keys()) - 1)
+            f_non_default_macro_tok /= (len(self.id2label_tok.keys()) - 1)
+            f05_non_default_macro_tok /= (len(self.id2label_tok.keys()) - 1)
 
-        p_non_default_micro_tok, r_non_default_micro_tok, \
-            f_non_default_micro_tok, f05_non_default_micro_tok = self.calculate_metrics(
-                sum([value for key, value in self.token_correct.items() if key != 0]),
-                sum([value for key, value in self.token_predicted.items() if key != 0]),
-                sum([value for key, value in self.token_total.items() if key != 0]))
+            p_tok_micro, r_tok_micro, f_tok_micro, f05_tok_micro = self.calculate_metrics(
+                sum(self.token_correct.values()),
+                sum(self.token_predicted.values()),
+                sum(self.token_total.values()))
 
-        results["precision_macro_tok"] = p_tok_macro
-        results["recall_macro_tok"] = r_tok_macro
-        results["f-score_macro_tok"] = f_tok_macro
-        results["f05-score_macro_tok"] = f05_tok_macro
+            p_non_default_micro_tok, r_non_default_micro_tok, \
+                f_non_default_micro_tok, f05_non_default_micro_tok = self.calculate_metrics(
+                    sum([value for key, value in self.token_correct.items() if key != 0]),
+                    sum([value for key, value in self.token_predicted.items() if key != 0]),
+                    sum([value for key, value in self.token_total.items() if key != 0]))
 
-        results["precision_micro_tok"] = p_tok_micro
-        results["recall_micro_tok"] = r_tok_micro
-        results["f-score_micro_tok"] = f_tok_micro
-        results["f05-score_micro_tok"] = f05_tok_micro
+            results["precision_macro_tok"] = p_tok_macro
+            results["recall_macro_tok"] = r_tok_macro
+            results["f-score_macro_tok"] = f_tok_macro
+            results["f05-score_macro_tok"] = f05_tok_macro
 
-        results["precision_non_default_macro_tok"] = p_non_default_macro_tok
-        results["recall_non_default_macro_tok"] = r_non_default_macro_tok
-        results["f-score_non_default_macro_tok"] = f_non_default_macro_tok
-        results["f05-score_non_default_macro_tok"] = f05_non_default_macro_tok
+            results["precision_micro_tok"] = p_tok_micro
+            results["recall_micro_tok"] = r_tok_micro
+            results["f-score_micro_tok"] = f_tok_micro
+            results["f05-score_micro_tok"] = f05_tok_micro
 
-        results["precision_non_default_micro_tok"] = p_non_default_micro_tok
-        results["recall_non_default_micro_tok"] = r_non_default_micro_tok
-        results["f-score_non_default_micro_tok"] = f_non_default_micro_tok
-        results["f05-score_non_default_micro_tok"] = f05_non_default_micro_tok
+            results["precision_non_default_macro_tok"] = p_non_default_macro_tok
+            results["recall_non_default_macro_tok"] = r_non_default_macro_tok
+            results["f-score_non_default_macro_tok"] = f_non_default_macro_tok
+            results["f05-score_non_default_macro_tok"] = f05_non_default_macro_tok
+
+            results["precision_non_default_micro_tok"] = p_non_default_micro_tok
+            results["recall_non_default_micro_tok"] = r_non_default_micro_tok
+            results["f-score_non_default_micro_tok"] = f_non_default_micro_tok
+            results["f05-score_non_default_micro_tok"] = f05_non_default_micro_tok
+
+            if self.id2label_tok is not None and self.conll03_eval is True:
+                conll_counts = conlleval.evaluate(self.conll_format)
+                conll_metrics_overall, conll_metrics_by_type = conlleval.metrics(conll_counts)
+                results["conll_accuracy"] = (float(conll_counts.correct_tags)
+                                             / float(conll_counts.token_counter))
+                results["conll_p"] = conll_metrics_overall.prec
+                results["conll_r"] = conll_metrics_overall.rec
+                results["conll_f"] = conll_metrics_overall.fscore
 
         results["time"] = float(time.time()) - float(self.start_time)
         return results
 
-    def get_results_nice_print(self):
+    def get_results_nice_print(self, name, token_labels_available=True):
         """
         This method is just a wrapper around the statistical results already computed,
         just to print them bolder and nicer. Can also used to check the basic metrics.
@@ -276,10 +297,11 @@ class Evaluator:
                 self.true_sent, self.pred_sent, digits=4,
                 target_names=[self.id2label_sent[i] for i in range(len(self.id2label_sent))]))
 
-        if self.true_tok and self.pred_tok:
-            print("*" * 50)
-            print("Token predictions: ")
-            print(classification_report(
-                self.true_tok, self.pred_tok, digits=4,
-                target_names=[self.id2label_tok[i] for i in range(len(self.id2label_tok))]))
+        if token_labels_available or "test" in name:
+            if self.true_tok and self.pred_tok:
+                print("*" * 50)
+                print("Token predictions: ")
+                print(classification_report(
+                    self.true_tok, self.pred_tok, digits=4,
+                    target_names=[self.id2label_tok[i] for i in range(len(self.id2label_tok))]))
 
