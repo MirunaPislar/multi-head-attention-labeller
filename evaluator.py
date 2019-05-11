@@ -1,6 +1,7 @@
 from collections import OrderedDict
 from sklearn.metrics import classification_report
 import conlleval
+import numpy as np
 import time
 
 
@@ -59,13 +60,17 @@ class Evaluator:
             if true_label == pred_label:
                 self.token_correct[true_label] += 1.0
 
-            self.conll_format.append(
-                token + "\t"
-                + self.id2label_tok[true_label] + "\t"
-                + self.id2label_tok[pred_label])
-        self.conll_format.append("")
+            if self.conll03_eval is True:
+                gold_token_label = self.id2label_tok[true_label]
+                gold_token_label = "B-" + gold_token_label if true_label != 0 else gold_token_label
+                pred_token_label = self.id2label_tok[pred_label]
+                pred_token_label = "B-" + pred_token_label if true_label != 0 else pred_token_label
+                self.conll_format.append(
+                    token + "\t" + gold_token_label + "\t" + pred_token_label)
+        if self.conll03_eval is True:
+            self.conll_format.append("")
 
-    def append_data(self, cost, batch, sentence_scores, token_scores):
+    def append_data(self, cost, batch, sentence_predictions, token_predictions):
         """
         Get statistical results from the sentence and token scores in a certain batch.
         """
@@ -76,26 +81,26 @@ class Evaluator:
             true_labels_tok = [token.label_tok for token in sentence.tokens]
             true_labels_sent = sentence.label_sent
             self.true_sent.append(true_labels_sent)
-            self.pred_sent.append(sentence_scores[i])
+            self.pred_sent.append(sentence_predictions[i])
 
             # Calculate accuracy.
-            if true_labels_sent == sentence_scores[i]:
+            if true_labels_sent == sentence_predictions[i]:
                 self.correct_binary_sent += 1.0
 
             # Calculate TP + FP.
-            self.sentence_predicted[sentence_scores[i]] += 1.0
+            self.sentence_predicted[sentence_predictions[i]] += 1.0
 
             # Calculate TP + FN.
             self.sentence_total[true_labels_sent] += 1.0
 
             # Calculate TP.
-            if true_labels_sent == sentence_scores[i]:
+            if true_labels_sent == sentence_predictions[i]:
                 self.sentence_correct[true_labels_sent] += 1.0
 
             # Get the scores for the tokens in this sentence
             self.append_token_data_for_sentence(
                 [token.value for token in sentence.tokens],
-                true_labels_tok, list(token_scores[i])[:len(true_labels_tok)])
+                true_labels_tok, list(token_predictions[i])[:len(true_labels_tok)])
 
     @staticmethod
     def calculate_metrics(correct, predicted, total):
@@ -294,7 +299,7 @@ class Evaluator:
             print("*" * 50)
             print("Sentence predictions: ")
             print(classification_report(
-                self.true_sent, self.pred_sent, digits=4,
+                self.true_sent, self.pred_sent, digits=4, labels=np.array(range(len(self.id2label_sent))),
                 target_names=[self.id2label_sent[i] for i in range(len(self.id2label_sent))]))
 
         if token_labels_available or "test" in name:
@@ -302,6 +307,6 @@ class Evaluator:
                 print("*" * 50)
                 print("Token predictions: ")
                 print(classification_report(
-                    self.true_tok, self.pred_tok, digits=4,
+                    self.true_tok, self.pred_tok, digits=4, labels=np.array(range(len(self.id2label_tok))),
                     target_names=[self.id2label_tok[i] for i in range(len(self.id2label_tok))]))
 
