@@ -1,13 +1,3 @@
-from math import ceil
-from modules import single_head_attention_binary_labels
-from modules import multi_head_attention_with_scores_from_shared_heads
-from modules import multi_head_attention_with_scores_from_separate_heads
-from modules import single_head_attention_multiple_labels
-from modules import single_head_attention_multiple_transformations
-from modules import baseline_lstm_last_contexts
-from modules import compute_attention_loss
-from modules import compute_gap_distance_loss
-from variants import variant_1, variant_2, variant_2_modified, variant_3, variant_4, variant_5, variant_6
 import collections
 import numpy
 import pickle
@@ -41,6 +31,8 @@ class Model(object):
         self.char_embeddings = None
 
         self.word_objective_weights = None
+        self.sentence_objective_weights = None
+
         self.learning_rate = None
         self.loss = None
         self.initializer = None
@@ -48,13 +40,11 @@ class Model(object):
         self.session = None
         self.saver = None
         self.train_op = None
-        self.token_scores = None
-        self.sentence_scores = None
-        self.token_predictions = None
+
         self.sentence_predictions = None
-        self.token_probabilities = None
         self.sentence_probabilities = None
-        self.attention_weights = None
+        self.token_predictions = None
+        self.token_probabilities = None
 
     def build_vocabs(self, data_train, data_dev, data_test, embedding_path=None):
         data_source = list(data_train)
@@ -91,7 +81,7 @@ class Model(object):
 
         if embedding_path and self.config["vocab_only_embedded"]:
             embedding_vocab = {self.UNK}
-            with open(embedding_path, 'r') as f:
+            with open(embedding_path) as f:
                 for line in f:
                     line_parts = line.strip().split()
                     if len(line_parts) <= 2:
@@ -112,6 +102,19 @@ class Model(object):
         print("Total number of chars: " + str(len(self.char2id)))
         print("Total number of singletons: " + str(len(self.singletons)))
 
+    @staticmethod
+    def label_smoothing(labels, epsilon=0.1):
+        """
+        Implementation for label smoothing. This discourages the model to become
+        too confident about its predictions and thus, less prone to overfitting.
+        Label smoothing regularizes the model and makes it more adaptable.
+        :param labels: 3D tensor with the last dimension as the number of labels
+        :param epsilon: smoothing rate
+        :return: smoothed labels
+        """
+        num_labels = labels.get_shape().as_list()[-1]
+        return ((1 - epsilon) * labels) + (epsilon / num_labels)
+
     def construct_network(self):
         self.word_ids = tf.placeholder(tf.int32, [None, None], name="word_ids")
         self.char_ids = tf.placeholder(tf.int32, [None, None, None], name="char_ids")
@@ -122,6 +125,8 @@ class Model(object):
 
         self.word_objective_weights = tf.placeholder(
             tf.float32, [None, None], name="word_objective_weights")
+        self.sentence_objective_weights = tf.placeholder(
+            tf.float32, [None], name="sentence_objective_weights")
 
         self.learning_rate = tf.placeholder(tf.float32, name="learning_rate")
         self.is_training = tf.placeholder(tf.int32, name="is_training")
@@ -249,7 +254,7 @@ class Model(object):
                     cell_fw=word_lstm_cell_fw, cell_bw=word_lstm_cell_bw, inputs=word_input_tensor,
                     sequence_length=self.sentence_lengths, dtype=tf.float32, time_major=False)
 
-        lstm_output_states = tf.concat([lstm_output_fw, lstm_output_bw], -1)
+        lstm_output_states = tf.concat([lstm_output_fw, lstm_output_bw], axis=-1)
 
         if self.config["dropout_word_lstm"] > 0.0:
             dropout_word_lstm = (self.config["dropout_word_lstm"] * tf.cast(self.is_training, tf.float32)
@@ -265,326 +270,155 @@ class Model(object):
             lstm_output_states = tf.nn.dropout(lstm_output_states, dropout_word_lstm)
 
         # The states are concatenated at every token position.
-        lstm_outputs_states = tf.concat([lstm_outputs_fw, lstm_outputs_bw], -1)  # [B, M, 2 * emb_size]
+        lstm_outputs_states = tf.concat([lstm_outputs_fw, lstm_outputs_bw], axis=-1)
 
         if self.config["whidden_layer_size"] > 0:
-            lstm_output_units = self.config["whidden_layer_size"]
-            num_heads = len(self.label2id_tok)
+            lstm_outputs_states = tf.layers.dense(
+                lstm_outputs_states, self.config["whidden_layer_size"],
+                activation=tf.tanh, kernel_initializer=self.initializer)
 
-            # Make the number of units a multiple of num_heads.
-            if lstm_output_units % num_heads != 0:
-                lstm_output_units = ceil(lstm_output_units / num_heads) * num_heads
-
-            lstm_outputs = tf.layers.dense(
-                inputs=lstm_outputs_states, units=lstm_output_units,
-                activation=tf.tanh, kernel_initializer=self.initializer)  # [B, M, lstm_output_units]
+        if self.config["model_type"] == "last":
+            processed_tensor = lstm_output_states
+            token_scores = tf.layers.dense(
+                lstm_outputs_states, units=len(self.label2id_tok),
+                kernel_initializer=self.initializer,
+                name="token_scores_last_lstm_outputs_ff")
+            if self.config["hidden_layer_size"] > 0:
+                processed_tensor = tf.layers.dense(
+                    processed_tensor, units=self.config["hidden_layer_size"],
+                    activation=tf.tanh, kernel_initializer=self.initializer)
+            sentence_scores = tf.layers.dense(
+                processed_tensor, units=len(self.label2id_sent),
+                kernel_initializer=self.initializer,
+                name="sentence_scores_last_lstm_outputs_ff")
         else:
-            lstm_outputs = lstm_outputs_states
+            with tf.variable_scope("attention"):
+                token_scores_list = []
+                sentence_scores_list = []
+                for i in range(len(self.label2id_tok)):
+                    keys = tf.layers.dense(
+                        lstm_outputs_states, units=self.config["attention_evidence_size"],
+                        activation=tf.tanh, kernel_initializer=self.initializer)
+                    values = tf.layers.dense(
+                        lstm_outputs_states, units=self.config["attention_evidence_size"],
+                        activation=tf.tanh, kernel_initializer=self.initializer)
+                    token_scores_head = tf.layers.dense(
+                        keys, units=1,
+                        kernel_initializer=self.initializer)  # [B, M, 1]
+                    token_scores_head = tf.reshape(
+                        token_scores_head, shape=tf.shape(self.word_ids))  # [B, M]
+                    token_scores_list.append(token_scores_head)
+                    attention_weights_unnormalized = token_scores_head
 
-        if self.config["model_type"] == "single_head_attention_binary_labels":
-            if not (len(self.label2id_tok) == 2 and len(self.label2id_sent) == 2):
-                raise ValueError(
-                    "The model_type you selected (%s) is only available for "
-                    "binary labels! Currently, the no. sentence_labels = %d and "
-                    "the no. token_labels = %d. Consider changing the model type."
-                    % (self.config["model_type"],
-                       len(self.label2id_sent), len(self.label2id_tok)))
+                    if self.config["attention_activation"] == "sharp":
+                        attention_weights_unnormalized = tf.exp(attention_weights_unnormalized)
+                    elif self.config["attention_activation"] == "soft":
+                        attention_weights_unnormalized = tf.sigmoid(attention_weights_unnormalized)
+                    elif self.config["attention_activation"] == "linear":
+                        pass
+                    else:
+                        raise ValueError("Unknown/unsupported token scoring method: %s"
+                                         % self.config["attention_activation"])
+                    attention_weights_unnormalized = tf.where(
+                        tf.sequence_mask(self.sentence_lengths),
+                        attention_weights_unnormalized,
+                        tf.zeros_like(attention_weights_unnormalized))
+                    attention_weights = attention_weights_unnormalized / tf.reduce_sum(
+                        attention_weights_unnormalized, axis=1, keep_dims=True)  # [B, M]
+                    processed_tensor = tf.reduce_sum(
+                        values * attention_weights[:, :, numpy.newaxis],
+                        axis=1)  # [B, E]
 
-            self.sentence_scores, self.sentence_predictions, \
-                self.token_scores, self.token_predictions = \
-                single_head_attention_binary_labels(
-                    inputs=lstm_outputs,
-                    initializer=self.initializer,
-                    attention_size=self.config["attention_evidence_size"],
-                    sentence_lengths=self.sentence_lengths,
-                    hidden_units=self.config["hidden_layer_size"])
+                    if self.config["hidden_layer_size"] > 0:
+                        processed_tensor = tf.layers.dense(
+                            processed_tensor, units=self.config["hidden_layer_size"],
+                            activation=tf.tanh, kernel_initializer=self.initializer)
 
-            # Token-level loss
-            word_objective_loss = tf.square(self.token_scores - self.word_labels)
+                    sentence_score_head = tf.layers.dense(
+                        processed_tensor, units=1,
+                        kernel_initializer=self.initializer, name="output_ff_head_%d" % i)
+                    sentence_score_head = tf.reshape(
+                        sentence_score_head, shape=[tf.shape(processed_tensor)[0]])  # [B]
+                    sentence_scores_list.append(sentence_score_head)
+
+                token_scores = tf.stack(token_scores_list, axis=-1)  # [B, M, H]
+                all_sentence_scores = tf.stack(sentence_scores_list, axis=-1)  # [B, H]
+
+                if len(self.label2id_tok) != len(self.label2id_sent):
+                    if len(self.label2id_sent) == 2:
+                        default_sentence_score = tf.gather(
+                            all_sentence_scores, indices=[0], axis=1)  # [B, 1]
+                        maximum_non_default_sentence_score = tf.gather(
+                            all_sentence_scores, indices=list(
+                                range(1, len(self.label2id_tok))), axis=1)  # [B, num_heads-1]
+                        maximum_non_default_sentence_score = tf.reduce_max(
+                            maximum_non_default_sentence_score, axis=1, keep_dims=True)  # [B, 1]
+                        sentence_scores = tf.concat(
+                            [default_sentence_score, maximum_non_default_sentence_score],
+                            axis=-1, name="sentence_scores_concatenation")  # [B, 2]
+                    else:
+                        sentence_scores = tf.layers.dense(
+                            all_sentence_scores, units=len(self.label2id_sent),
+                            kernel_initializer=self.initializer)  # [B, num_sent_labels]
+                else:
+                    sentence_scores = all_sentence_scores
+
+        # Mask the token scores that do not fall in the range of the true sentence length.
+        # Do this for each head (change shape from [B, M] to [B, M, num_heads]).
+        tiled_sentence_lengths = tf.tile(
+            input=tf.expand_dims(
+                tf.sequence_mask(self.sentence_lengths), axis=-1),
+            multiples=[1, 1, len(self.label2id_tok)])
+        self.token_probabilities = tf.nn.softmax(token_scores, axis=-1)
+        self.token_probabilities = tf.where(
+            tiled_sentence_lengths,
+            self.token_probabilities,
+            tf.zeros_like(self.token_probabilities))
+        self.token_predictions = tf.argmax(self.token_probabilities, axis=2)
+
+        self.sentence_probabilities = tf.nn.softmax(sentence_scores)
+        self.sentence_predictions = tf.argmax(self.sentence_probabilities, axis=1)
+
+        if self.config["word_objective_weight"] > 0:
+            word_objective_loss = tf.nn.sparse_softmax_cross_entropy_with_logits(
+                logits=token_scores, labels=tf.cast(self.word_labels, tf.int32))
             word_objective_loss = tf.where(
                 tf.sequence_mask(self.sentence_lengths),
-                word_objective_loss, tf.zeros_like(word_objective_loss))
+                word_objective_loss,
+                tf.zeros_like(word_objective_loss))
             self.loss += self.config["word_objective_weight"] * tf.reduce_sum(
                 self.word_objective_weights * word_objective_loss)
 
-            # Sentence-level loss
-            sentence_objective_loss = tf.square(self.sentence_scores - self.sentence_labels)
-            self.loss += self.config["sentence_objective_weight"] * tf.reduce_sum(sentence_objective_loss)
+        if self.config["sentence_objective_weight"] > 0:
+            self.loss += self.config["sentence_objective_weight"] * tf.reduce_sum(
+                self.sentence_objective_weights *
+                tf.nn.sparse_softmax_cross_entropy_with_logits(
+                    logits=sentence_scores, labels=tf.cast(self.sentence_labels, tf.int32)))
 
-            # Attention-level loss
-            if self.config["attention_objective_weight"] > 0.0:
-                self.loss += self.config["attention_objective_weight"] * (
-                    tf.reduce_sum(
-                        tf.square(
-                            tf.reduce_max(
-                                tf.where(
-                                    tf.sequence_mask(self.sentence_lengths),
-                                    self.token_scores,
-                                    tf.zeros_like(self.token_scores) - 1e6),
-                                axis=-1) - self.sentence_labels))
-                    +
-                    tf.reduce_sum(
-                        tf.square(
-                            tf.reduce_min(
-                                tf.where(
-                                    tf.sequence_mask(self.sentence_lengths),
-                                    self.token_scores,
-                                    tf.zeros_like(self.token_scores) + 1e6),
-                                axis=-1) - 0.0)))
-        else:
-            scoring_activation = None
-            if self.config["scoring_activation"]:
-                if self.config["scoring_activation"] == "tanh":
-                    scoring_activation = tf.tanh
-                elif self.config["scoring_activation"] == "sigmoid":
-                    scoring_activation = tf.sigmoid
-                elif self.config["scoring_activation"] == "relu":
-                    scoring_activation = tf.nn.relu
-                elif self.config["scoring_activation"] == "softmax":
-                    scoring_activation = tf.nn.softmax
-
-            if "baseline_lstm_last_contexts" in self.config["model_type"]:
-                self.sentence_scores, self.sentence_predictions, \
-                    self.token_scores, self.token_predictions, \
-                    self.token_probabilities, self.sentence_probabilities, \
-                    self.attention_weights = baseline_lstm_last_contexts(
-                        last_token_contexts=lstm_outputs_states,
-                        last_context=lstm_output_states,
-                        initializer=self.initializer,
-                        scoring_activation=scoring_activation,
-                        sentence_lengths=self.sentence_lengths,
-                        hidden_units=self.config["hidden_layer_size"],
-                        num_sentence_labels=len(self.label2id_sent),
-                        num_token_labels=len(self.label2id_tok))
-            elif self.config["model_type"] == "single_head_attention_multiple_labels":
-                self.sentence_scores, self.sentence_predictions, \
-                    self.token_scores, self.token_predictions, \
-                    self.token_probabilities, self.sentence_probabilities, \
-                    self.attention_weights = single_head_attention_multiple_labels(
-                        inputs=lstm_outputs,
-                        initializer=self.initializer,
-                        attention_activation=self.config["attention_activation"],
-                        attention_size=self.config["attention_evidence_size"],
-                        sentence_lengths=self.sentence_lengths,
-                        hidden_units=self.config["hidden_layer_size"],
-                        num_sentence_labels=len(self.label2id_sent),
-                        num_token_labels=len(self.label2id_tok))
-            elif self.config["model_type"] == "multi_head_attention_with_scores_from_shared_heads":
-                self.sentence_scores, self.sentence_predictions, \
-                    self.token_scores, self.token_predictions, \
-                    self.token_probabilities, self.sentence_probabilities, \
-                    self.attention_weights = multi_head_attention_with_scores_from_shared_heads(
-                        inputs=lstm_outputs,
-                        initializer=self.initializer,
-                        attention_activation=self.config["attention_activation"],
-                        hidden_units=self.config["hidden_layer_size"],
-                        num_sentence_labels=len(self.label2id_sent),
-                        num_heads=len(self.label2id_tok),
-                        is_training=self.is_training,
-                        dropout=self.config["dropout_attention"],
-                        sentence_lengths=self.sentence_lengths,
-                        use_residual_connection=self.config["residual_connection"],
-                        token_scoring_method=self.config["token_scoring_method"])
-            elif self.config["model_type"] == "multi_head_attention_with_scores_from_separate_heads":
-                self.sentence_scores, self.sentence_predictions, \
-                    self.token_scores, self.token_predictions, \
-                    self.token_probabilities, self.sentence_probabilities, \
-                    self.attention_weights = multi_head_attention_with_scores_from_separate_heads(
-                        inputs=lstm_outputs,
-                        initializer=self.initializer,
-                        attention_activation=self.config["attention_activation"],
-                        num_sentence_labels=len(self.label2id_sent),
-                        num_heads=len(self.label2id_tok),
-                        is_training=self.is_training,
-                        dropout=self.config["dropout_attention"],
-                        sentence_lengths=self.sentence_lengths,
-                        normalize_sentence=self.config["normalize_sentence"],
-                        token_scoring_method=self.config["token_scoring_method"],
-                        scoring_activation=scoring_activation,
-                        separate_heads=self.config["separate_heads"])
-
-            elif self.config["model_type"] == "single_head_attention_multiple_transformations":
-                self.sentence_scores, self.sentence_predictions, \
-                    self.token_scores, self.token_predictions, \
-                    self.token_probabilities, self.sentence_probabilities, \
-                    self.attention_weights = single_head_attention_multiple_transformations(
-                        inputs=lstm_outputs,
-                        initializer=self.initializer,
-                        attention_activation=self.config["attention_activation"],
-                        num_sentence_labels=len(self.label2id_sent),
-                        num_heads=len(self.label2id_tok),
-                        sentence_lengths=self.sentence_lengths,
-                        token_scoring_method=self.config["token_scoring_method"],
-                        scoring_activation=scoring_activation,
-                        how_to_compute_attention=self.config["how_to_compute_attention"],
-                        separate_heads=self.config["separate_heads"])
-            elif self.config["model_type"] == "variant_1":
-                self.sentence_scores, self.sentence_predictions, \
-                    self.token_scores, self.token_predictions, \
-                    self.token_probabilities, self.sentence_probabilities, \
-                    self.attention_weights = variant_1(
-                        inputs=lstm_outputs,
-                        initializer=self.initializer,
-                        attention_activation=self.config["attention_activation"],
-                        num_sentence_labels=len(self.label2id_sent),
-                        num_heads=len(self.label2id_tok),
-                        hidden_units=self.config["hidden_layer_size"],
-                        sentence_lengths=self.sentence_lengths,
-                        scoring_activation=scoring_activation,
-                        token_scoring_method=self.config["token_scoring_method"],
-                        use_inputs_instead_values=self.config["use_inputs_instead_values"],
-                        separate_heads=self.config["separate_heads"])
-            elif self.config["model_type"] == "variant_2":
-                self.sentence_scores, self.sentence_predictions, \
-                    self.token_scores, self.token_predictions, \
-                    self.token_probabilities, self.sentence_probabilities, \
-                    self.attention_weights = variant_2(
-                        inputs=lstm_outputs,
-                        initializer=self.initializer,
-                        attention_activation=self.config["attention_activation"],
-                        num_sentence_labels=len(self.label2id_sent),
-                        num_heads=len(self.label2id_tok),
-                        hidden_units=self.config["hidden_layer_size"],
-                        sentence_lengths=self.sentence_lengths,
-                        scoring_activation=scoring_activation,
-                        use_inputs_instead_values=self.config["use_inputs_instead_values"],
-                        separate_heads=self.config["separate_heads"])
-            elif self.config["model_type"] == "variant_2_modified":
-                self.sentence_scores, self.sentence_predictions, \
-                    self.token_scores, self.token_predictions, \
-                    self.token_probabilities, self.sentence_probabilities, \
-                    self.attention_weights = variant_2_modified(
-                        inputs=lstm_outputs,
-                        initializer=self.initializer,
-                        attention_activation=self.config["attention_activation"],
-                        num_sentence_labels=len(self.label2id_sent),
-                        num_heads=len(self.label2id_tok),
-                        hidden_units=self.config["hidden_layer_size"],
-                        sentence_lengths=self.sentence_lengths,
-                        use_inputs_instead_values=self.config["use_inputs_instead_values"])
-            elif self.config["model_type"] == "variant_3":
-                self.sentence_scores, self.sentence_predictions, \
-                    self.token_scores, self.token_predictions, \
-                    self.token_probabilities, self.sentence_probabilities, \
-                    self.attention_weights = variant_3(
-                        inputs=lstm_outputs,
-                        initializer=self.initializer,
-                        attention_activation=self.config["attention_activation"],
-                        num_sentence_labels=len(self.label2id_sent),
-                        num_heads=len(self.label2id_tok),
-                        attention_size=self.config["attention_evidence_size"],
-                        sentence_lengths=self.sentence_lengths,
-                        scoring_activation=scoring_activation,
-                        separate_heads=self.config["separate_heads"])
-            elif self.config["model_type"] == "variant_4":
-                self.sentence_scores, self.sentence_predictions, \
-                    self.token_scores, self.token_predictions, \
-                    self.token_probabilities, self.sentence_probabilities, \
-                    self.attention_weights = variant_4(
-                        inputs=lstm_outputs,
-                        initializer=self.initializer,
-                        attention_activation=self.config["attention_activation"],
-                        num_sentence_labels=len(self.label2id_sent),
-                        num_heads=len(self.label2id_tok),
-                        hidden_units=self.config["hidden_layer_size"],
-                        sentence_lengths=self.sentence_lengths,
-                        scoring_activation=scoring_activation,
-                        token_scoring_method=self.config["token_scoring_method"],
-                        use_inputs_instead_values=self.config["use_inputs_instead_values"],
-                        separate_heads=self.config["separate_heads"])
-            elif self.config["model_type"] == "variant_5":
-                self.sentence_scores, self.sentence_predictions, \
-                    self.token_scores, self.token_predictions, \
-                    self.token_probabilities, self.sentence_probabilities, \
-                    self.attention_weights = variant_5(
-                        inputs=lstm_outputs,
-                        initializer=self.initializer,
-                        attention_activation=self.config["attention_activation"],
-                        num_sentence_labels=len(self.label2id_sent),
-                        num_heads=len(self.label2id_tok),
-                        hidden_units=self.config["hidden_layer_size"],
-                        sentence_lengths=self.sentence_lengths,
-                        scoring_activation=scoring_activation,
-                        token_scoring_method=self.config["token_scoring_method"],
-                        use_inputs_instead_values=self.config["use_inputs_instead_values"],
-                        separate_heads=self.config["separate_heads"])
-            elif self.config["model_type"] == "variant_6":
-                self.sentence_scores, self.sentence_predictions, \
-                    self.token_scores, self.token_predictions, \
-                    self.token_probabilities, self.sentence_probabilities, \
-                    self.attention_weights = variant_6(
-                        inputs=lstm_outputs,
-                        initializer=self.initializer,
-                        attention_activation=self.config["attention_activation"],
-                        num_sentence_labels=len(self.label2id_sent),
-                        num_heads=len(self.label2id_tok),
-                        hidden_units=self.config["hidden_layer_size"],
-                        scoring_activation=scoring_activation,
-                        token_scoring_method=self.config["token_scoring_method"],
-                        separate_heads=self.config["separate_heads"])
-            else:
-                raise ValueError("Unknown/unsupported model type: %s" % self.config["model_type"])
-
-            # Token-level loss
-            if self.config["word_objective_weight"] > 0:
-                if self.config["token_labels_available"]:
-                    word_objective_loss = tf.nn.sparse_softmax_cross_entropy_with_logits(
-                        logits=self.token_scores, labels=tf.cast(self.word_labels, tf.int32))
-                    word_objective_loss = tf.where(
-                        tf.sequence_mask(self.sentence_lengths),
-                        word_objective_loss, tf.zeros_like(word_objective_loss))
-                    self.x = word_objective_loss
-                    self.y = self.word_objective_weights * word_objective_loss
-                    self.z = tf.reduce_sum(self.word_objective_weights * word_objective_loss)
-                    self.loss += self.config["word_objective_weight"] * tf.reduce_sum(
-                        self.word_objective_weights * word_objective_loss)
+        if self.config["attention_objective_weight"] > 0:
+            one_hot_sentence_labels = tf.one_hot(
+                tf.cast(self.sentence_labels, tf.int64),
+                depth=len(self.label2id_sent))
+            one_hot_sentence_labels_smoothed = self.label_smoothing(
+                one_hot_sentence_labels, epsilon=0.15)
+            max_over_token_heads = tf.reduce_max(self.token_probabilities, axis=1)  # [B, H]
+            if len(self.label2id_tok) != len(self.label2id_sent):
+                if len(self.label2id_sent) == 2:
+                    max_default_head = tf.gather(
+                        max_over_token_heads, indices=[0], axis=-1)  # [B, 1]
+                    max_non_default_head = tf.reduce_max(tf.gather(
+                        max_over_token_heads, indices=list(
+                            range(1, len(self.label2id_tok))), axis=-1),
+                        axis=1, keep_dims=True)  # [B, 1]
+                    max_over_token_heads = tf.concat(
+                        [max_default_head, max_non_default_head], axis=-1)  # [B, 2]
                 else:
                     raise ValueError(
-                        "No token labels available! You cannot supervise on the token-level"
-                        " so please change \"word_objective_weight\" to 0"
-                        " or provide token-annotated files.")
-
-            # Sentence-level loss
-            if self.config["sentence_objective_weight"] > 0:
-                sentence_objective_loss = tf.nn.sparse_softmax_cross_entropy_with_logits(
-                    logits=self.sentence_scores, labels=tf.cast(self.sentence_labels, tf.int32))
-                self.loss += self.config["sentence_objective_weight"] * tf.reduce_sum(sentence_objective_loss)
-
-            self.zzz = self.loss
-
-            # Mask the token scores that do not fall in the range of the true sentence length.
-            # Do this for each head (change shape from [B, M] to [B, M, num_heads]).
-            tiled_sentence_lengths = tf.tile(
-                input=tf.expand_dims(
-                    tf.sequence_mask(self.sentence_lengths), axis=-1),
-                multiples=[1, 1, len(self.label2id_tok)])
-
-            self.token_probabilities = tf.where(
-                tiled_sentence_lengths,
-                self.token_probabilities,
-                tf.zeros_like(self.token_probabilities))
-
-            if self.config["attention_objective_weight"] > 0.0:
-                attention_loss = compute_attention_loss(
-                    self.token_probabilities,
-                    self.sentence_labels,
-                    num_sent_labels=len(self.label2id_sent),
-                    num_tok_labels=len(self.label2id_tok),
-                    approach=self.config["aux_loss_approach"],
-                    compute_pairwise=self.config["compute_pairwise_attention"])
-                self.loss += self.config["attention_objective_weight"] * tf.reduce_sum(attention_loss)
-
-            # Apply a gap-distance loss.
-            if self.config["gap_objective_weight"] > 0.0:
-                gap_distance_loss = compute_gap_distance_loss(
-                    self.token_probabilities,
-                    self.sentence_labels,
-                    num_sent_labels=len(self.label2id_sent),
-                    num_tok_labels=len(self.label2id_tok),
-                    minimum_gap_distance=self.config["minimum_gap_distance"],
-                    approach=self.config["aux_loss_approach"],
-                    type_distance=self.config["type_distance"])
-                self.loss += self.config["gap_objective_weight"] * tf.reduce_sum(gap_distance_loss)
+                        "Unsupported attention loss for num_heads != num_sent_lables "
+                        "and num_sentence_labels != 2.")
+            self.loss += self.config["attention_objective_weight"] * (
+                tf.reduce_sum(self.sentence_objective_weights * tf.reduce_sum(tf.square(
+                    max_over_token_heads - one_hot_sentence_labels_smoothed), axis=-1)))
 
         # Token-level language modelling objective
         if self.config["lmcost_lstm_gamma"] > 0.0:
@@ -745,6 +579,7 @@ class Model(object):
         word_labels = numpy.zeros((len(batch), max_sentence_length), dtype=numpy.float32)
         sentence_labels = numpy.zeros((len(batch)), dtype=numpy.float32)
         word_objective_weights = numpy.zeros((len(batch), max_sentence_length), dtype=numpy.float32)
+        sentence_objective_weights = numpy.zeros((len(batch)), dtype=numpy.float32)
 
         # A proportion of the sentences should be assigned to UNK. We do this just for training.
         singletons = self.singletons if is_training else None
@@ -752,6 +587,15 @@ class Model(object):
 
         for i, sentence in enumerate(batch):
             sentence_labels[i] = sentence.label_sent
+
+            if sentence_labels[i] != 0:
+                if self.config["sentence_objective_weights_non_default"] > 0.0:
+                    sentence_objective_weights[i] = self.config["sentence_objective_weights_non_default"]
+                else:
+                    sentence_objective_weights[i] = 1.0
+            else:
+                sentence_objective_weights[i] = 1.0
+
             for j, token in enumerate(sentence.tokens):
                 word_ids[i][j] = self.translate2id(
                     token=token.value,
@@ -779,6 +623,7 @@ class Model(object):
             self.sentence_labels: sentence_labels,
             self.word_labels: word_labels,
             self.word_objective_weights: word_objective_weights,
+            self.sentence_objective_weights: sentence_objective_weights,
             self.learning_rate: learning_rate,
             self.is_training: is_training}
         return input_dictionary
@@ -786,30 +631,18 @@ class Model(object):
     def process_batch(self, batch, is_training, learning_rate):
         feed_dict = self.create_input_dictionary_for_batch(batch, is_training, learning_rate)
 
-        print("Sentence lengths: ", feed_dict[self.sentence_lengths])
-        print("\n")
-        print("Word lengths: ", feed_dict[self.word_lengths])
-        print("\n")
-        print("Sentence labels: ", feed_dict[self.sentence_labels])
-        print("\n")
-        print("Word labels: ", feed_dict[self.word_labels])
-        print("\n")
-        print("word_objective_weights = ", feed_dict[self.word_objective_weights])
-        print("*" * 50)
+        cost, sentence_pred, sentence_proba, token_pred, token_proba = self.session.run(
+            [self.loss, self.sentence_predictions, self.sentence_probabilities,
+             self.token_predictions, self.token_probabilities] +
+            ([self.train_op] if is_training else []), feed_dict=feed_dict)[:5]
 
-        cost, sentence_scores, token_scores, sentence_pred, token_pred, \
-        token_proba, sent_proba, x, y, z, zzz = self.session.run(
-            [self.loss, self.sentence_scores, self.token_scores,
-             self.sentence_predictions, self.token_predictions,
-             self.token_probabilities, self.sentence_probabilities,
-             self.x, self.y, self.z, self.zzz] +
-            ([self.train_op] if is_training else []), feed_dict=feed_dict)[:11]
-        print("\nWORD_LOSS=\n", "\n".join([" ".join([str(elem) for elem in e]) for e in x]))
-        print("\nWORD_LOSS MASKED=\n", "\n".join([" ".join([str(elem) for elem in e]) for e in y]))
-        print("LOSS was: ", z)
-        print("SHOULD BE THE SAME LOSS = ", zzz)
-        print("*" * 50)
-        return cost, sentence_pred, sent_proba, token_pred, token_proba
+        # print("SENTENCES: ")
+        # _ = [sentence.print_sentence() for sentence in batch]
+        # print("Sentence probabilities: ", " ".join([str(s) for s in sentence_proba]))
+        # print("Sentence predictions: ", " ".join([str(s) for s in sentence_pred]))
+        # print("TOKEN PROBA: ", "\n".join([str(tok_p) for tok_p in token_proba]))
+        # print("TOKEN PRED: ", "\n".join([str(tok_p) for tok_p in token_pred]))
+        return cost, sentence_pred, sentence_proba, token_pred, token_proba
 
     def initialize_session(self):
         tf.set_random_seed(self.config["random_seed"])
@@ -898,4 +731,3 @@ class Model(object):
                     + str(dump["params"][variable.name].shape)
                 value = numpy.asarray(dump["params"][variable.name])
                 self.session.run(variable.assign(value))
-

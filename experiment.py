@@ -1,4 +1,5 @@
-from my_second_model import Model
+from marek_model import Model
+# from my_second_model import Model
 from my_eval import Evaluator
 from collections import Counter
 from collections import OrderedDict
@@ -27,9 +28,12 @@ class Token:
     """
     unique_labels_tok = set()
 
-    def __init__(self, value, label):
+    def __init__(self, value, label, enable_supervision):
         self.value = value
         self.label_tok = label
+        self.enable_supervision = True
+        if enable_supervision == "off":
+            self.enable_supervision = False
         self.unique_labels_tok.add(label)
 
 
@@ -47,14 +51,16 @@ class Sentence:
         self.tokens = []
         self.label_sent = None
 
-    def add_token(self, value, label, sentence_label_type, default_label):
+    def add_token(self, value, label, enable_supervision,
+                  sentence_label_type, default_label):
         """
         Add a token with the specified value and label to the list of tokens.
         If the token value is "sent_label" then instead of adding a token,
         the sentence label is set for which the sentence_label_type and
         the default_label are needed.
-        :param value: str
-        :param label: str
+        :param value: str, the actual token value (what is the word, precisely)
+        :param label: str, the lable of the current token
+        :param enable_supervision: str, whether to allow supervision or not
         :param sentence_label_type: str
         :param default_label: str
         :rtype: None
@@ -62,7 +68,7 @@ class Sentence:
         if value == "sent_label":
             self.set_label(sentence_label_type, default_label, label)
         else:
-            token = Token(value, label)
+            token = Token(value, label, enable_supervision)
             self.tokens.append(token)
 
     def set_label(self, sentence_label_type, default_label, label=None):
@@ -92,19 +98,26 @@ class Sentence:
             if non_default_token_labels > 0:
                 self.label_sent = "1"
             else:
-                self.label_sent = "0"  # Experiment.config["default_label"]
+                self.label_sent = "0"  # default_label
         if self.label_sent is not None:
             self.unique_labels_sent.add(self.label_sent)
 
     def print_sentence(self):
         """
-        Print a sentence in this format: "sent_label: tok_i(tok_i label)".
-        :rtype: None
+        Print a sentence in this format: "sent_label: tok_i(label_i, is_supervision_enabled_i)".
+        :rtype: int, representing the number of tokens enabled in this sentence
         """
         to_print = []
+        num_tokens_enabled = 0
         for token in self.tokens:
-            to_print.append("%s(%s)" % (token.value, token.label_tok))
+            to_print.append("%s (%s, %s)" % (token.value, token.label_tok, token.enable_supervision))
+            if token.enable_supervision:
+                num_tokens_enabled += 1
         print("sent %s: %s\n" % (self.label_sent, " ".join(to_print)))
+        if self.tokens[0].enable_supervision:
+            assert num_tokens_enabled == len(self.tokens), \
+                "Number of tokens enabled does not equal the number of tokens in the sentence!"
+        return num_tokens_enabled
 
 
 class Experiment:
@@ -146,9 +159,15 @@ class Experiment:
                             "Inconsistent line parts: expected %d, but got %d for line %s." % (
                                 len(line_parts), line_length, line)
                         line_length = len(line_parts)
-                        # The first element on the line is the token value, the last is the token label
+
+                        # The first element on the line is the token value.
+                        # The last is the token label. If there is a penultimate column value
+                        # on the line that is equal to either "on" or "off", it indicates
+                        # whether supervision on this token is enabled. If there is no such element,
+                        # we implicitly assume that supervision is possible and turn it on.
                         sentence.add_token(
                             value=line_parts[0], label=line_parts[-1],
+                            enable_supervision=line_parts[-2] if len(line_parts) > 2 else "on",
                             sentence_label_type=self.config["sentence_label"],
                             default_label=self.config["default_label"])
                     elif len(line) == 0 and len(sentence.tokens) > 0:
@@ -164,6 +183,7 @@ class Experiment:
                             sentence_label_type=self.config["sentence_label"],
                             default_label=self.config["default_label"])
                         sentences.append(sentence)
+                    sentence = Sentence()
         return sentences
 
     def create_labels_mapping(self, unique_labels):
@@ -197,7 +217,6 @@ class Experiment:
                 print("Key error for ", current_label_sent)
                 print("Sentence: ", [token.value for token in sentence.tokens])
                 print("Label to id", self.label2id_sent)
-                # raise
             for token in sentence.tokens:
                 current_label_tok = token.label_tok
                 token.label_tok = self.label2id_tok[current_label_tok]
@@ -288,7 +307,7 @@ class Experiment:
 
     def process_sentences(self, sentences, model, is_training, learning_rate, name):
         """
-        Process the sentences by passing them to the model labeler. 
+        Obtain sentence and token predictions for the sentences.
         Return the evaluation metrics.
         :type sentences: List[Sentence]
         :type model: Model
@@ -299,6 +318,7 @@ class Experiment:
         """
         evaluator = Evaluator(self.label2id_sent, self.label2id_tok,
                               self.config["conll03_eval"])
+
         batches_of_sentence_ids = self.create_batches_of_sentence_ids(
             sentences, self.config["batch_equal_size"], self.config["max_batch_size"])
 
@@ -307,18 +327,19 @@ class Experiment:
 
         all_batches, all_sentence_probs, all_token_probs = [], [], []
 
-        for sentence_ids_in_batch in batches_of_sentence_ids:
-            batch = [sentences[i] for i in sentence_ids_in_batch]
-            cost, sentence_scores, token_scores, sentence_pred, token_pred, \
-                token_probs, sentence_probs, attention_weights \
-                = model.process_batch(batch, is_training, learning_rate)
+        for batch_of_sentence_ids in batches_of_sentence_ids:
+            batch = [sentences[i] for i in batch_of_sentence_ids]
+
+            cost, sentence_pred, sentence_probs, token_pred, token_probs = \
+                model.process_batch(batch, is_training, learning_rate)
+            evaluator.append_data(cost, batch, sentence_pred, token_pred)
 
             if "test" in name and self.config["plot_predictions_html"]:
                 all_batches.append(batch)
                 all_sentence_probs.append(sentence_probs)
                 all_token_probs.append(token_probs)
 
-            # Plot the token scores with probability 0.5 for each sentence in the batch.
+            # Plot the token scores for each sentence in the batch.
             if "test" in name and self.config["plot_token_scores"]:
                 for sentence, token_proba_per_sentence in zip(batch, token_probs):
                     visualize.plot_token_scores(
@@ -327,31 +348,18 @@ class Experiment:
                         head_labels=evaluator.id2label_tok,
                         plot_name="plots/token_vis/token_heads_vis")
 
-            """
-            # Print attention weight scores for each token (to and from).
-            for sentence, sentence_attention_weights in zip(batch, attention_weights):
-                for token1, token1_attn_weights in zip(sentence.tokens, sentence_attention_weights):
-                    print("\nAttention from word ", token1.value, "to : ")
-                    for token2, token2_attn_weights in zip(sentence.tokens, token1_attn_weights):
-                        print("word = ", token2.value, "with label ", token2.label_tok,
-                              " and with head scores: ",
-                              " ".join(["%.10f" % head_score for head_score in token2_attn_weights]))
-                print("*" * 30)
-            """
-
-            evaluator.append_data(cost, batch, sentence_pred, token_pred)
-
             while self.config["garbage_collection"] and gc.collect() > 0:
                 pass
+
         results = evaluator.get_results(
             name=name, token_labels_available=self.config["token_labels_available"])
+
         for key in results:
             print("%s_%s: %s" % (name, key, str(results[key])))
-
         evaluator.get_results_nice_print(
             name=name, token_labels_available=self.config["token_labels_available"])
 
-        # Create html visualizations of the predictions for the test set.
+        # Create html visualizations based on the test set predictions.
         if "test" in name and self.config["plot_predictions_html"]:
             save_name = (self.config["to_write_filename"].split("/")[-1]).split(".")[0]
             visualize.plot_predictions(
@@ -404,13 +412,9 @@ class Experiment:
         print("Sentence labels to id: ", self.label2id_sent)
         print("Token labels to id: ", self.label2id_tok)
 
-        data_train = self.convert_labels(data_train)
-        data_dev = self.convert_labels(data_dev)
-        data_test = self.convert_labels(data_test)
-
-        # data_train = data_train[:200]
-        # data_dev = data_dev[:100]
-        # data_test = data_test[:100]
+        data_train = self.convert_labels(data_train) if data_train else None
+        data_dev = self.convert_labels(data_dev) if data_dev else None
+        data_test = self.convert_labels(data_test) if data_test else None
 
         model = Model(self.config, self.label2id_sent, self.label2id_tok)
         model.build_vocabs(data_train, data_dev, data_test,
@@ -479,19 +483,21 @@ class Experiment:
                 results_dev = self.process_sentences(
                     data_dev, model, is_training=False,
                     learning_rate=0.0, name="dev_epoch%d" % epoch)
+
                 df_results = df_results.append(results_dev, ignore_index=True)
 
                 if math.isnan(results_dev["cost_sum"]) or math.isinf(results_dev["cost_sum"]):
-                    raise ValueError("Cost is NaN or Inf. Exiting.")
+                    raise ValueError("Cost is NaN or Inf!")
 
                 results_dev_for_model_selector = sum([
                     results_dev[model_selector] * ratio
                     for model_selector, ratio in model_selector_to_ratio.items()])
 
-                if epoch == 0 or (model_selector_type == "high"
-                                  and results_dev_for_model_selector > best_selector_value) \
-                        or (model_selector_type == "low"
-                            and results_dev_for_model_selector < best_selector_value):
+                if (epoch == 0 
+                    or (model_selector_type == "high" 
+                        and results_dev_for_model_selector > best_selector_value) 
+                    or (model_selector_type == "low"
+                        and results_dev_for_model_selector < best_selector_value)):
                     best_epoch = epoch
                     best_selector_value = results_dev_for_model_selector
                     model.saver.save(sess=model.session, save_path=temp_model_path,
@@ -582,7 +588,7 @@ if __name__ == "__main__":
             for path_data_test in experiment.config["path_test"].strip().split(":"):
                 data_test_loaded = experiment.read_input_files(path_data_test)
                 data_test_loaded = experiment.convert_labels(data_test_loaded)
-                # data_test_loaded = data_test_loaded[:50]
+                # data_test_loaded = data_test_loaded[:250]
                 experiment.process_sentences(
                     data_test_loaded, loaded_model, is_training=False,
                     learning_rate=0.0, name="test" + str(d))
