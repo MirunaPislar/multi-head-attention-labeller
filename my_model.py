@@ -1,5 +1,5 @@
 from math import ceil
-from modules import layer_normalization
+from modules import cosine_distance_loss
 import collections
 import numpy
 import pickle
@@ -308,7 +308,7 @@ class Model(object):
                     inputs, num_units, activation=tf.tanh,
                     kernel_initializer=self.initializer)  # [B, M, num_units]
 
-                queries = tf.math.reduce_variance(queries, axis=1)  # [B, num_units]
+                queries = tf.math.reduce_sum(queries, axis=1)  # [B, num_units]
                 queries = tf.expand_dims(tf.nn.sigmoid(queries), axis=-1)  # [B, num_units, 1]
 
                 # Project to get the keys and values.
@@ -330,6 +330,19 @@ class Model(object):
                     tf.split(values, num_heads, axis=2),
                     axis=0)  # [B*num_heads, M, num_units/num_heads]
 
+                self.x = 0.0
+                if "value_regularization" in self.config and self.config["value_regularization"] > 0:
+                    self.loss += self.config["value_regularization"] * cosine_distance_loss(
+                        tf.concat(tf.split(tf.expand_dims(values, axis=2), num_heads), axis=2))
+                    self.x = cosine_distance_loss(
+                        tf.concat(tf.split(tf.expand_dims(values, axis=2), num_heads), axis=2))
+
+                if "query_regularization" in self.config and self.config["query_regularization"] > 0:
+                    self.loss += self.config["query_regularization"] * cosine_distance_loss(
+                        tf.concat(tf.split(tf.transpose(queries, [0, 2, 1]), num_heads), axis=1))
+                    self.x = cosine_distance_loss(
+                        tf.concat(tf.split(tf.transpose(queries, [0, 2, 1]), num_heads), axis=1))
+
                 # Multiply each key by its query.
                 attention_evidence = tf.matmul(keys, queries)  # [B*num_heads, M, 1]
                 attention_evidence = tf.squeeze(attention_evidence, axis=-1)  # [B*num_heads, M]
@@ -338,6 +351,11 @@ class Model(object):
                 token_scores = tf.concat(tf.split(
                     tf.expand_dims(attention_evidence, axis=-1),
                     num_heads), axis=2)  # [B, M, num_heads]
+
+                if "att_ev_regularization" in self.config and self.config["att_ev_regularization"] > 0:
+                    self.loss += self.config["att_ev_regularization"] * cosine_distance_loss(
+                        tf.expand_dims(token_scores, axis=-1))
+                    self.x = cosine_distance_loss(tf.expand_dims(token_scores, axis=-1))
 
                 # Apply a non-linear layer to obtain (un-normalized) attention weights.
                 if self.config["attention_activation"] == "sharp":
@@ -362,10 +380,15 @@ class Model(object):
                 # Normalize attention weights.
                 attention_weights /= tf.reduce_sum(
                    attention_weights, axis=-1, keep_dims=True)  # [B*num_heads, M]
-                # attention_weights = tf.contrib.layers.layer_norm(attention_weights)
 
-                product = values * tf.expand_dims(attention_weights, axis=-1)
+                product = values * tf.expand_dims(attention_weights, axis=-1)  # [B*num_heads, M, num_units/num_heads]
                 product = tf.reduce_sum(product, axis=1)  # [B*num_heads, num_units/num_heads]
+
+                if "product_regularization" in self.config and self.config["product_regularization"] > 0:
+                    self.loss += self.config["product_regularization"] * cosine_distance_loss(
+                        tf.concat(tf.split(tf.expand_dims(product, axis=1), num_heads), axis=1))
+                    self.x = cosine_distance_loss(
+                        tf.concat(tf.split(tf.expand_dims(product, axis=1), num_heads), axis=1))
 
                 product = tf.layers.dense(
                     inputs=product, units=self.config["hidden_layer_size"],
@@ -384,7 +407,7 @@ class Model(object):
                             processed_tensor, indices=[0], axis=1)  # [B, 1]
                         maximum_non_default_sentence_score = tf.gather(
                             processed_tensor, indices=list(
-                                range(1, len(self.label2id_tok))), axis=1)  # [B, num_heads-1]
+                                range(1, num_heads)), axis=1)  # [B, num_heads-1]
                         maximum_non_default_sentence_score = tf.reduce_max(
                             maximum_non_default_sentence_score, axis=1, keep_dims=True)  # [B, 1]
                         sentence_scores = tf.concat(
@@ -671,18 +694,19 @@ class Model(object):
     def process_batch(self, batch, is_training, learning_rate):
         feed_dict = self.create_input_dictionary_for_batch(batch, is_training, learning_rate)
 
-        cost, sentence_pred, sentence_proba, token_pred, token_proba = self.session.run(
+        cost, sentence_pred, sentence_proba, token_pred, token_proba, loss_x = self.session.run(
             [self.loss, self.sentence_predictions, self.sentence_probabilities,
-             self.token_predictions, self.token_probabilities] +
-            ([self.train_op] if is_training else []), feed_dict=feed_dict)[:5]
+             self.token_predictions, self.token_probabilities, self.x] +
+            ([self.train_op] if is_training else []), feed_dict=feed_dict)[:6]
 
         # print("SENTENCES: ")
         # _ = [sentence.print_sentence() for sentence in batch]
-        print("Sentence probabilities: ", " ".join([str(s) for s in sentence_proba]))
+        # print("Sentence probabilities: ", " ".join([str(s) for s in sentence_proba]))
         # print("Sentence predictions: ", " ".join([str(s) for s in sentence_pred]))
         # print("TOKEN SCORES: ", "\n".join([str(tok_p) for tok_p in token_scores]))
-        print("TOKEN PROBA: ", "\n".join([str(tok_p) for tok_p in token_proba]))
+        # print("TOKEN PROBA: ", "\n".join([str(tok_p) for tok_p in token_proba]))
         # print("TOKEN PRED: ", "\n".join([str(tok_p) for tok_p in token_pred]))
+        print("LOSS X = ", loss_x)
         return cost, sentence_pred, sentence_proba, token_pred, token_proba
 
     def initialize_session(self):
@@ -772,3 +796,4 @@ class Model(object):
                     + str(dump["params"][variable.name].shape)
                 value = numpy.asarray(dump["params"][variable.name])
                 self.session.run(variable.assign(value))
+

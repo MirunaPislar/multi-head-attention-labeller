@@ -78,6 +78,31 @@ def mask(inputs, queries=None, keys=None, mask_type=None):
     return outputs
 
 
+def cosine_distance_loss(inputs):
+    """
+    Compute the cosine pairwise distance loss between the input heads.
+    :param inputs: shape of [B, H, E], where B = batch size and H = num heads.
+    :return: loss of the cosine distance between any 2 pairs of head vectors.
+    """
+    with tf.variable_scope("cosine_distance_loss"):
+        # Calculate the cosine similarity and cosine distance.
+        # The goal is to maximize the cosine distance.
+        normalized_inputs = tf.nn.l2_normalize(inputs, axis=-1)
+        permutation = list(range(len(inputs.get_shape().as_list())))
+        permutation[-1], permutation[-2] = permutation[-2], permutation[-1]
+        cos_similarity = tf.matmul(
+            normalized_inputs, tf.transpose(normalized_inputs, permutation))
+
+        # Mask the lower diagonal matrix.
+        ones = tf.ones_like(cos_similarity)
+        mask_upper = tf.matrix_band_part(ones, 0, -1)  # upper triangular part
+        mask_diagonal = tf.matrix_band_part(ones, 0, 0)  # diagonal
+        mask_matrix = tf.cast(mask_upper - mask_diagonal, dtype=tf.bool)
+
+        upper_triangular_flat = tf.boolean_mask(cos_similarity, mask_matrix)
+        return tf.reduce_mean(tf.abs(upper_triangular_flat))
+
+
 def single_head_attention_binary_labels(
         inputs,
         initializer,
@@ -174,7 +199,7 @@ def baseline_lstm_last_contexts(
                 last_context, units=hidden_units,
                 activation=tf.tanh, kernel_initializer=initializer)
             token_scores = tf.layers.dense(
-                last_token_contexts, units=hidden_units * 2,
+                last_token_contexts, units=hidden_units,
                 activation=tf.tanh, kernel_initializer=initializer)
         else:
             processed_tensor = last_context
