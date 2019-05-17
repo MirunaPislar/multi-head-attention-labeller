@@ -1,3 +1,4 @@
+from modules import cosine_distance_loss
 import collections
 import numpy
 import pickle
@@ -295,6 +296,10 @@ class Model(object):
             with tf.variable_scope("attention"):
                 token_scores_list = []
                 sentence_scores_list = []
+                keys_list = []
+                values_list = []
+                processed_tensor_list = []
+
                 for i in range(len(self.label2id_tok)):
                     keys = tf.layers.dense(
                         lstm_outputs_states, units=self.config["attention_evidence_size"],
@@ -302,20 +307,24 @@ class Model(object):
                     values = tf.layers.dense(
                         lstm_outputs_states, units=self.config["attention_evidence_size"],
                         activation=tf.tanh, kernel_initializer=self.initializer)
+
+                    # Add keys and values for this head to a cummulated list (this will later be
+                    # used in a regularization loss, imposing different head representations).
+                    keys_list.append(keys)
+                    values_list.append(values)
+
                     token_scores_head = tf.layers.dense(
-                        keys, units=1,
-                        kernel_initializer=self.initializer)  # [B, M, 1]
+                        keys, units=1, kernel_initializer=self.initializer)  # [B, M, 1]
                     token_scores_head = tf.reshape(
                         token_scores_head, shape=tf.shape(self.word_ids))  # [B, M]
                     token_scores_list.append(token_scores_head)
-                    attention_weights_unnormalized = token_scores_head
 
                     if self.config["attention_activation"] == "sharp":
-                        attention_weights_unnormalized = tf.exp(attention_weights_unnormalized)
+                        attention_weights_unnormalized = tf.exp(token_scores_head)
                     elif self.config["attention_activation"] == "soft":
-                        attention_weights_unnormalized = tf.sigmoid(attention_weights_unnormalized)
+                        attention_weights_unnormalized = tf.sigmoid(token_scores_head)
                     elif self.config["attention_activation"] == "linear":
-                        pass
+                        attention_weights_unnormalized = token_scores_head
                     else:
                         raise ValueError("Unknown/unsupported token scoring method: %s"
                                          % self.config["attention_activation"])
@@ -326,8 +335,8 @@ class Model(object):
                     attention_weights = attention_weights_unnormalized / tf.reduce_sum(
                         attention_weights_unnormalized, axis=1, keep_dims=True)  # [B, M]
                     processed_tensor = tf.reduce_sum(
-                        values * attention_weights[:, :, numpy.newaxis],
-                        axis=1)  # [B, E]
+                        values * attention_weights[:, :, numpy.newaxis], axis=1)  # [B, E]
+                    processed_tensor_list.append(processed_tensor)
 
                     if self.config["hidden_layer_size"] > 0:
                         processed_tensor = tf.layers.dense(
@@ -336,13 +345,17 @@ class Model(object):
 
                     sentence_score_head = tf.layers.dense(
                         processed_tensor, units=1,
-                        kernel_initializer=self.initializer, name="output_ff_head_%d" % i)
+                        kernel_initializer=self.initializer,
+                        name="output_ff_head_%d" % i)  # [B, 1]
                     sentence_score_head = tf.reshape(
                         sentence_score_head, shape=[tf.shape(processed_tensor)[0]])  # [B]
                     sentence_scores_list.append(sentence_score_head)
 
                 token_scores = tf.stack(token_scores_list, axis=-1)  # [B, M, H]
                 all_sentence_scores = tf.stack(sentence_scores_list, axis=-1)  # [B, H]
+                keys_across_heads = tf.stack(keys_list, axis=2)  # [B, M, H, E]
+                values_across_heads = tf.stack(values_list, axis=2)  # [B, M, H, E]
+                sentence_repr_across_heads = tf.stack(processed_tensor_list, axis=1)  # [B, H, E]
 
                 if len(self.label2id_tok) != len(self.label2id_sent):
                     if len(self.label2id_sent) == 2:
@@ -395,13 +408,16 @@ class Model(object):
                 tf.nn.sparse_softmax_cross_entropy_with_logits(
                     logits=sentence_scores, labels=tf.cast(self.sentence_labels, tf.int32)))
 
-        if self.config["attention_objective_weight"] > 0:
+        # At least one token has a label corresponding to the true sentence label.
+        # This loss also pushes the maximums over the other heads towards 0 (but smoothed).
+        if self.config["type1_attention_objective_weight"] > 0:
+            max_over_token_heads = tf.reduce_max(self.token_probabilities, axis=1)  # [B, H]
             one_hot_sentence_labels = tf.one_hot(
-                tf.cast(self.sentence_labels, tf.int64),
+                tf.cast(self.sentence_labels, tf.int32),
                 depth=len(self.label2id_sent))
             one_hot_sentence_labels_smoothed = self.label_smoothing(
                 one_hot_sentence_labels, epsilon=0.15)
-            max_over_token_heads = tf.reduce_max(self.token_probabilities, axis=1)  # [B, H]
+
             if len(self.label2id_tok) != len(self.label2id_sent):
                 if len(self.label2id_sent) == 2:
                     max_default_head = tf.gather(
@@ -416,9 +432,78 @@ class Model(object):
                     raise ValueError(
                         "Unsupported attention loss for num_heads != num_sent_lables "
                         "and num_sentence_labels != 2.")
-            self.loss += self.config["attention_objective_weight"] * (
+            self.loss += self.config["type1_attention_objective_weight"] * (
                 tf.reduce_sum(self.sentence_objective_weights * tf.reduce_sum(tf.square(
                     max_over_token_heads - one_hot_sentence_labels_smoothed), axis=-1)))
+
+        # The predicted distribution over the token labels (heads) should be similar to the
+        # predicted distribution over the sentence representations.
+        if self.config["type2_attention_objective_weight"] > 0:
+            max_over_token_heads = tf.reduce_max(self.token_probabilities, axis=1)  # [B, H]
+            all_sentence_scores_probabilities = tf.nn.softmax(all_sentence_scores)  # [B, H]
+            self.loss += self.config["type2_attention_objective_weight"] * (
+                tf.reduce_sum(self.sentence_objective_weights * tf.reduce_sum(tf.square(
+                    max_over_token_heads - all_sentence_scores_probabilities), axis=-1)))
+
+        # At least one token has a label corresponding to the true sentence label.
+        if self.config["type3_attention_objective_weight"] > 0:
+            max_over_token_heads = tf.reduce_max(self.token_probabilities, axis=1)  # [B, H]
+            one_hot_sentence_labels = tf.one_hot(
+                tf.cast(self.sentence_labels, tf.int32),
+                depth=len(self.label2id_sent))
+            one_hot_sentence_labels_smoothed = self.label_smoothing(
+                one_hot_sentence_labels, epsilon=0.15)
+
+            if len(self.label2id_tok) != len(self.label2id_sent):
+                if len(self.label2id_sent) == 2:
+                    max_default_head = tf.gather(
+                        max_over_token_heads, indices=[0], axis=-1)  # [B, 1]
+                    max_non_default_head = tf.reduce_max(tf.gather(
+                        max_over_token_heads, indices=list(
+                            range(1, len(self.label2id_tok))), axis=-1),
+                        axis=1, keep_dims=True)  # [B, 1]
+                    max_over_token_heads = tf.concat(
+                        [max_default_head, max_non_default_head], axis=-1)  # [B, 2]
+                else:
+                    raise ValueError(
+                        "Unsupported attention loss for num_heads != num_sent_lables "
+                        "and num_sentence_labels != 2.")
+            self.loss += self.config["type3_attention_objective_weight"] * (
+                tf.reduce_sum(self.sentence_objective_weights * tf.reduce_sum(tf.square(
+                    (max_over_token_heads * one_hot_sentence_labels)
+                    - one_hot_sentence_labels_smoothed), axis=-1)))
+
+        # A sentence that has a default label, should only contain tokens labeled as default.
+        if self.config["type4_attention_objective_weight"] > 0:
+            default_head = tf.gather(self.token_probabilities, indices=[0], axis=-1)  # [B, M, 1]
+            default_head = tf.squeeze(default_head, axis=-1)  # [B, M]
+            self.loss += self.config["type4_attention_objective_weight"] * (
+                tf.reduce_sum(self.sentence_objective_weights * tf.cast(
+                    tf.equal(self.sentence_labels, 0.0), tf.float32) * tf.reduce_sum(
+                    tf.square(default_head - tf.ones_like(default_head)), axis=-1)))
+
+        # Every sentence has at least one default label.
+        if self.config["type5_attention_objective_weight"] > 0:
+            default_head = tf.gather(self.token_probabilities, indices=[0], axis=-1)  # [B, M, 1]
+            max_default_head = tf.reduce_max(tf.squeeze(default_head, axis=-1), axis=-1)   # [B]
+            self.loss += self.config["type5_attention_objective_weight"] * (
+                tf.reduce_sum(self.sentence_objective_weights * tf.square(
+                    max_default_head - tf.ones_like(max_default_head))))
+
+        if self.config["regularize_keys"] > 0:
+            self.loss += self.config["regularize_keys"] * cosine_distance_loss(
+                keys_across_heads,
+                take_abs=self.config["take_abs"] if "take_abs" in self.config else False)
+
+        if self.config["regularize_values"] > 0:
+            self.loss += self.config["regularize_values"] * cosine_distance_loss(
+                values_across_heads,
+                take_abs=self.config["take_abs"] if "take_abs" in self.config else False)
+
+        if self.config["regularize_sentence_repr"] > 0:
+            self.loss += self.config["regularize_sentence_repr"] * cosine_distance_loss(
+                sentence_repr_across_heads,
+                take_abs=self.config["take_abs"] if "take_abs" in self.config else False)
 
         # Token-level language modelling objective
         if self.config["lmcost_lstm_gamma"] > 0.0:
@@ -489,7 +574,8 @@ class Model(object):
                 raise ValueError("Unknown lmcost_type: " + str(lmcost_type))
             return cost
 
-    def _construct_lmcost(self, input_tensor, lmcost_max_vocab_size, lmcost_mask, target_ids, name):
+    def _construct_lmcost(self, input_tensor, lmcost_max_vocab_size,
+                          lmcost_mask, target_ids, name):
         with tf.variable_scope(name):
             lmcost_hidden_layer = tf.layers.dense(
                 inputs=input_tensor, units=self.config["lmcost_hidden_layer_size"],
@@ -731,3 +817,4 @@ class Model(object):
                     + str(dump["params"][variable.name].shape)
                 value = numpy.asarray(dump["params"][variable.name])
                 self.session.run(variable.assign(value))
+
