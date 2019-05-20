@@ -5,6 +5,7 @@ import numpy
 import pickle
 import re
 import tensorflow as tf
+import tensorflow_probability as tfp
 
 
 class Model(object):
@@ -308,7 +309,7 @@ class Model(object):
                     inputs, num_units, activation=tf.tanh,
                     kernel_initializer=self.initializer)  # [B, M, num_units]
 
-                queries = tf.math.reduce_sum(queries, axis=1)  # [B, num_units]
+                queries = tf.math.reduce_mean(queries, axis=1)  # [B, num_units]
                 queries = tf.expand_dims(tf.nn.sigmoid(queries), axis=-1)  # [B, num_units, 1]
 
                 # Project to get the keys and values.
@@ -330,18 +331,20 @@ class Model(object):
                     tf.split(values, num_heads, axis=2),
                     axis=0)  # [B*num_heads, M, num_units/num_heads]
 
-                self.x = 0.0
-                if "value_regularization" in self.config and self.config["value_regularization"] > 0:
-                    self.loss += self.config["value_regularization"] * cosine_distance_loss(
-                        tf.concat(tf.split(tf.expand_dims(values, axis=2), num_heads), axis=2))
-                    self.x = cosine_distance_loss(
-                        tf.concat(tf.split(tf.expand_dims(values, axis=2), num_heads), axis=2))
+                if self.config["regularize_queries"] > 0:
+                    self.loss += self.config["regularize_keys"] * cosine_distance_loss(
+                        tf.concat(tf.split(tf.transpose(queries, [0, 2, 1]), num_heads), axis=1),
+                        take_abs=self.config["take_abs"] if "take_abs" in self.config else False)
 
-                if "query_regularization" in self.config and self.config["query_regularization"] > 0:
-                    self.loss += self.config["query_regularization"] * cosine_distance_loss(
-                        tf.concat(tf.split(tf.transpose(queries, [0, 2, 1]), num_heads), axis=1))
-                    self.x = cosine_distance_loss(
-                        tf.concat(tf.split(tf.transpose(queries, [0, 2, 1]), num_heads), axis=1))
+                if self.config["regularize_keys"] > 0:
+                    self.loss += self.config["regularize_keys"] * cosine_distance_loss(
+                        tf.concat(tf.split(tf.expand_dims(keys, axis=2), num_heads), axis=2),
+                        take_abs=self.config["take_abs"] if "take_abs" in self.config else False)
+
+                if self.config["regularize_values"] > 0:
+                    self.loss += self.config["regularize_values"] * cosine_distance_loss(
+                        tf.concat(tf.split(tf.expand_dims(values, axis=2), num_heads), axis=2),
+                        take_abs=self.config["take_abs"] if "take_abs" in self.config else False)
 
                 # Multiply each key by its query.
                 attention_evidence = tf.matmul(keys, queries)  # [B*num_heads, M, 1]
@@ -351,11 +354,6 @@ class Model(object):
                 token_scores = tf.concat(tf.split(
                     tf.expand_dims(attention_evidence, axis=-1),
                     num_heads), axis=2)  # [B, M, num_heads]
-
-                if "att_ev_regularization" in self.config and self.config["att_ev_regularization"] > 0:
-                    self.loss += self.config["att_ev_regularization"] * cosine_distance_loss(
-                        tf.expand_dims(token_scores, axis=-1))
-                    self.x = cosine_distance_loss(tf.expand_dims(token_scores, axis=-1))
 
                 # Apply a non-linear layer to obtain (un-normalized) attention weights.
                 if self.config["attention_activation"] == "sharp":
@@ -384,15 +382,16 @@ class Model(object):
                 product = values * tf.expand_dims(attention_weights, axis=-1)  # [B*num_heads, M, num_units/num_heads]
                 product = tf.reduce_sum(product, axis=1)  # [B*num_heads, num_units/num_heads]
 
-                if "product_regularization" in self.config and self.config["product_regularization"] > 0:
-                    self.loss += self.config["product_regularization"] * cosine_distance_loss(
-                        tf.concat(tf.split(tf.expand_dims(product, axis=1), num_heads), axis=1))
-                    self.x = cosine_distance_loss(
-                        tf.concat(tf.split(tf.expand_dims(product, axis=1), num_heads), axis=1))
+                if self.config["regularize_sentence_repr"] > 0:
+                    self.loss += self.config["regularize_sentence_repr"] * cosine_distance_loss(
+                        tf.concat(tf.split(tf.expand_dims(product, axis=1), num_heads), axis=1),
+                        take_abs=self.config["take_abs"] if "take_abs" in self.config else False)
 
-                product = tf.layers.dense(
-                    inputs=product, units=self.config["hidden_layer_size"],
-                    activation=tf.tanh, kernel_initializer=self.initializer)  # [B*num_heads, hidden_units]
+                if self.config["hidden_layer_size"] > 0:
+                    product = tf.layers.dense(
+                        inputs=product, units=self.config["hidden_layer_size"],
+                        activation=tf.tanh, kernel_initializer=self.initializer)
+
                 processed_tensor = tf.layers.dense(
                     inputs=product, units=1,
                     kernel_initializer=self.initializer)  # [B*num_heads, 1]
@@ -450,13 +449,15 @@ class Model(object):
                 tf.nn.sparse_softmax_cross_entropy_with_logits(
                     logits=sentence_scores, labels=tf.cast(self.sentence_labels, tf.int32)))
 
-        if self.config["attention_objective_weight"] > 0:
+        # At least one token has a label corresponding to the true sentence label.
+        # This loss also pushes the maximums over the other heads towards 0 (but smoothed).
+        if self.config["type1_attention_objective_weight"] > 0:
+            max_over_token_heads = tf.reduce_max(self.token_probabilities, axis=1)  # [B, H]
             one_hot_sentence_labels = tf.one_hot(
-                tf.cast(self.sentence_labels, tf.int64),
+                tf.cast(self.sentence_labels, tf.int32),
                 depth=len(self.label2id_sent))
             one_hot_sentence_labels_smoothed = self.label_smoothing(
                 one_hot_sentence_labels, epsilon=0.15)
-            max_over_token_heads = tf.reduce_max(self.token_probabilities, axis=1)  # [B, H]
 
             if len(self.label2id_tok) != len(self.label2id_sent):
                 if len(self.label2id_sent) == 2:
@@ -472,16 +473,101 @@ class Model(object):
                     raise ValueError(
                         "Unsupported attention loss for num_heads != num_sent_lables "
                         "and num_sentence_labels != 2.")
-            self.loss += self.config["attention_objective_weight"] * (
+            self.loss += self.config["type1_attention_objective_weight"] * (
                 tf.reduce_sum(self.sentence_objective_weights * tf.reduce_sum(tf.square(
                     max_over_token_heads - one_hot_sentence_labels_smoothed), axis=-1)))
 
+        # The predicted distribution over the token labels (heads) should be similar to the
+        # predicted distribution over the sentence representations.
         if self.config["type2_attention_objective_weight"] > 0:
             max_over_token_heads = tf.reduce_max(self.token_probabilities, axis=1)  # [B, H]
-            all_sentence_scores_probabilities = tf.nn.softmax(processed_tensor)
-            self.loss += self.config["attention_objective_weight"] * (
+            all_sentence_scores_probabilities = tf.nn.softmax(processed_tensor)  # [B, H]
+            self.loss += self.config["type2_attention_objective_weight"] * (
                 tf.reduce_sum(self.sentence_objective_weights * tf.reduce_sum(tf.square(
                     max_over_token_heads - all_sentence_scores_probabilities), axis=-1)))
+
+        # At least one token has a label corresponding to the true sentence label.
+        if self.config["type3_attention_objective_weight"] > 0:
+            max_over_token_heads = tf.reduce_max(self.token_probabilities, axis=1)  # [B, H]
+            one_hot_sentence_labels = tf.one_hot(
+                tf.cast(self.sentence_labels, tf.int32),
+                depth=len(self.label2id_sent))
+            one_hot_sentence_labels_smoothed = self.label_smoothing(
+                one_hot_sentence_labels, epsilon=0.15)
+
+            if len(self.label2id_tok) != len(self.label2id_sent):
+                if len(self.label2id_sent) == 2:
+                    max_default_head = tf.gather(
+                        max_over_token_heads, indices=[0], axis=-1)  # [B, 1]
+                    max_non_default_head = tf.reduce_max(tf.gather(
+                        max_over_token_heads, indices=list(
+                            range(1, len(self.label2id_tok))), axis=-1),
+                        axis=1, keep_dims=True)  # [B, 1]
+                    max_over_token_heads = tf.concat(
+                        [max_default_head, max_non_default_head], axis=-1)  # [B, 2]
+                else:
+                    raise ValueError(
+                        "Unsupported attention loss for num_heads != num_sent_lables "
+                        "and num_sentence_labels != 2.")
+            self.loss += self.config["type3_attention_objective_weight"] * (
+                tf.reduce_sum(self.sentence_objective_weights * tf.reduce_sum(tf.square(
+                    (max_over_token_heads * one_hot_sentence_labels)
+                    - one_hot_sentence_labels_smoothed), axis=-1)))
+
+        # A sentence that has a default label, should only contain tokens labeled as default.
+        if self.config["type4_attention_objective_weight"] > 0:
+            default_head = tf.gather(self.token_probabilities, indices=[0], axis=-1)  # [B, M, 1]
+            default_head = tf.squeeze(default_head, axis=-1)  # [B, M]
+            self.loss += self.config["type4_attention_objective_weight"] * (
+                tf.reduce_sum(self.sentence_objective_weights * tf.cast(
+                    tf.equal(self.sentence_labels, 0.0), tf.float32) * tf.reduce_sum(
+                    tf.square(default_head - tf.ones_like(default_head)), axis=-1)))
+
+        # Every sentence has at least one default label.
+        if self.config["type5_attention_objective_weight"] > 0:
+            default_head = tf.gather(self.token_probabilities, indices=[0], axis=-1)  # [B, M, 1]
+            max_default_head = tf.reduce_max(tf.squeeze(default_head, axis=-1), axis=-1)  # [B]
+            self.loss += self.config["type5_attention_objective_weight"] * (
+                tf.reduce_sum(self.sentence_objective_weights * tf.square(
+                    max_default_head - tf.ones_like(max_default_head))))
+
+        # Pairwise attention objective function.
+        if self.config["type6_attention_objective_weight"] > 0:
+            max_over_token_heads = tf.reduce_max(self.token_probabilities, axis=1)  # [B, H]
+            one_hot_sentence_labels = tf.one_hot(
+                tf.cast(self.sentence_labels, tf.int32),
+                depth=len(self.label2id_sent))
+            one_hot_sentence_labels_smoothed = self.label_smoothing(
+                one_hot_sentence_labels, epsilon=0.15)
+
+            if len(self.label2id_tok) != len(self.label2id_sent):
+                if len(self.label2id_sent) == 2:
+                    max_default_head = tf.gather(
+                        max_over_token_heads, indices=[0], axis=-1)  # [B, 1]
+                    max_non_default_head = tf.reduce_max(tf.gather(
+                        max_over_token_heads, indices=list(
+                            range(1, len(self.label2id_tok))), axis=-1),
+                        axis=1, keep_dims=True)  # [B, 1]
+                    max_over_token_heads = tf.concat(
+                        [max_default_head, max_non_default_head], axis=-1)  # [B, 2]
+                else:
+                    raise ValueError(
+                        "Unsupported attention loss for num_heads != num_sent_lables "
+                        "and num_sentence_labels != 2.")
+            self.loss += self.config["type6_attention_objective_weight"] * (
+                tf.losses.mean_pairwise_squared_error(
+                    labels=one_hot_sentence_labels_smoothed,
+                    predictions=max_over_token_heads))
+
+        # The distribution over tokens should be similar to the distribution over sentences.
+        if self.config["type7_attention_objective_weight"] > 0:
+            op_over_token_heads = tf.reduce_mean(self.token_probabilities, axis=1)  # [B, H]
+            distribution_over_tokens = tf.nn.softmax(op_over_token_heads)
+            distribution_over_sentences = tf.nn.softmax(processed_tensor)  # [B, H]
+            self.loss += self.config["type7_attention_objective_weight"] * (
+                tf.reduce_sum(self.sentence_objective_weights * tfp.distributions.kl_divergence(
+                    distribution_a=tfp.distributions.Categorical(distribution_over_sentences),
+                    distribution_b=tfp.distributions.Categorical(distribution_over_tokens))))
 
         # Token-level language modelling objective
         if self.config["lmcost_lstm_gamma"] > 0.0:
@@ -694,10 +780,10 @@ class Model(object):
     def process_batch(self, batch, is_training, learning_rate):
         feed_dict = self.create_input_dictionary_for_batch(batch, is_training, learning_rate)
 
-        cost, sentence_pred, sentence_proba, token_pred, token_proba, loss_x = self.session.run(
+        cost, sentence_pred, sentence_proba, token_pred, token_proba = self.session.run(
             [self.loss, self.sentence_predictions, self.sentence_probabilities,
-             self.token_predictions, self.token_probabilities, self.x] +
-            ([self.train_op] if is_training else []), feed_dict=feed_dict)[:6]
+             self.token_predictions, self.token_probabilities] +
+            ([self.train_op] if is_training else []), feed_dict=feed_dict)[:5]
 
         # print("SENTENCES: ")
         # _ = [sentence.print_sentence() for sentence in batch]
@@ -706,7 +792,6 @@ class Model(object):
         # print("TOKEN SCORES: ", "\n".join([str(tok_p) for tok_p in token_scores]))
         # print("TOKEN PROBA: ", "\n".join([str(tok_p) for tok_p in token_proba]))
         # print("TOKEN PRED: ", "\n".join([str(tok_p) for tok_p in token_pred]))
-        print("LOSS X = ", loss_x)
         return cost, sentence_pred, sentence_proba, token_pred, token_proba
 
     def initialize_session(self):
