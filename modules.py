@@ -78,10 +78,15 @@ def mask(inputs, queries=None, keys=None, mask_type=None):
     return outputs
 
 
-def cosine_distance_loss(inputs):
+def cosine_distance_loss(inputs, take_abs=False):
     """
     Compute the cosine pairwise distance loss between the input heads.
-    :param inputs: shape of [B, H, E], where B = batch size and H = num heads.
+    :param inputs: expects tensor with its last two dimentions [*, H, E],
+    where H = num heads and E = arbitrary vector dimension.
+    :param take_abs: take the absolute value of the cosine similarity; this
+    has the effect of switching from [-1, 1] to [0, 1], with the minimum at 0,
+    i.e. when the vectors are orthogonal, which is what we want.
+    However, this might not be differentiable at 0.
     :return: loss of the cosine distance between any 2 pairs of head vectors.
     """
     with tf.variable_scope("cosine_distance_loss"):
@@ -100,7 +105,11 @@ def cosine_distance_loss(inputs):
         mask_matrix = tf.cast(mask_upper - mask_diagonal, dtype=tf.bool)
 
         upper_triangular_flat = tf.boolean_mask(cos_similarity, mask_matrix)
-        return tf.reduce_mean(tf.abs(upper_triangular_flat))
+
+        if take_abs:
+            return tf.reduce_mean(tf.math.abs(upper_triangular_flat))
+        else:
+            return tf.reduce_mean(upper_triangular_flat)
 
 
 def single_head_attention_binary_labels(
@@ -177,7 +186,7 @@ def baseline_lstm_last_contexts(
         num_sentence_labels,
         num_token_labels):
     """
-    Compute token and sentence scores/predictions solely from the last context 
+    Compute token and sentence scores/predictions solely from the last context
     vectors that the Bi-LSTM has produced. Works for flexible no. of labels.
     :param last_token_contexts: the (concatenated) Bi-LSTM outputs per-token.
     :param last_context: the (concatenated) Bi-LSTM final state.
@@ -190,7 +199,7 @@ def baseline_lstm_last_contexts(
     :return sentence_scores: 2D floats of shape [B, num_sentence_labels]
     :return sentence_predictions: predicted labels for each sentence in the batch; ints of shape [B]
     :return token_scores: 3D floats of shape [B, M, num_token_labels]
-    :return token_predictions: predicted labels for each token in each sentence; ints of shape [B, M] 
+    :return token_predictions: predicted labels for each token in each sentence; ints of shape [B, M]
     :return: attention weights will be a tensor of zeros of shape [B, M, num_token_labels].
     """
     with tf.variable_scope("baseline_lstm_last_contexts"):
@@ -290,7 +299,7 @@ def single_head_attention_multiple_labels(
         if attention_activation != "softmax":
             attention_weights = attention_weights / tf.reduce_sum(
                 attention_weights, axis=-1, keep_dims=True)  # [B, M]
-        
+
         token_scores = tf.layers.dense(
             inputs=tf.expand_dims(attention_weights_unnormalized, -1),
             units=num_token_labels,
@@ -1150,4 +1159,3 @@ def compute_gap_distance_loss(
             "We don't support attention loss for such a case!"
             % (num_tok_labels, num_sent_labels))
     return gap_loss
-
