@@ -1,5 +1,5 @@
-from marek_model import Model
-# from my_second_model import Model
+# from marek_model import Model
+from my_model import Model
 from my_eval import Evaluator
 from collections import Counter
 from collections import OrderedDict
@@ -341,12 +341,13 @@ class Experiment:
 
             # Plot the token scores for each sentence in the batch.
             if "test" in name and self.config["plot_token_scores"]:
-                for sentence, token_proba_per_sentence in zip(batch, token_probs):
-                    visualize.plot_token_scores(
-                        token_probs=token_proba_per_sentence,
-                        sentence=sentence,
-                        head_labels=evaluator.id2label_tok,
-                        plot_name="plots/token_vis/token_heads_vis")
+                for sentence, token_proba_per_sentence, sent_pred in zip(batch, token_probs, sentence_pred):
+                    if len(sentence.tokens) > 5:
+                        visualize.plot_token_scores(
+                            token_probs=token_proba_per_sentence,
+                            sentence=sentence,
+                            id2label_tok=evaluator.id2label_tok,
+                            plot_name=self.config["path_plot_token_scores"])
 
             while self.config["garbage_collection"] and gc.collect() > 0:
                 pass
@@ -366,7 +367,8 @@ class Experiment:
                 all_sentences=all_batches,
                 all_sentence_probs=all_sentence_probs,
                 all_token_probs=all_token_probs,
-                html_name="plots/html_vis/%s" % save_name,
+                id2label_tok=evaluator.id2label_tok,
+                html_name=self.config["path_plot_predictions_html"] + "/%s" % save_name,
                 sent_binary=len(self.label2id_sent) == 2)
 
         return results
@@ -379,7 +381,10 @@ class Experiment:
         """
         self.config = self.parse_config("config", config_path)
         initialize_writer(self.config["to_write_filename"])
-        temp_model_path = "models/temp_model_%d" % int(time.time()) + ".model"
+        i_rand = random.randint(1, 10000)
+        print("i_rand = ", i_rand)
+        temp_model_path = "models/temp_model_%d" % (
+            int(time.time()) + i_rand) + ".model"
 
         if "random_seed" in self.config:
             random.seed(self.config["random_seed"])
@@ -568,7 +573,7 @@ def initialize_writer(to_write_filename):
 
 if __name__ == "__main__":
     experiment = Experiment()
-    load_pretrained = False
+    load_pretrained = True
 
     if not load_pretrained:
         experiment.run_experiment(sys.argv[1])
@@ -588,7 +593,6 @@ if __name__ == "__main__":
             for path_data_test in experiment.config["path_test"].strip().split(":"):
                 data_test_loaded = experiment.read_input_files(path_data_test)
                 data_test_loaded = experiment.convert_labels(data_test_loaded)
-                # data_test_loaded = data_test_loaded[:250]
                 experiment.process_sentences(
                     data_test_loaded, loaded_model, is_training=False,
                     learning_rate=0.0, name="test" + str(d))
