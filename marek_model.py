@@ -415,8 +415,11 @@ class Model(object):
             one_hot_sentence_labels = tf.one_hot(
                 tf.cast(self.sentence_labels, tf.int32),
                 depth=len(self.label2id_sent))
-            one_hot_sentence_labels_smoothed = self.label_smoothing(
-                one_hot_sentence_labels, epsilon=0.15)
+            if self.config["label_smoothing"]:
+                one_hot_sentence_labels_smoothed = self.label_smoothing(
+                    one_hot_sentence_labels, epsilon=0.15)
+            else:
+                one_hot_sentence_labels_smoothed = one_hot_sentence_labels
 
             if len(self.label2id_tok) != len(self.label2id_sent):
                 if len(self.label2id_sent) == 2:
@@ -451,8 +454,11 @@ class Model(object):
             one_hot_sentence_labels = tf.one_hot(
                 tf.cast(self.sentence_labels, tf.int32),
                 depth=len(self.label2id_sent))
-            one_hot_sentence_labels_smoothed = self.label_smoothing(
-                one_hot_sentence_labels, epsilon=0.15)
+            if self.config["label_smoothing"]:
+                one_hot_sentence_labels_smoothed = self.label_smoothing(
+                    one_hot_sentence_labels, epsilon=0.15)
+            else:
+                one_hot_sentence_labels_smoothed = one_hot_sentence_labels
 
             if len(self.label2id_tok) != len(self.label2id_sent):
                 if len(self.label2id_sent) == 2:
