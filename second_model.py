@@ -1,5 +1,4 @@
-from math import ceil
-from modules import cosine_distance_loss
+from modules import label_smoothing
 import collections
 import numpy
 import pickle
@@ -8,6 +7,11 @@ import tensorflow as tf
 
 
 class Model(object):
+    """
+    Implements the multi-head attention labeller (MHAL)
+    without keys, queries, and values.
+    It only uses a simple, soft attention.
+    """
 
     def __init__(self, config, label2id_sent, label2id_tok):
         self.config = config
@@ -49,6 +53,9 @@ class Model(object):
         self.token_probabilities = None
 
     def build_vocabs(self, data_train, data_dev, data_test, embedding_path=None):
+        """
+        Builds the vocabulary based on the the data and embeddings info.
+        """
         data_source = list(data_train)
         if self.config["vocab_include_devtest"]:
             if data_dev is not None:
@@ -104,20 +111,12 @@ class Model(object):
         print("Total number of chars: " + str(len(self.char2id)))
         print("Total number of singletons: " + str(len(self.singletons)))
 
-    @staticmethod
-    def label_smoothing(labels, epsilon=0.1):
-        """
-        Implementation for label smoothing. This discourages the model to become
-        too confident about its predictions and thus, less prone to overfitting.
-        Label smoothing regularizes the model and makes it more adaptable.
-        :param labels: 3D tensor with the last dimension as the number of labels
-        :param epsilon: smoothing rate
-        :return: smoothed labels
-        """
-        num_labels = labels.get_shape().as_list()[-1]
-        return ((1 - epsilon) * labels) + (epsilon / num_labels)
-
     def construct_network(self):
+        """
+        Constructs a variant of the multi-head attention labeller (MHAL)
+        that does not use keys, queries and values, but only a simple form
+        of additive attention, as proposed by Yang et al. (2016).
+        """
         self.word_ids = tf.placeholder(tf.int32, [None, None], name="word_ids")
         self.char_ids = tf.placeholder(tf.int32, [None, None, None], name="char_ids")
         self.sentence_lengths = tf.placeholder(tf.int32, [None], name="sentence_lengths")
@@ -165,10 +164,13 @@ class Model(object):
                 char_input_tensor_shape = tf.shape(char_input_tensor)
                 char_input_tensor = tf.reshape(
                     char_input_tensor,
-                    shape=[char_input_tensor_shape[0] * char_input_tensor_shape[1],
-                           char_input_tensor_shape[2], self.config["char_embedding_size"]])
+                    shape=[char_input_tensor_shape[0]
+                           * char_input_tensor_shape[1],
+                           char_input_tensor_shape[2],
+                           self.config["char_embedding_size"]])
                 _word_lengths = tf.reshape(
-                    self.word_lengths, shape=[char_input_tensor_shape[0] * char_input_tensor_shape[1]])
+                    self.word_lengths, shape=[char_input_tensor_shape[0]
+                                              * char_input_tensor_shape[1]])
 
                 char_lstm_cell_fw = tf.nn.rnn_cell.LSTMCell(
                     self.config["char_recurrent_size"],
@@ -183,7 +185,8 @@ class Model(object):
                     initializer=self.initializer,
                     reuse=False)
 
-                # Use just the forward and the backward final character states
+                # Concatenate the final forward and the backward character contexts
+                # to obtain a compact character representation for each word.
                 _, ((_, char_output_fw), (_, char_output_bw)) = tf.nn.bidirectional_dynamic_rnn(
                     cell_fw=char_lstm_cell_fw, cell_bw=char_lstm_cell_bw, inputs=char_input_tensor,
                     sequence_length=_word_lengths, dtype=tf.float32, time_major=False)
@@ -194,26 +197,26 @@ class Model(object):
                     shape=[char_input_tensor_shape[0], char_input_tensor_shape[1],
                            2 * self.config["char_recurrent_size"]])
 
-                # This is the character language model loss, L_char
-                if self.config["lmcost_char_gamma"] > 0.0:
-                    self.loss += self.config["lmcost_char_gamma"] * \
-                                 self.construct_lmcost(
+                # Include a char-based language modelling loss, LMc.
+                if self.config["lm_cost_char_gamma"] > 0.0:
+                    self.loss += self.config["lm_cost_char_gamma"] * \
+                                 self.construct_lm_cost(
                                      input_tensor_fw=char_output_tensor,
                                      input_tensor_bw=char_output_tensor,
                                      sentence_lengths=self.sentence_lengths,
                                      target_ids=self.word_ids,
-                                     lmcost_type="separate",
-                                     name="lmcost_char_separate")
+                                     lm_cost_type="separate",
+                                     name="lm_cost_char_separate")
 
-                if self.config["lmcost_joint_char_gamma"] > 0.0:
-                    self.loss += self.config["lmcost_joint_char_gamma"] * \
-                                 self.construct_lmcost(
+                if self.config["lm_cost_joint_char_gamma"] > 0.0:
+                    self.loss += self.config["lm_cost_joint_char_gamma"] * \
+                                 self.construct_lm_cost(
                                      input_tensor_fw=char_output_tensor,
                                      input_tensor_bw=char_output_tensor,
                                      sentence_lengths=self.sentence_lengths,
                                      target_ids=self.word_ids,
-                                     lmcost_type="joint",
-                                     name="lmcost_char_joint")
+                                     lm_cost_type="joint",
+                                     name="lm_cost_char_joint")
 
                 if self.config["char_hidden_layer_size"] > 0:
                     char_output_tensor = tf.layers.dense(
@@ -271,7 +274,7 @@ class Model(object):
                     [tf.shape(self.word_ids)[0], 1, self.config["word_recurrent_size"]], dtype=tf.int32))
             lstm_output_states = tf.nn.dropout(lstm_output_states, dropout_word_lstm)
 
-        # The states are concatenated at every token position.
+        # The forward and backward states are concatenated at every token position.
         lstm_outputs_states = tf.concat([lstm_outputs_fw, lstm_outputs_bw], axis=-1)
 
         if self.config["whidden_layer_size"] > 0:
@@ -279,8 +282,7 @@ class Model(object):
                 lstm_outputs_states, self.config["whidden_layer_size"],
                 activation=tf.tanh, kernel_initializer=self.initializer)
 
-        if "last" in self.config["model_type"]:
-            print("INSIDE THE LAST ONE")
+        if self.config["model_type"] == "last":
             processed_tensor = lstm_output_states
             token_scores = tf.layers.dense(
                 lstm_outputs_states, units=len(self.label2id_tok),
@@ -294,119 +296,66 @@ class Model(object):
                 processed_tensor, units=len(self.label2id_sent),
                 kernel_initializer=self.initializer,
                 name="sentence_scores_last_lstm_outputs_ff")
-        elif "attention" in self.config["model_type"]:
+        else:
             with tf.variable_scope("attention"):
-                num_heads = len(self.label2id_tok)
-                num_sentence_labels = len(self.label2id_sent)
-                num_units = lstm_outputs_states.get_shape().as_list()[-1]
-                if num_units % num_heads != 0:
-                    num_units = ceil(num_units / num_heads) * num_heads
-                    inputs = tf.layers.dense(lstm_outputs_states, num_units)  # [B, M, num_units]
-                else:
-                    inputs = lstm_outputs_states
+                token_scores_list = []
+                sentence_scores_list = []
 
-                queries = tf.layers.dense(
-                    inputs, num_units, activation=tf.tanh,
-                    kernel_initializer=self.initializer)  # [B, M, num_units]
-
-                queries = tf.math.reduce_mean(queries, axis=1)  # [B, num_units]
-                queries = tf.expand_dims(queries, axis=-1)  # [B, num_units, 1]
-
-                # Project to get the keys and values.
-                keys = tf.layers.dense(
-                    inputs, num_units, activation=tf.nn.tanh,
-                    kernel_initializer=self.initializer)  # [B, M, num_units]
-                values = tf.layers.dense(
-                    inputs, num_units, activation=tf.tanh,
-                    kernel_initializer=self.initializer)  # [B, M, num_units]
-
-                # Split and concat to get as many projections as the number of heads.
-                queries = tf.concat(
-                    tf.split(queries, num_heads, axis=1),
-                    axis=0)  # [B*num_heads, num_units/num_heads, 1]
-                keys = tf.concat(
-                    tf.split(keys, num_heads, axis=2),
-                    axis=0)  # [B*num_heads, M, num_units/num_heads]
-                values = tf.concat(
-                    tf.split(values, num_heads, axis=2),
-                    axis=0)  # [B*num_heads, M, num_units/num_heads]
-
-                if self.config["regularize_queries"] > 0:
-                    self.loss += self.config["regularize_queries"] * cosine_distance_loss(
-                        tf.concat(tf.split(tf.transpose(queries, [0, 2, 1]), num_heads), axis=1),
-                        take_abs=self.config["take_abs"] if "take_abs" in self.config else False)
-
-                if self.config["regularize_keys"] > 0:
-                    self.loss += self.config["regularize_keys"] * cosine_distance_loss(
-                        tf.concat(tf.split(tf.expand_dims(keys, axis=2), num_heads), axis=2),
-                        take_abs=self.config["take_abs"] if "take_abs" in self.config else False)
-
-                if self.config["regularize_values"] > 0:
-                    self.loss += self.config["regularize_values"] * cosine_distance_loss(
-                        tf.concat(tf.split(tf.expand_dims(values, axis=2), num_heads), axis=2),
-                        take_abs=self.config["take_abs"] if "take_abs" in self.config else False)
-
-                # Multiply each key by its query.
-                attention_evidence = tf.matmul(keys, queries)  # [B*num_heads, M, 1]
-                attention_evidence = tf.squeeze(attention_evidence, axis=-1)  # [B*num_heads, M]
-
-                # Obtain token scores from attention weights.
-                token_scores = tf.concat(tf.split(
-                    tf.expand_dims(attention_evidence, axis=-1),
-                    num_heads), axis=2)  # [B, M, num_heads]
-
-                # Apply a non-linear layer to obtain (un-normalized) attention weights.
-                if self.config["attention_activation"] == "sharp":
-                    attention_weights = tf.exp(attention_evidence)
-                elif self.config["attention_activation"] == "soft":
-                    attention_weights = tf.sigmoid(attention_evidence)
-                elif self.config["attention_activation"] == "linear":
-                    attention_weights = attention_evidence
-                else:
-                    raise ValueError("Unknown/unsupported token scoring method: %s"
-                                     % self.config["attention_activation"])
-
-                # Mask positions that are not valid.
-                tiled_sentence_lengths = tf.tile(
-                    input=tf.sequence_mask(self.sentence_lengths),
-                    multiples=[num_heads, 1])  # [B*num_heads, M]
-                attention_weights = tf.where(
-                    tiled_sentence_lengths,
-                    attention_weights,
-                    tf.zeros_like(attention_weights))
-
-                # Normalize attention weights.
-                attention_weights /= tf.reduce_sum(
-                   attention_weights, axis=-1, keep_dims=True)  # [B*num_heads, M]
-
-                product = values * tf.expand_dims(attention_weights, axis=-1)  # [B*num_heads, M, num_units/num_heads]
-                product = tf.reduce_sum(product, axis=1)  # [B*num_heads, num_units/num_heads]
-
-                if self.config["regularize_sentence_repr"] > 0:
-                    self.loss += self.config["regularize_sentence_repr"] * cosine_distance_loss(
-                        tf.concat(tf.split(tf.expand_dims(product, axis=1), num_heads), axis=1),
-                        take_abs=self.config["take_abs"] if "take_abs" in self.config else False)
-
-                if self.config["hidden_layer_size"] > 0:
-                    product = tf.layers.dense(
-                        inputs=product, units=self.config["hidden_layer_size"],
+                for i in range(len(self.label2id_tok)):
+                    keys = tf.layers.dense(
+                        lstm_outputs_states, units=self.config["attention_evidence_size"],
+                        activation=tf.tanh, kernel_initializer=self.initializer)
+                    values = tf.layers.dense(
+                        lstm_outputs_states, units=self.config["attention_evidence_size"],
                         activation=tf.tanh, kernel_initializer=self.initializer)
 
-                processed_tensor = tf.layers.dense(
-                    inputs=product, units=1,
-                    kernel_initializer=self.initializer)  # [B*num_heads, 1]
+                    token_scores_head = tf.layers.dense(
+                        keys, units=1, kernel_initializer=self.initializer)  # [B, M, 1]
+                    token_scores_head = tf.reshape(
+                        token_scores_head, shape=tf.shape(self.word_ids))  # [B, M]
+                    token_scores_list.append(token_scores_head)
 
-                processed_tensor = tf.concat(
-                    tf.split(processed_tensor, num_heads), axis=1)  # [B, num_heads]
+                    if self.config["attention_activation"] == "sharp":
+                        attention_weights_unnormalized = tf.exp(token_scores_head)
+                    elif self.config["attention_activation"] == "soft":
+                        attention_weights_unnormalized = tf.sigmoid(token_scores_head)
+                    elif self.config["attention_activation"] == "linear":
+                        attention_weights_unnormalized = token_scores_head
+                    else:
+                        raise ValueError("Unknown/unsupported token scoring method: %s"
+                                         % self.config["attention_activation"])
+                    attention_weights_unnormalized = tf.where(
+                        tf.sequence_mask(self.sentence_lengths),
+                        attention_weights_unnormalized,
+                        tf.zeros_like(attention_weights_unnormalized))
+                    attention_weights = attention_weights_unnormalized / tf.reduce_sum(
+                        attention_weights_unnormalized, axis=1, keep_dims=True)  # [B, M]
+                    processed_tensor = tf.reduce_sum(
+                        values * attention_weights[:, :, numpy.newaxis], axis=1)  # [B, E]
 
-                sentence_scores = processed_tensor
-                if num_heads != num_sentence_labels:
-                    if num_sentence_labels == 2:
+                    if self.config["hidden_layer_size"] > 0:
+                        processed_tensor = tf.layers.dense(
+                            processed_tensor, units=self.config["hidden_layer_size"],
+                            activation=tf.tanh, kernel_initializer=self.initializer)
+
+                    sentence_score_head = tf.layers.dense(
+                        processed_tensor, units=1,
+                        kernel_initializer=self.initializer,
+                        name="output_ff_head_%d" % i)  # [B, 1]
+                    sentence_score_head = tf.reshape(
+                        sentence_score_head, shape=[tf.shape(processed_tensor)[0]])  # [B]
+                    sentence_scores_list.append(sentence_score_head)
+
+                token_scores = tf.stack(token_scores_list, axis=-1)  # [B, M, H]
+                all_sentence_scores = tf.stack(sentence_scores_list, axis=-1)  # [B, H]
+
+                if len(self.label2id_tok) != len(self.label2id_sent):
+                    if len(self.label2id_sent) == 2:
                         default_sentence_score = tf.gather(
-                            processed_tensor, indices=[0], axis=1)  # [B, 1]
+                            all_sentence_scores, indices=[0], axis=1)  # [B, 1]
                         maximum_non_default_sentence_score = tf.gather(
-                            processed_tensor, indices=list(
-                                range(1, num_heads)), axis=1)  # [B, num_heads-1]
+                            all_sentence_scores, indices=list(
+                                range(1, len(self.label2id_tok))), axis=1)  # [B, num_heads-1]
                         maximum_non_default_sentence_score = tf.reduce_max(
                             maximum_non_default_sentence_score, axis=1, keep_dims=True)  # [B, 1]
                         sentence_scores = tf.concat(
@@ -414,10 +363,10 @@ class Model(object):
                             axis=-1, name="sentence_scores_concatenation")  # [B, 2]
                     else:
                         sentence_scores = tf.layers.dense(
-                            processed_tensor, units=num_sentence_labels,
+                            all_sentence_scores, units=len(self.label2id_sent),
                             kernel_initializer=self.initializer)  # [B, num_sent_labels]
-        else:
-        	raise ValueError("Unknown/unsupported model_type: %s" % self.config["model_type"])
+                else:
+                    sentence_scores = all_sentence_scores
 
         # Mask the token scores that do not fall in the range of the true sentence length.
         # Do this for each head (change shape from [B, M] to [B, M, num_heads]).
@@ -451,19 +400,20 @@ class Model(object):
                 tf.nn.sparse_softmax_cross_entropy_with_logits(
                     logits=sentence_scores, labels=tf.cast(self.sentence_labels, tf.int32)))
 
+        max_over_token_heads = tf.reduce_max(self.token_probabilities, axis=1)  # [B, H]
+        one_hot_sentence_labels = tf.one_hot(
+            tf.cast(self.sentence_labels, tf.int32),
+            depth=len(self.label2id_sent))
+        if self.config["enable_label_smoothing"]:
+            one_hot_sentence_labels_smoothed = label_smoothing(
+                one_hot_sentence_labels, epsilon=self.config["smoothing_epsilon"])
+        else:
+            one_hot_sentence_labels_smoothed = one_hot_sentence_labels
+
         # At least one token has a label corresponding to the true sentence label.
         # This loss also pushes the maximums over the other heads towards 0 (but smoothed).
         if self.config["type1_attention_objective_weight"] > 0:
-            max_over_token_heads = tf.reduce_max(self.token_probabilities, axis=1)  # [B, H]
-            one_hot_sentence_labels = tf.one_hot(
-                tf.cast(self.sentence_labels, tf.int32),
-                depth=len(self.label2id_sent))
-            if self.config["label_smoothing"]:
-                one_hot_sentence_labels_smoothed = self.label_smoothing(
-                    one_hot_sentence_labels, epsilon=0.15)
-            else:
-                one_hot_sentence_labels_smoothed = one_hot_sentence_labels
-
+            this_max_over_token_heads = max_over_token_heads
             if len(self.label2id_tok) != len(self.label2id_sent):
                 if len(self.label2id_sent) == 2:
                     max_default_head = tf.gather(
@@ -472,7 +422,7 @@ class Model(object):
                         max_over_token_heads, indices=list(
                             range(1, len(self.label2id_tok))), axis=-1),
                         axis=1, keep_dims=True)  # [B, 1]
-                    max_over_token_heads = tf.concat(
+                    this_max_over_token_heads = tf.concat(
                         [max_default_head, max_non_default_head], axis=-1)  # [B, 2]
                 else:
                     raise ValueError(
@@ -480,29 +430,19 @@ class Model(object):
                         "and num_sentence_labels != 2.")
             self.loss += self.config["type1_attention_objective_weight"] * (
                 tf.reduce_sum(self.sentence_objective_weights * tf.reduce_sum(tf.square(
-                    max_over_token_heads - one_hot_sentence_labels_smoothed), axis=-1)))
+                    this_max_over_token_heads - one_hot_sentence_labels_smoothed), axis=-1)))
 
         # The predicted distribution over the token labels (heads) should be similar to the
         # predicted distribution over the sentence representations.
         if self.config["type2_attention_objective_weight"] > 0:
-            max_over_token_heads = tf.reduce_max(self.token_probabilities, axis=1)  # [B, H]
-            all_sentence_scores_probabilities = tf.nn.softmax(processed_tensor)  # [B, H]
+            all_sentence_scores_probabilities = tf.nn.softmax(all_sentence_scores)  # [B, H]
             self.loss += self.config["type2_attention_objective_weight"] * (
                 tf.reduce_sum(self.sentence_objective_weights * tf.reduce_sum(tf.square(
                     max_over_token_heads - all_sentence_scores_probabilities), axis=-1)))
 
         # At least one token has a label corresponding to the true sentence label.
         if self.config["type3_attention_objective_weight"] > 0:
-            max_over_token_heads = tf.reduce_max(self.token_probabilities, axis=1)  # [B, H]
-            one_hot_sentence_labels = tf.one_hot(
-                tf.cast(self.sentence_labels, tf.int32),
-                depth=len(self.label2id_sent))
-            if self.config["label_smoothing"]:
-                one_hot_sentence_labels_smoothed = self.label_smoothing(
-                    one_hot_sentence_labels, epsilon=0.15)
-            else:
-                one_hot_sentence_labels_smoothed = one_hot_sentence_labels
-
+            this_max_over_token_heads = max_over_token_heads
             if len(self.label2id_tok) != len(self.label2id_sent):
                 if len(self.label2id_sent) == 2:
                     max_default_head = tf.gather(
@@ -511,7 +451,7 @@ class Model(object):
                         max_over_token_heads, indices=list(
                             range(1, len(self.label2id_tok))), axis=-1),
                         axis=1, keep_dims=True)  # [B, 1]
-                    max_over_token_heads = tf.concat(
+                    this_max_over_token_heads = tf.concat(
                         [max_default_head, max_non_default_head], axis=-1)  # [B, 2]
                 else:
                     raise ValueError(
@@ -519,7 +459,7 @@ class Model(object):
                         "and num_sentence_labels != 2.")
             self.loss += self.config["type3_attention_objective_weight"] * (
                 tf.reduce_sum(self.sentence_objective_weights * tf.reduce_sum(tf.square(
-                    (max_over_token_heads * one_hot_sentence_labels)
+                    (this_max_over_token_heads * one_hot_sentence_labels)
                     - one_hot_sentence_labels_smoothed), axis=-1)))
 
         # A sentence that has a default label, should only contain tokens labeled as default.
@@ -534,67 +474,29 @@ class Model(object):
         # Every sentence has at least one default label.
         if self.config["type5_attention_objective_weight"] > 0:
             default_head = tf.gather(self.token_probabilities, indices=[0], axis=-1)  # [B, M, 1]
-            max_default_head = tf.reduce_max(tf.squeeze(default_head, axis=-1), axis=-1)  # [B]
+            max_default_head = tf.reduce_max(tf.squeeze(default_head, axis=-1), axis=-1)   # [B]
             self.loss += self.config["type5_attention_objective_weight"] * (
                 tf.reduce_sum(self.sentence_objective_weights * tf.square(
                     max_default_head - tf.ones_like(max_default_head))))
 
-        # Pairwise attention objective function.
-        if self.config["type6_attention_objective_weight"] > 0:
-            max_over_token_heads = tf.reduce_max(self.token_probabilities, axis=1)  # [B, H]
-            one_hot_sentence_labels = tf.one_hot(
-                tf.cast(self.sentence_labels, tf.int32),
-                depth=len(self.label2id_sent))
-            one_hot_sentence_labels_smoothed = self.label_smoothing(
-                one_hot_sentence_labels, epsilon=0.15)
-
-            if len(self.label2id_tok) != len(self.label2id_sent):
-                if len(self.label2id_sent) == 2:
-                    max_default_head = tf.gather(
-                        max_over_token_heads, indices=[0], axis=-1)  # [B, 1]
-                    max_non_default_head = tf.reduce_max(tf.gather(
-                        max_over_token_heads, indices=list(
-                            range(1, len(self.label2id_tok))), axis=-1),
-                        axis=1, keep_dims=True)  # [B, 1]
-                    max_over_token_heads = tf.concat(
-                        [max_default_head, max_non_default_head], axis=-1)  # [B, 2]
-                else:
-                    raise ValueError(
-                        "Unsupported attention loss for num_heads != num_sent_lables "
-                        "and num_sentence_labels != 2.")
-            self.loss += self.config["type6_attention_objective_weight"] * (
-                tf.losses.mean_pairwise_squared_error(
-                    labels=one_hot_sentence_labels_smoothed,
-                    predictions=max_over_token_heads))
-
-        # The distribution over tokens should be similar to the distribution over sentences.
-        if self.config["type7_attention_objective_weight"] > 0:
-            op_over_token_heads = tf.reduce_mean(self.token_probabilities, axis=1)  # [B, H]
-            distribution_over_tokens = tf.nn.softmax(op_over_token_heads)
-            distribution_over_sentences = tf.nn.softmax(processed_tensor)  # [B, H]
-            self.loss += self.config["type7_attention_objective_weight"] * (
-                tf.reduce_sum(self.sentence_objective_weights * tf.distributions.kl_divergence(
-                    distribution_a=tf.distributions.Categorical(distribution_over_sentences),
-                    distribution_b=tf.distributions.Categorical(distribution_over_tokens))))
-
-        # Token-level language modelling objective
-        if self.config["lmcost_lstm_gamma"] > 0.0:
-            self.loss += self.config["lmcost_lstm_gamma"] * self.construct_lmcost(
+        # Include a word-based language modelling loss, LMw.
+        if self.config["lm_cost_lstm_gamma"] > 0.0:
+            self.loss += self.config["lm_cost_lstm_gamma"] * self.construct_lm_cost(
                 input_tensor_fw=lstm_outputs_fw,
                 input_tensor_bw=lstm_outputs_bw,
                 sentence_lengths=self.sentence_lengths,
                 target_ids=self.word_ids,
-                lmcost_type="separate",
-                name="lmcost_lstm_separate")
+                lm_cost_type="separate",
+                name="lm_cost_lstm_separate")
 
-        if self.config["lmcost_joint_lstm_gamma"] > 0.0:
-            self.loss += self.config["lmcost_joint_lstm_gamma"] * self.construct_lmcost(
+        if self.config["lm_cost_joint_lstm_gamma"] > 0.0:
+            self.loss += self.config["lm_cost_joint_lstm_gamma"] * self.construct_lm_cost(
                 input_tensor_fw=lstm_outputs_fw,
                 input_tensor_bw=lstm_outputs_bw,
                 sentence_lengths=self.sentence_lengths,
                 target_ids=self.word_ids,
-                lmcost_type="joint",
-                name="lmcost_lstm_joint")
+                lm_cost_type="joint",
+                name="lm_cost_lstm_joint")
 
         self.train_op = self.construct_optimizer(
             opt_strategy=self.config["opt_strategy"],
@@ -603,64 +505,73 @@ class Model(object):
             clip=self.config["clip"])
         print("Notwork built.")
 
-    def construct_lmcost(self, input_tensor_fw, input_tensor_bw,
-                         sentence_lengths, target_ids, lmcost_type, name):
+    def construct_lm_cost(
+            self, input_tensor_fw, input_tensor_bw,
+            sentence_lengths, target_ids, lm_cost_type, name):
+        """
+        Constructs the char/word-based language modelling objective.
+        """
         with tf.variable_scope(name):
-            lmcost_max_vocab_size = min(
-                len(self.word2id), self.config["lmcost_max_vocab_size"])
+            lm_cost_max_vocab_size = min(
+                len(self.word2id), self.config["lm_cost_max_vocab_size"])
             target_ids = tf.where(
-                tf.greater_equal(target_ids, lmcost_max_vocab_size - 1),
-                x=(lmcost_max_vocab_size - 1) + tf.zeros_like(target_ids),
+                tf.greater_equal(target_ids, lm_cost_max_vocab_size - 1),
+                x=(lm_cost_max_vocab_size - 1) + tf.zeros_like(target_ids),
                 y=target_ids)
             cost = 0.0
-            if lmcost_type == "separate":
-                lmcost_fw_mask = tf.sequence_mask(
+            if lm_cost_type == "separate":
+                lm_cost_fw_mask = tf.sequence_mask(
                     sentence_lengths, maxlen=tf.shape(target_ids)[1])[:, 1:]
-                lmcost_bw_mask = tf.sequence_mask(
+                lm_cost_bw_mask = tf.sequence_mask(
                     sentence_lengths, maxlen=tf.shape(target_ids)[1])[:, :-1]
-                lmcost_fw = self._construct_lmcost(
+                lm_cost_fw = self._construct_lm_cost(
                     input_tensor_fw[:, :-1, :],
-                    lmcost_max_vocab_size,
-                    lmcost_fw_mask,
+                    lm_cost_max_vocab_size,
+                    lm_cost_fw_mask,
                     target_ids[:, 1:],
                     name=name + "_fw")
-                lmcost_bw = self._construct_lmcost(
+                lm_cost_bw = self._construct_lm_cost(
                     input_tensor_bw[:, 1:, :],
-                    lmcost_max_vocab_size,
-                    lmcost_bw_mask,
+                    lm_cost_max_vocab_size,
+                    lm_cost_bw_mask,
                     target_ids[:, :-1],
                     name=name + "_bw")
-                cost += lmcost_fw + lmcost_bw
-            elif lmcost_type == "joint":
+                cost += lm_cost_fw + lm_cost_bw
+            elif lm_cost_type == "joint":
                 joint_input_tensor = tf.concat(
                     [input_tensor_fw[:, :-2, :], input_tensor_bw[:, 2:, :]], axis=-1)
-                lmcost_mask = tf.sequence_mask(
+                lm_cost_mask = tf.sequence_mask(
                     sentence_lengths, maxlen=tf.shape(target_ids)[1])[:, 1:-1]
-                cost += self._construct_lmcost(
+                cost += self._construct_lm_cost(
                     joint_input_tensor,
-                    lmcost_max_vocab_size,
-                    lmcost_mask,
+                    lm_cost_max_vocab_size,
+                    lm_cost_mask,
                     target_ids[:, 1:-1],
                     name=name + "_joint")
             else:
-                raise ValueError("Unknown lmcost_type: " + str(lmcost_type))
+                raise ValueError("Unknown lm_cost_type: %s." % lm_cost_type)
             return cost
 
-    def _construct_lmcost(self, input_tensor, lmcost_max_vocab_size, lmcost_mask, target_ids, name):
+    def _construct_lm_cost(
+            self, input_tensor, lm_cost_max_vocab_size,
+            lm_cost_mask, target_ids, name):
         with tf.variable_scope(name):
-            lmcost_hidden_layer = tf.layers.dense(
-                inputs=input_tensor, units=self.config["lmcost_hidden_layer_size"],
+            lm_cost_hidden_layer = tf.layers.dense(
+                inputs=input_tensor, units=self.config["lm_cost_hidden_layer_size"],
                 activation=tf.tanh, kernel_initializer=self.initializer)
-            lmcost_output = tf.layers.dense(
-                inputs=lmcost_hidden_layer, units=lmcost_max_vocab_size,
-                activation=None, kernel_initializer=self.initializer)
-            lmcost_loss = tf.nn.sparse_softmax_cross_entropy_with_logits(
-                logits=lmcost_output, labels=target_ids)
-            lmcost_loss = tf.where(lmcost_mask, lmcost_loss, tf.zeros_like(lmcost_loss))
-            return tf.reduce_sum(lmcost_loss)
+            lm_cost_output = tf.layers.dense(
+                inputs=lm_cost_hidden_layer, units=lm_cost_max_vocab_size,
+                kernel_initializer=self.initializer)
+            lm_cost_loss = tf.nn.sparse_softmax_cross_entropy_with_logits(
+                logits=lm_cost_output, labels=target_ids)
+            lm_cost_loss = tf.where(lm_cost_mask, lm_cost_loss, tf.zeros_like(lm_cost_loss))
+            return tf.reduce_sum(lm_cost_loss)
 
     @staticmethod
     def construct_optimizer(opt_strategy, loss, learning_rate, clip):
+        """
+        Applies an optimization strategy to minimize the loss.
+        """
         if opt_strategy == "adadelta":
             optimizer = tf.train.AdadeltaOptimizer(learning_rate=learning_rate)
         elif opt_strategy == "adam":
@@ -668,7 +579,7 @@ class Model(object):
         elif opt_strategy == "sgd":
             optimizer = tf.train.GradientDescentOptimizer(learning_rate=learning_rate)
         else:
-            raise ValueError("Unknown optimisation strategy: " + str(opt_strategy))
+            raise ValueError("Unknown optimisation strategy: %s." % opt_strategy)
 
         if clip > 0.0:
             grads, vs = zip(*optimizer.compute_gradients(loss))
@@ -679,9 +590,13 @@ class Model(object):
         return train_op
 
     def preload_word_embeddings(self, embedding_path):
+        """
+        Load the word embeddings in advance to get a feel
+        of the proportion of singletons in the dataset.
+        """
         loaded_embeddings = set()
         embedding_matrix = self.session.run(self.word_embeddings)
-        with open(embedding_path, "r") as f:
+        with open(embedding_path) as f:
             for line in f:
                 line_parts = line.strip().split()
                 if len(line_parts) <= 2:
@@ -697,12 +612,15 @@ class Model(object):
                     embedding_matrix[word_id] = embedding
                     loaded_embeddings.add(w)
         self.session.run(self.word_embeddings.assign(embedding_matrix))
-        print("n_preloaded_embeddings: " + str(len(loaded_embeddings)))
+        print("No. of pre-loaded embeddings: %d." % len(loaded_embeddings))
 
     @staticmethod
-    def translate2id(token, token2id, unk_token=None,
-                     lowercase=False, replace_digits=False,
-                     singletons=None, singletons_prob=0.0):
+    def translate2id(
+            token, token2id, unk_token=None, lowercase=False,
+            replace_digits=False, singletons=None, singletons_prob=0.0):
+        """
+        Maps each token/character to its index.
+        """
         if lowercase:
             token = token.lower()
         if replace_digits:
@@ -717,10 +635,13 @@ class Model(object):
         elif unk_token:
             token_id = token2id[unk_token]
         else:
-            raise ValueError("Unable to handle value, no UNK token: " + str(token))
+            raise ValueError("Unable to handle value, no UNK token: %s." % token)
         return token_id
 
     def create_input_dictionary_for_batch(self, batch, is_training, learning_rate):
+        """
+        Creates the dictionary fed to the the TF model.
+        """
         sentence_lengths = numpy.array([len(sentence.tokens) for sentence in batch])
         max_sentence_length = sentence_lengths.max()
         max_word_length = numpy.array(
@@ -730,15 +651,21 @@ class Model(object):
         if 0 < self.config["allowed_word_length"] < max_word_length:
             max_word_length = min(max_word_length, self.config["allowed_word_length"])
 
-        word_ids = numpy.zeros((len(batch), max_sentence_length), dtype=numpy.int32)
-        char_ids = numpy.zeros((len(batch), max_sentence_length, max_word_length), dtype=numpy.int32)
-        word_lengths = numpy.zeros((len(batch), max_sentence_length), dtype=numpy.int32)
-        word_labels = numpy.zeros((len(batch), max_sentence_length), dtype=numpy.float32)
-        sentence_labels = numpy.zeros((len(batch)), dtype=numpy.float32)
-        word_objective_weights = numpy.zeros((len(batch), max_sentence_length), dtype=numpy.float32)
+        word_ids = numpy.zeros(
+            (len(batch), max_sentence_length), dtype=numpy.int32)
+        char_ids = numpy.zeros(
+            (len(batch), max_sentence_length, max_word_length), dtype=numpy.int32)
+        word_lengths = numpy.zeros(
+            (len(batch), max_sentence_length), dtype=numpy.int32)
+        word_labels = numpy.zeros(
+            (len(batch), max_sentence_length), dtype=numpy.float32)
+        sentence_labels = numpy.zeros(
+            (len(batch)), dtype=numpy.float32)
+        word_objective_weights = numpy.zeros(
+            (len(batch), max_sentence_length), dtype=numpy.float32)
         sentence_objective_weights = numpy.zeros((len(batch)), dtype=numpy.float32)
 
-        # A proportion of the sentences should be assigned to UNK. We do this just for training.
+        # A proportion of the singletons are assigned to UNK (do this just for training).
         singletons = self.singletons if is_training else None
         singletons_prob = self.config["singletons_prob"] if is_training else 0.0
 
@@ -747,7 +674,8 @@ class Model(object):
 
             if sentence_labels[i] != 0:
                 if self.config["sentence_objective_weights_non_default"] > 0.0:
-                    sentence_objective_weights[i] = self.config["sentence_objective_weights_non_default"]
+                    sentence_objective_weights[i] = self.config[
+                        "sentence_objective_weights_non_default"]
                 else:
                     sentence_objective_weights[i] = 1.0
             else:
@@ -786,15 +714,25 @@ class Model(object):
         return input_dictionary
 
     def process_batch(self, batch, is_training, learning_rate):
+        """
+        Processes a batch of sentences.
+        :param batch: a set of sentences of size "max_batch_size".
+        :param is_training: whether the current batch is a training instance or not.
+        :param learning_rate: the pace at which learning should be performed.
+        :return: the cost, the sentence predictions, the sentence label distribution,
+        the token predictions and the token label distribution.
+        """
         feed_dict = self.create_input_dictionary_for_batch(batch, is_training, learning_rate)
-
-        cost, sentence_pred, sentence_proba, token_pred, token_proba = self.session.run(
+        cost, sentence_pred, sentence_prob, token_pred, token_prob = self.session.run(
             [self.loss, self.sentence_predictions, self.sentence_probabilities,
              self.token_predictions, self.token_probabilities] +
             ([self.train_op] if is_training else []), feed_dict=feed_dict)[:5]
-        return cost, sentence_pred, sentence_proba, token_pred, token_proba
+        return cost, sentence_pred, sentence_prob, token_pred, token_prob
 
     def initialize_session(self):
+        """
+        Initializes a tensorflow session and sets the random seed.
+        """
         tf.set_random_seed(self.config["random_seed"])
         session_config = tf.ConfigProto()
         session_config.gpu_options.allow_growth = self.config["tf_allow_growth"]
@@ -806,6 +744,9 @@ class Model(object):
 
     @staticmethod
     def get_parameter_count():
+        """
+        Counts the total number of parameters.
+        """
         total_parameters = 0
         for variable in tf.trainable_variables():
             shape = variable.get_shape()
@@ -816,6 +757,9 @@ class Model(object):
         return total_parameters
 
     def get_parameter_count_without_word_embeddings(self):
+        """
+        Counts the number of parameters without those introduced by word embeddings.
+        """
         shape = self.word_embeddings.get_shape()
         variable_parameters = 1
         for dim in shape:
@@ -823,6 +767,9 @@ class Model(object):
         return self.get_parameter_count() - variable_parameters
 
     def save(self, filename):
+        """
+        Saves a trained model to the path in filename.
+        """
         dump = dict()
         dump["config"] = self.config
         dump["label2id_sent"] = self.label2id_sent
@@ -837,20 +784,21 @@ class Model(object):
         for variable in tf.global_variables():
             assert (
                 variable.name not in dump["params"]), \
-                "Error: variable with this name already exists" + str(variable.name)
+                "Error: variable with this name already exists: %s." % variable.name
             dump["params"][variable.name] = self.session.run(variable)
         with open(filename, 'wb') as f:
             pickle.dump(dump, f, protocol=pickle.HIGHEST_PROTOCOL)
 
     @staticmethod
     def load(filename, new_config=None):
+        """
+        Loads a pre-trained MHAL model.
+        """
         with open(filename, 'rb') as f:
             dump = pickle.load(f)
-
-            # for safety, so we don't overwrite old models
             dump["config"]["save"] = None
 
-            # we use the saved config, except for values that are present in the new config
+            # Use the saved config, except for values that are present in the new config.
             if new_config:
                 for key in new_config:
                     dump["config"][key] = new_config[key]
@@ -870,15 +818,19 @@ class Model(object):
             return labeler
 
     def load_params(self, filename):
+        """
+        Loads the parameters of a trained model.
+        """
         with open(filename, 'rb') as f:
             dump = pickle.load(f)
 
             for variable in tf.global_variables():
-                assert (variable.name in dump["params"]), "Variable not in dump: " + str(variable.name)
+                assert (variable.name in dump["params"]), \
+                    "Variable not in dump: %s." % variable.name
                 assert (variable.shape == dump["params"][variable.name].shape), \
-                    "Variable shape not as expected: " + str(variable.name) \
-                    + " " + str(variable.shape) + " " \
-                    + str(dump["params"][variable.name].shape)
+                    "Variable shape not as expected: %s, of shape %s. %s" % (
+                        variable.name, str(variable.shape),
+                        str(dump["params"][variable.name].shape))
                 value = numpy.asarray(dump["params"][variable.name])
                 self.session.run(variable.assign(value))
 

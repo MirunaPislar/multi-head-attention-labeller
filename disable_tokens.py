@@ -4,7 +4,12 @@ random.seed(100)
 
 def add_another_column(dataset, extension):
     """
-    Just add another column to the dataset.
+    The original dataset file has multiple columns, the first one being
+    the token and the last one the label. This method builds another file
+    containing these as well as an additional middle column, representing
+    the supervision status of a certain token, which can be "on" or "off".
+    To start, all tokens are disabled. Later, we gradually increase the
+    proportion of token-annotated sentences for which supervision is on.
     """
     path2 = dataset + ".column_added" + extension
     num_sent = 0
@@ -16,14 +21,19 @@ def add_another_column(dataset, extension):
                 write_file.write(line_tok_orig)
                 continue
             line_tok = line_tok.split()
-            # The first position is the token, the last is the label.
-            # We build another file containing these as well as another column with either
-            # "on" or "off", depending on whether supervision is enabled on that sentence or not.
-            write_file.write(line_tok[0] + "\t" + "off" + "\t" + line_tok[-1] + "\t" + "\n")
+            write_file.write(line_tok[0] + "\t" + "off" + "\t" + line_tok[-1] + "\n")
     return path2, num_sent
 
 
 def convert_labels(read_dataset, write_dataset, percent, no_sentences_to_enable):
+    """
+    Takes a file and randomly enables no_sentences_to_enable of them.
+    :param read_dataset: file to read from
+    :param write_dataset: file to write to
+    :param percent: percent to enable (used to calculate the probability of enabling)
+    :param no_sentences_to_enable: how many sentences should be enabled
+    :return: sentences enabled
+    """
     sentences_enabled = 0
     write_file_str = ""
     with open(read_dataset) as read_file:
@@ -42,7 +52,8 @@ def convert_labels(read_dataset, write_dataset, percent, no_sentences_to_enable)
         prob = random.random()
         conf = (percent + 3) / 100.0
 
-        if conf < 1 and (prob > conf or line_tok[1] == "on" or sentences_enabled >= no_sentences_to_enable):
+        if conf < 1 and (prob > conf or line_tok[1] == "on"
+                         or sentences_enabled >= no_sentences_to_enable):
             while len(line) != 0:
                 write_file_str += line + "\n"
                 line_index += 1
@@ -51,7 +62,8 @@ def convert_labels(read_dataset, write_dataset, percent, no_sentences_to_enable)
             sentences_enabled += 1
             while len(line) != 0:
                 line_tok = line.split()
-                write_file_str += line_tok[0] + "\t" + "on" + "\t" + line_tok[-1] + "\t" + "\n"
+                write_file_str += (line_tok[0] + "\t" + "on" + "\t"
+                                   + line_tok[-1] + "\t" + "\n")
                 line_index += 1
                 line = lines[line_index].strip()
         write_file_str += "\n"
@@ -62,19 +74,12 @@ def convert_labels(read_dataset, write_dataset, percent, no_sentences_to_enable)
     return sentences_enabled
 
 
-# filename = "../mltagger/data/SST_semi_supervised/train"
-# filename = "../mltagger/data/conll03_semi_supervised/train_rei"
-# filename = "../mltagger/data/conll10_semi_supervised/conll10_cue_train"
-# ext = ".tsv"
-
-filename = "../mltagger/data/SST_complete/train_controlled"
-ext = ".txt"
-
+filename = "../data/fce_semi_supervised/fce.train"
+ext = ".tsv"
 curr_filename, no_sentences = add_another_column(filename, ext)
-
 print("No. sentences = ", no_sentences)
-
 pace = 10
+
 for i in range(10, 110, pace):
     wanted_enabled = int((pace / 100) * no_sentences)
     start = i
@@ -90,3 +95,4 @@ for i in range(10, 110, pace):
         actually_enabled = convert_labels(
             curr_filename, curr_filename, i, wanted_enabled)
         print(" so we added ", actually_enabled, " more!")
+

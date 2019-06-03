@@ -1,1002 +1,931 @@
-from math import ceil
+from modules import *
+import collections
+import numpy
+import pickle
+import re
 import tensorflow as tf
 
 
-def mask(inputs, queries=None, keys=None, mask_type=None):
+class Model(object):
     """
-    Generate masks and apply them to the inputs.
-    inputs: 3D tensor. [B, M, M]
-    queries: 3D tensor. [B, M, E]
-    keys: 3D tensor. [B, M, E]
+    Implements several variants of the multi-head attention labeller (MHAL).
+    These were mainly experimental, so don't take them as granted.
+    The performances reported are obtained with the main model, "model.py".
     """
-    padding_num = -2 ** 32 + 1
-    if "key" in mask_type:
-        masks = tf.sign(tf.reduce_sum(tf.abs(keys), axis=-1))  # [B, M]
-        masks = tf.expand_dims(masks, axis=1)  # [B, 1, M]
-        masks = tf.tile(masks, [1, tf.shape(queries)[1], 1])  # [B, M, M]
-        paddings = tf.ones_like(inputs) * padding_num
-        outputs = tf.where(tf.equal(masks, 0), paddings, inputs)  # [B, M, M]
-    elif "query" in mask_type:
-        masks = tf.sign(tf.reduce_sum(tf.abs(queries), axis=-1))  # [B, M]
-        masks = tf.expand_dims(masks, axis=-1)  # [B, M, 1]
-        masks = tf.tile(masks, [1, 1, tf.shape(keys)[1]])  # [B, M, M]
-        outputs = inputs * masks
-    else:
-        raise ValueError("Unknown mask type: %s. You need to choose "
-                         "between \"keys\" and \"query\"." % mask_type)
-    return outputs
 
+    def __init__(self, config, label2id_sent, label2id_tok):
+        self.config = config
+        self.label2id_sent = label2id_sent
+        self.label2id_tok = label2id_tok
 
-def mask_2(inputs, queries=None, keys=None, mask_type=None):
-    """
-    Generate masks and apply them to the inputs.
-    inputs: 3D tensor. [H, B, M, M]
-    queries: 3D tensor. [H, B, M, E]
-    keys: 3D tensor. [H, B, M, E]
-    """
-    padding_num = -2 ** 32 + 1
-    if "key" in mask_type:
-        masks = tf.sign(tf.reduce_sum(tf.abs(keys), axis=-1))  # [H, B, M]
-        masks = tf.expand_dims(masks, axis=2)  # [H, B, 1, M]
-        masks = tf.tile(masks, [1, 1, tf.shape(queries)[2], 1])  # [H, B, M, M]
-        paddings = tf.ones_like(inputs) * padding_num
-        outputs = tf.where(tf.equal(masks, 0), paddings, inputs)  # [H, B, M, M]
-    elif "query" in mask_type:
-        masks = tf.sign(tf.reduce_sum(tf.abs(queries), axis=-1))  # [H, B, M]
-        masks = tf.expand_dims(masks, axis=-1)  # [H, B, M, 1]
-        masks = tf.tile(masks, [1, 1, 1, tf.shape(keys)[2]])  # [H, B, M, M]
-        outputs = inputs * masks
-    else:
-        raise ValueError("Unknown mask type: %s. You need to choose "
-                         "between \"keys\" and \"query\"." % mask_type)
-    return outputs
+        self.UNK = "<unk>"
+        self.CUNK = "<cunk>"
+        self.word2id = None
+        self.char2id = None
+        self.singletons = None
+        self.num_heads = None
 
+        self.word_ids = None
+        self.char_ids = None
+        self.sentence_lengths = None
+        self.word_lengths = None
 
-def variant_1(
-        inputs,
-        initializer,
-        attention_activation,
-        num_sentence_labels,
-        num_heads,
-        hidden_units,
-        sentence_lengths,
-        scoring_activation=None,
-        token_scoring_method="max",
-        use_inputs_instead_values=False,
-        separate_heads=True):
-    """
-    Variant 1 of the multi-head attention to obtain sentence and token scores and predictions.
-    """
-    with tf.variable_scope("variant_1"):
-        num_units = inputs.get_shape().as_list()[-1]
-        if num_units % num_heads != 0:
-            num_units = ceil(num_units / num_heads) * num_heads
-            inputs = tf.layers.dense(inputs, num_units)  # [B, M, num_units]
+        self.sentence_labels = None
+        self.word_labels = None
 
-        # Project to get the queries, keys, and values.
-        queries = tf.layers.dense(
-            inputs, num_units, activation=tf.tanh,
-            kernel_initializer=initializer)  # [B, M, num_units]
-        keys = tf.layers.dense(
-            inputs, num_units, activation=tf.tanh,
-            kernel_initializer=initializer)  # [B, M, num_units]
-        values = tf.layers.dense(
-            inputs, num_units, activation=tf.tanh,
-            kernel_initializer=initializer)  # [B, M, num_units]
+        self.word_embeddings = None
+        self.char_embeddings = None
 
-        # Mask out the keys, queries and values: replace with 0 all the token
-        # positions between the true and the maximum sentence length.
-        multiplication_mask = tf.tile(
-            input=tf.expand_dims(tf.sequence_mask(sentence_lengths), axis=-1),
-            multiples=[1, 1, num_units])  # [B, M, num_units]
-        queries = tf.where(multiplication_mask, queries, tf.zeros_like(queries))
-        keys = tf.where(multiplication_mask, keys, tf.zeros_like(keys))
+        self.word_objective_weights = None
+        self.learning_rate = None
+        self.loss = None
+        self.initializer = None
+        self.is_training = None
+        self.session = None
+        self.saver = None
+        self.train_op = None
 
-        # Split and concat as many projections as the number of heads.
-        queries = tf.concat(
-            tf.split(queries, num_heads, axis=2),
-            axis=0)  # [B*num_heads, M, num_units/num_heads]
-        keys = tf.concat(
-            tf.split(keys, num_heads, axis=2),
-            axis=0)  # [B*num_heads, M, num_units/num_heads]
-        values = tf.concat(
-            tf.split(values, num_heads, axis=2),
-            axis=0)  # [B*num_heads, M, num_units/num_heads]
-        inputs = tf.concat(
-            tf.split(inputs, num_heads, axis=2),
-            axis=0)  # [B*num_heads, M, num_units/num_heads]
+        self.token_scores = None
+        self.sentence_scores = None
+        self.token_predictions = None
+        self.sentence_predictions = None
+        self.token_probabilities = None
+        self.sentence_probabilities = None
+        self.attention_weights = None
 
-        # Transpose multiplication and scale
-        attention_evidence = tf.matmul(
-            queries, tf.transpose(keys, [0, 2, 1]))  # [B*num_heads, M, M]
-        attention_evidence = tf.math.divide(
-            attention_evidence, tf.constant(num_units ** 0.5))
+    def build_vocabs(self, data_train, data_dev, data_test, embedding_path=None):
+        """
+        Builds the vocabulary based on the the data and embeddings info.
+        """
+        data_source = list(data_train)
+        if self.config["vocab_include_devtest"]:
+            if data_dev is not None:
+                data_source += data_dev
+            if data_test is not None:
+                data_source += data_test
 
-        # Mask columns (with values of -infinity), based on rows that have 0 sum.
-        attention_evidence_masked = mask(
-            attention_evidence, queries, keys, mask_type="key")
+        char_counter = collections.Counter()
+        word_counter = collections.Counter()
+        for sentence in data_source:
+            for token in sentence.tokens:
+                char_counter.update(token.value)
+                w = token.value
+                if self.config["lowercase"]:
+                    w = w.lower()
+                if self.config["replace_digits"]:
+                    w = re.sub(r'\d', '0', w)
+                word_counter[w] += 1
 
-        # Apply a non-linear layer to obtain (un-normalized) attention weights.
-        if attention_activation == "soft":
-            attention_weights = tf.nn.sigmoid(attention_evidence_masked)
-        elif attention_activation == "sharp":
-            attention_weights = tf.math.exp(attention_evidence_masked)
-        elif attention_activation == "linear":
-            attention_weights = attention_evidence_masked
+        self.char2id = collections.OrderedDict([(self.CUNK, 0)])
+        for char, count in char_counter.most_common():
+            if char not in self.char2id:
+                self.char2id[char] = len(self.char2id)
+
+        self.word2id = collections.OrderedDict([(self.UNK, 0)])
+        for word, count in word_counter.most_common():
+            if self.config["min_word_freq"] <= 0 or count >= self.config["min_word_freq"]:
+                if word not in self.word2id:
+                    self.word2id[word] = len(self.word2id)
+
+        self.singletons = set([word for word in word_counter if word_counter[word] == 1])
+
+        if embedding_path and self.config["vocab_only_embedded"]:
+            embedding_vocab = {self.UNK}
+            with open(embedding_path) as f:
+                for line in f:
+                    line_parts = line.strip().split()
+                    if len(line_parts) <= 2:
+                        continue
+                    w = line_parts[0]
+                    if self.config["lowercase"]:
+                        w = w.lower()
+                    if self.config["replace_digits"]:
+                        w = re.sub(r'\d', '0', w)
+                    embedding_vocab.add(w)
+            word2id_revised = collections.OrderedDict()
+            for word in self.word2id:
+                if word in embedding_vocab and word not in word2id_revised:
+                    word2id_revised[word] = len(word2id_revised)
+            self.word2id = word2id_revised
+
+        print("Total number of words: " + str(len(self.word2id)))
+        print("Total number of chars: " + str(len(self.char2id)))
+        print("Total number of singletons: " + str(len(self.singletons)))
+
+    def construct_network(self):
+        """
+        Constructs a certain variant of the multi-head attention labeller (MHAL).
+        """
+        self.word_ids = tf.placeholder(tf.int32, [None, None], name="word_ids")
+        self.char_ids = tf.placeholder(tf.int32, [None, None, None], name="char_ids")
+        self.sentence_lengths = tf.placeholder(tf.int32, [None], name="sentence_lengths")
+        self.word_lengths = tf.placeholder(tf.int32, [None, None], name="word_lengths")
+        self.sentence_labels = tf.placeholder(tf.float32, [None], name="sentence_labels")
+        self.word_labels = tf.placeholder(tf.float32, [None, None], name="word_labels")
+
+        self.word_objective_weights = tf.placeholder(
+            tf.float32, [None, None], name="word_objective_weights")
+
+        self.learning_rate = tf.placeholder(tf.float32, name="learning_rate")
+        self.is_training = tf.placeholder(tf.int32, name="is_training")
+        self.loss = 0.0
+
+        if self.config["initializer"] == "normal":
+            self.initializer = tf.random_normal_initializer(stddev=0.1)
+        elif self.config["initializer"] == "glorot":
+            self.initializer = tf.glorot_uniform_initializer()
+        elif self.config["initializer"] == "xavier":
+            self.initializer = tf.glorot_normal_initializer()
+
+        zeros_initializer = tf.zeros_initializer()
+
+        self.word_embeddings = tf.get_variable(
+            name="word_embeddings",
+            shape=[len(self.word2id), self.config["word_embedding_size"]],
+            initializer=(zeros_initializer if self.config["emb_initial_zero"] else self.initializer),
+            trainable=(True if self.config["train_embeddings"] else False))
+        word_input_tensor = tf.nn.embedding_lookup(self.word_embeddings, self.word_ids)
+
+        if self.config["char_embedding_size"] > 0 and self.config["char_recurrent_size"] > 0:
+            with tf.variable_scope("chars"), tf.control_dependencies(
+                    [tf.assert_equal(tf.shape(self.char_ids)[2],
+                                     tf.reduce_max(self.word_lengths),
+                                     message="Char dimensions don't match")]):
+                self.char_embeddings = tf.get_variable(
+                    name="char_embeddings",
+                    shape=[len(self.char2id), self.config["char_embedding_size"]],
+                    initializer=self.initializer,
+                    trainable=True)
+                char_input_tensor = tf.nn.embedding_lookup(self.char_embeddings, self.char_ids)
+
+                char_input_tensor_shape = tf.shape(char_input_tensor)
+                char_input_tensor = tf.reshape(
+                    char_input_tensor,
+                    shape=[char_input_tensor_shape[0]
+                           * char_input_tensor_shape[1],
+                           char_input_tensor_shape[2],
+                           self.config["char_embedding_size"]])
+                _word_lengths = tf.reshape(
+                    self.word_lengths, shape=[char_input_tensor_shape[0]
+                                              * char_input_tensor_shape[1]])
+
+                char_lstm_cell_fw = tf.nn.rnn_cell.LSTMCell(
+                    self.config["char_recurrent_size"],
+                    use_peepholes=self.config["lstm_use_peepholes"],
+                    state_is_tuple=True,
+                    initializer=self.initializer,
+                    reuse=False)
+                char_lstm_cell_bw = tf.nn.rnn_cell.LSTMCell(
+                    self.config["char_recurrent_size"],
+                    use_peepholes=self.config["lstm_use_peepholes"],
+                    state_is_tuple=True,
+                    initializer=self.initializer,
+                    reuse=False)
+
+                # Concatenate the final forward and the backward character contexts
+                # to obtain a compact character representation for each word.
+                _, ((_, char_output_fw), (_, char_output_bw)) = tf.nn.bidirectional_dynamic_rnn(
+                    cell_fw=char_lstm_cell_fw, cell_bw=char_lstm_cell_bw, inputs=char_input_tensor,
+                    sequence_length=_word_lengths, dtype=tf.float32, time_major=False)
+
+                char_output_tensor = tf.concat([char_output_fw, char_output_bw], axis=-1)
+                char_output_tensor = tf.reshape(
+                    char_output_tensor,
+                    shape=[char_input_tensor_shape[0], char_input_tensor_shape[1],
+                           2 * self.config["char_recurrent_size"]])
+
+                # Include a char-based language modelling loss, LMc.
+                if self.config["lm_cost_char_gamma"] > 0.0:
+                    self.loss += self.config["lm_cost_char_gamma"] * \
+                                 self.construct_lm_cost(
+                                     input_tensor_fw=char_output_tensor,
+                                     input_tensor_bw=char_output_tensor,
+                                     sentence_lengths=self.sentence_lengths,
+                                     target_ids=self.word_ids,
+                                     lm_cost_type="separate",
+                                     name="lm_cost_char_separate")
+
+                if self.config["lm_cost_joint_char_gamma"] > 0.0:
+                    self.loss += self.config["lm_cost_joint_char_gamma"] * \
+                                 self.construct_lm_cost(
+                                     input_tensor_fw=char_output_tensor,
+                                     input_tensor_bw=char_output_tensor,
+                                     sentence_lengths=self.sentence_lengths,
+                                     target_ids=self.word_ids,
+                                     lm_cost_type="joint",
+                                     name="lm_cost_char_joint")
+
+                if self.config["char_hidden_layer_size"] > 0:
+                    char_output_tensor = tf.layers.dense(
+                        inputs=char_output_tensor, units=self.config["char_hidden_layer_size"],
+                        activation=tf.tanh, kernel_initializer=self.initializer)
+
+                if self.config["char_integration_method"] == "concat":
+                    word_input_tensor = tf.concat([word_input_tensor, char_output_tensor], axis=-1)
+                elif self.config["char_integration_method"] == "none":
+                    word_input_tensor = word_input_tensor
+                else:
+                    raise ValueError("Unknown char integration method")
+
+        if self.config["dropout_input"] > 0.0:
+            dropout_input = (self.config["dropout_input"] * tf.cast(self.is_training, tf.float32)
+                             + (1.0 - tf.cast(self.is_training, tf.float32)))
+            word_input_tensor = tf.nn.dropout(
+                word_input_tensor, dropout_input, name="dropout_word")
+
+        word_lstm_cell_fw = tf.nn.rnn_cell.LSTMCell(
+            self.config["word_recurrent_size"],
+            use_peepholes=self.config["lstm_use_peepholes"],
+            state_is_tuple=True,
+            initializer=self.initializer,
+            reuse=False)
+        word_lstm_cell_bw = tf.nn.rnn_cell.LSTMCell(
+            self.config["word_recurrent_size"],
+            use_peepholes=self.config["lstm_use_peepholes"],
+            state_is_tuple=True,
+            initializer=self.initializer,
+            reuse=False)
+
+        with tf.control_dependencies(
+                [tf.assert_equal(
+                    tf.shape(self.word_ids)[1],
+                    tf.reduce_max(self.sentence_lengths),
+                    message="Sentence dimensions don't match")]):
+            (lstm_outputs_fw, lstm_outputs_bw), ((_, lstm_output_fw), (_, lstm_output_bw)) = \
+                tf.nn.bidirectional_dynamic_rnn(
+                    cell_fw=word_lstm_cell_fw, cell_bw=word_lstm_cell_bw, inputs=word_input_tensor,
+                    sequence_length=self.sentence_lengths, dtype=tf.float32, time_major=False)
+
+        lstm_output_states = tf.concat([lstm_output_fw, lstm_output_bw], -1)
+
+        if self.config["dropout_word_lstm"] > 0.0:
+            dropout_word_lstm = (self.config["dropout_word_lstm"] * tf.cast(self.is_training, tf.float32)
+                                 + (1.0 - tf.cast(self.is_training, tf.float32)))
+            lstm_outputs_fw = tf.nn.dropout(
+                lstm_outputs_fw, dropout_word_lstm,
+                noise_shape=tf.convert_to_tensor(
+                    [tf.shape(self.word_ids)[0], 1, self.config["word_recurrent_size"]], dtype=tf.int32))
+            lstm_outputs_bw = tf.nn.dropout(
+                lstm_outputs_bw, dropout_word_lstm,
+                noise_shape=tf.convert_to_tensor(
+                    [tf.shape(self.word_ids)[0], 1, self.config["word_recurrent_size"]], dtype=tf.int32))
+            lstm_output_states = tf.nn.dropout(lstm_output_states, dropout_word_lstm)
+
+        # The forward and backward states are concatenated at every token position.
+        lstm_outputs_states = tf.concat([lstm_outputs_fw, lstm_outputs_bw], -1)  # [B, M, 2 * emb_size]
+
+        if self.config["whidden_layer_size"] > 0:
+            lstm_output_units = self.config["whidden_layer_size"]
+            num_heads = len(self.label2id_tok)
+
+            # Make the number of units a multiple of num_heads.
+            if lstm_output_units % num_heads != 0:
+                lstm_output_units = ceil(lstm_output_units / num_heads) * num_heads
+
+            lstm_outputs = tf.layers.dense(
+                inputs=lstm_outputs_states, units=lstm_output_units,
+                activation=tf.tanh, kernel_initializer=self.initializer)  # [B, M, lstm_output_units]
         else:
-            raise ValueError("Unknown/unsupported attention activation: %s."
-                             % attention_activation)
+            lstm_outputs = lstm_outputs_states
 
-        attention_weights_unnormalized = attention_weights
+        if self.config["model_type"] == "single_head_attention_binary_labels":
+            if not (len(self.label2id_tok) == 2 and len(self.label2id_sent) == 2):
+                raise ValueError(
+                    "The model_type you selected (%s) is only available for "
+                    "binary labels! Currently, the no. sentence_labels = %d and "
+                    "the no. token_labels = %d. Consider changing the model type."
+                    % (self.config["model_type"],
+                       len(self.label2id_sent), len(self.label2id_tok)))
 
-        # Normalize attention weights.
-        attention_weights /= tf.reduce_sum(
-            attention_weights, axis=-1, keep_dims=True)
+            self.sentence_scores, self.sentence_predictions, \
+                self.token_scores, self.token_predictions = \
+                single_head_attention_binary_labels(
+                    inputs=lstm_outputs,
+                    initializer=self.initializer,
+                    attention_size=self.config["attention_evidence_size"],
+                    sentence_lengths=self.sentence_lengths,
+                    hidden_units=self.config["hidden_layer_size"])
 
-        # Mask rows (with values of 0), based on columns that have 0 sum.
-        attention_weights = mask(
-            attention_weights, queries, keys, mask_type="query")
-        attention_weights_unnormalized = mask(
-            attention_weights_unnormalized, queries, keys, mask_type="query")
+            # Include a token-level loss (for sequence labelling).
+            word_objective_loss = tf.square(self.token_scores - self.word_labels)
+            word_objective_loss = tf.where(
+                tf.sequence_mask(self.sentence_lengths),
+                word_objective_loss, tf.zeros_like(word_objective_loss))
+            self.loss += self.config["word_objective_weight"] * tf.reduce_sum(
+                self.word_objective_weights * word_objective_loss)
 
-        # [B*num_heads, M, num_units/num_heads]
-        if use_inputs_instead_values:
-            product = tf.matmul(attention_weights, inputs)
+            # Include a sentence-level loss (for sentence classification).
+            sentence_objective_loss = tf.square(self.sentence_scores - self.sentence_labels)
+            self.loss += self.config["sentence_objective_weight"] * tf.reduce_sum(sentence_objective_loss)
+
+            # Include an attention-level loss for wiring the two hierarchical levels.
+            if self.config["attention_objective_weight"] > 0.0:
+                self.loss += self.config["attention_objective_weight"] * (
+                    tf.reduce_sum(
+                        tf.square(
+                            tf.reduce_max(
+                                tf.where(
+                                    tf.sequence_mask(self.sentence_lengths),
+                                    self.token_scores,
+                                    tf.zeros_like(self.token_scores) - 1e6),
+                                axis=-1) - self.sentence_labels))
+                    +
+                    tf.reduce_sum(
+                        tf.square(
+                            tf.reduce_min(
+                                tf.where(
+                                    tf.sequence_mask(self.sentence_lengths),
+                                    self.token_scores,
+                                    tf.zeros_like(self.token_scores) + 1e6),
+                                axis=-1) - 0.0)))
         else:
-            product = tf.matmul(attention_weights, values)
+            scoring_activation = None
+            if "scoring_activation" in self.config and self.config["scoring_activation"]:
+                if self.config["scoring_activation"] == "tanh":
+                    scoring_activation = tf.tanh
+                elif self.config["scoring_activation"] == "sigmoid":
+                    scoring_activation = tf.sigmoid
+                elif self.config["scoring_activation"] == "relu":
+                    scoring_activation = tf.nn.relu
+                elif self.config["scoring_activation"] == "softmax":
+                    scoring_activation = tf.nn.softmax
 
-        product = tf.reduce_sum(product, axis=1)  # [B*num_heads, num_units/num_heads]
+            if "baseline_lstm_last_contexts" in self.config["model_type"]:
+                self.sentence_scores, self.sentence_predictions, \
+                    self.token_scores, self.token_predictions, \
+                    self.token_probabilities, self.sentence_probabilities, \
+                    self.attention_weights = baseline_lstm_last_contexts(
+                        last_token_contexts=lstm_outputs_states,
+                        last_context=lstm_output_states,
+                        initializer=self.initializer,
+                        scoring_activation=scoring_activation,
+                        sentence_lengths=self.sentence_lengths,
+                        hidden_units=self.config["hidden_layer_size"],
+                        num_sentence_labels=len(self.label2id_sent),
+                        num_token_labels=len(self.label2id_tok))
+            elif self.config["model_type"] == "single_head_attention_multiple_labels":
+                self.sentence_scores, self.sentence_predictions, \
+                    self.token_scores, self.token_predictions, \
+                    self.token_probabilities, self.sentence_probabilities, \
+                    self.attention_weights = single_head_attention_multiple_labels(
+                        inputs=lstm_outputs,
+                        initializer=self.initializer,
+                        attention_activation=self.config["attention_activation"],
+                        attention_size=self.config["attention_evidence_size"],
+                        sentence_lengths=self.sentence_lengths,
+                        hidden_units=self.config["hidden_layer_size"],
+                        num_sentence_labels=len(self.label2id_sent),
+                        num_token_labels=len(self.label2id_tok))
+            elif self.config["model_type"] == "multi_head_attention_with_scores_from_shared_heads":
+                self.sentence_scores, self.sentence_predictions, \
+                    self.token_scores, self.token_predictions, \
+                    self.token_probabilities, self.sentence_probabilities, \
+                    self.attention_weights = multi_head_attention_with_scores_from_shared_heads(
+                        inputs=lstm_outputs,
+                        initializer=self.initializer,
+                        attention_activation=self.config["attention_activation"],
+                        hidden_units=self.config["hidden_layer_size"],
+                        num_sentence_labels=len(self.label2id_sent),
+                        num_heads=len(self.label2id_tok),
+                        is_training=self.is_training,
+                        dropout=self.config["dropout_attention"],
+                        sentence_lengths=self.sentence_lengths,
+                        use_residual_connection=self.config["residual_connection"],
+                        token_scoring_method=self.config["token_scoring_method"])
+            elif self.config["model_type"] == "multi_head_attention_with_scores_from_separate_heads":
+                self.sentence_scores, self.sentence_predictions, \
+                    self.token_scores, self.token_predictions, \
+                    self.token_probabilities, self.sentence_probabilities, \
+                    self.attention_weights = multi_head_attention_with_scores_from_separate_heads(
+                        inputs=lstm_outputs,
+                        initializer=self.initializer,
+                        attention_activation=self.config["attention_activation"],
+                        num_sentence_labels=len(self.label2id_sent),
+                        num_heads=len(self.label2id_tok),
+                        is_training=self.is_training,
+                        dropout=self.config["dropout_attention"],
+                        sentence_lengths=self.sentence_lengths,
+                        normalize_sentence=self.config["normalize_sentence"],
+                        token_scoring_method=self.config["token_scoring_method"],
+                        scoring_activation=scoring_activation,
+                        separate_heads=self.config["separate_heads"])
+            elif self.config["model_type"] == "single_head_attention_multiple_transformations":
+                self.sentence_scores, self.sentence_predictions, \
+                    self.token_scores, self.token_predictions, \
+                    self.token_probabilities, self.sentence_probabilities, \
+                    self.attention_weights = single_head_attention_multiple_transformations(
+                        inputs=lstm_outputs,
+                        initializer=self.initializer,
+                        attention_activation=self.config["attention_activation"],
+                        num_sentence_labels=len(self.label2id_sent),
+                        num_heads=len(self.label2id_tok),
+                        sentence_lengths=self.sentence_lengths,
+                        token_scoring_method=self.config["token_scoring_method"],
+                        scoring_activation=scoring_activation,
+                        how_to_compute_attention=self.config["how_to_compute_attention"],
+                        separate_heads=self.config["separate_heads"])
+            elif self.config["model_type"] == "variant_1":
+                self.sentence_scores, self.sentence_predictions, \
+                    self.token_scores, self.token_predictions, \
+                    self.token_probabilities, self.sentence_probabilities, \
+                    self.attention_weights = variant_1(
+                        inputs=lstm_outputs,
+                        initializer=self.initializer,
+                        attention_activation=self.config["attention_activation"],
+                        num_sentence_labels=len(self.label2id_sent),
+                        num_heads=len(self.label2id_tok),
+                        hidden_units=self.config["hidden_layer_size"],
+                        sentence_lengths=self.sentence_lengths,
+                        scoring_activation=scoring_activation,
+                        token_scoring_method=self.config["token_scoring_method"],
+                        use_inputs_instead_values=self.config["use_inputs_instead_values"],
+                        separate_heads=self.config["separate_heads"])
+            elif self.config["model_type"] == "variant_2":
+                self.sentence_scores, self.sentence_predictions, \
+                    self.token_scores, self.token_predictions, \
+                    self.token_probabilities, self.sentence_probabilities, \
+                    self.attention_weights = variant_2(
+                        inputs=lstm_outputs,
+                        initializer=self.initializer,
+                        attention_activation=self.config["attention_activation"],
+                        num_sentence_labels=len(self.label2id_sent),
+                        num_heads=len(self.label2id_tok),
+                        hidden_units=self.config["hidden_layer_size"],
+                        sentence_lengths=self.sentence_lengths,
+                        scoring_activation=scoring_activation,
+                        use_inputs_instead_values=self.config["use_inputs_instead_values"],
+                        separate_heads=self.config["separate_heads"])
+            elif self.config["model_type"] == "variant_3":
+                self.sentence_scores, self.sentence_predictions, \
+                    self.token_scores, self.token_predictions, \
+                    self.token_probabilities, self.sentence_probabilities, \
+                    self.attention_weights = variant_3(
+                        inputs=lstm_outputs,
+                        initializer=self.initializer,
+                        attention_activation=self.config["attention_activation"],
+                        num_sentence_labels=len(self.label2id_sent),
+                        num_heads=len(self.label2id_tok),
+                        attention_size=self.config["attention_evidence_size"],
+                        sentence_lengths=self.sentence_lengths,
+                        scoring_activation=scoring_activation,
+                        separate_heads=self.config["separate_heads"])
+            elif self.config["model_type"] == "variant_4":
+                self.sentence_scores, self.sentence_predictions, \
+                    self.token_scores, self.token_predictions, \
+                    self.token_probabilities, self.sentence_probabilities, \
+                    self.attention_weights = variant_4(
+                        inputs=lstm_outputs,
+                        initializer=self.initializer,
+                        attention_activation=self.config["attention_activation"],
+                        num_sentence_labels=len(self.label2id_sent),
+                        num_heads=len(self.label2id_tok),
+                        hidden_units=self.config["hidden_layer_size"],
+                        sentence_lengths=self.sentence_lengths,
+                        scoring_activation=scoring_activation,
+                        token_scoring_method=self.config["token_scoring_method"],
+                        use_inputs_instead_values=self.config["use_inputs_instead_values"],
+                        separate_heads=self.config["separate_heads"])
+            elif self.config["model_type"] == "variant_5":
+                self.sentence_scores, self.sentence_predictions, \
+                    self.token_scores, self.token_predictions, \
+                    self.token_probabilities, self.sentence_probabilities, \
+                    self.attention_weights = variant_5(
+                        inputs=lstm_outputs,
+                        initializer=self.initializer,
+                        attention_activation=self.config["attention_activation"],
+                        num_sentence_labels=len(self.label2id_sent),
+                        num_heads=len(self.label2id_tok),
+                        hidden_units=self.config["hidden_layer_size"],
+                        sentence_lengths=self.sentence_lengths,
+                        scoring_activation=scoring_activation,
+                        token_scoring_method=self.config["token_scoring_method"],
+                        use_inputs_instead_values=self.config["use_inputs_instead_values"],
+                        separate_heads=self.config["separate_heads"])
+            elif self.config["model_type"] == "variant_6":
+                self.sentence_scores, self.sentence_predictions, \
+                    self.token_scores, self.token_predictions, \
+                    self.token_probabilities, self.sentence_probabilities, \
+                    self.attention_weights = variant_6(
+                        inputs=lstm_outputs,
+                        initializer=self.initializer,
+                        attention_activation=self.config["attention_activation"],
+                        num_sentence_labels=len(self.label2id_sent),
+                        num_heads=len(self.label2id_tok),
+                        hidden_units=self.config["hidden_layer_size"],
+                        scoring_activation=scoring_activation,
+                        token_scoring_method=self.config["token_scoring_method"],
+                        separate_heads=self.config["separate_heads"])
+            else:
+                raise ValueError("Unknown/unsupported model type: %s"
+                                 % self.config["model_type"])
 
-        product = tf.layers.dense(
-            inputs=product, units=hidden_units,
-            activation=tf.tanh, kernel_initializer=initializer)  # [B*num_heads, hidden_units]
+            # Include a token-level loss (for sequence labelling).
+            if self.config["word_objective_weight"] > 0:
+                if self.config["token_labels_available"]:
+                    word_objective_loss = tf.nn.sparse_softmax_cross_entropy_with_logits(
+                        logits=self.token_scores, labels=tf.cast(self.word_labels, tf.int32))
+                    word_objective_loss = tf.where(
+                        tf.sequence_mask(self.sentence_lengths),
+                        word_objective_loss, tf.zeros_like(word_objective_loss))
+                    self.loss += self.config["word_objective_weight"] * tf.reduce_sum(
+                        self.word_objective_weights * word_objective_loss)
+                else:
+                    raise ValueError(
+                        "No token labels available! You cannot supervise on the token-level"
+                        " so please change \"word_objective_weight\" to 0"
+                        " or provide token-annotated files.")
 
-        processed_tensor = tf.layers.dense(
-            inputs=product, units=1,
-            kernel_initializer=initializer)  # [B*num_heads, 1]
+            # Include a sentence-level loss (for sentence classification).
+            if self.config["sentence_objective_weight"] > 0:
+                sentence_objective_loss = tf.nn.sparse_softmax_cross_entropy_with_logits(
+                    logits=self.sentence_scores, labels=tf.cast(self.sentence_labels, tf.int32))
+                self.loss += self.config["sentence_objective_weight"] * tf.reduce_sum(sentence_objective_loss)
 
-        processed_tensor = tf.concat(
-            tf.split(processed_tensor, num_heads), axis=1)  # [B, num_heads]
+            # Mask the token scores that do not fall in the range of the true sentence length.
+            # Do this for each head (change shape from [B, M] to [B, M, num_heads]).
+            tiled_sentence_lengths = tf.tile(
+                input=tf.expand_dims(
+                    tf.sequence_mask(self.sentence_lengths), axis=-1),
+                multiples=[1, 1, len(self.label2id_tok)])
 
-        if separate_heads:
-            # Get the sentence representations corresponding to the default head.
-            default_head = tf.gather(
-                processed_tensor,
-                indices=[0], axis=-1)  # [B, 1]
+            self.token_probabilities = tf.where(
+                tiled_sentence_lengths,
+                self.token_probabilities,
+                tf.zeros_like(self.token_probabilities))
 
-            # Get the sentence representations corresponding to the non-default head.
-            non_default_heads = tf.gather(
-                processed_tensor,
-                indices=list(range(1, num_heads)), axis=-1)  # [B, num_heads-1]
+            if self.config["attention_objective_weight"] > 0.0:
+                attention_loss = compute_attention_loss(
+                    self.token_probabilities,
+                    self.sentence_labels,
+                    num_sent_labels=len(self.label2id_sent),
+                    num_tok_labels=len(self.label2id_tok),
+                    approach=self.config["aux_loss_approach"],
+                    compute_pairwise=self.config["compute_pairwise_attention"])
+                self.loss += self.config["attention_objective_weight"] * tf.reduce_sum(attention_loss)
 
-            # Project onto one unit, corresponding to the default sentence label score.
-            sentence_default_scores = tf.layers.dense(
-                default_head, units=1,
-                activation=scoring_activation, kernel_initializer=initializer,
-                name="sentence_default_scores_ff")  # [B, 1]
+            # Apply a gap-distance loss.
+            if self.config["gap_objective_weight"] > 0.0:
+                gap_distance_loss = compute_gap_distance_loss(
+                    self.token_probabilities,
+                    self.sentence_labels,
+                    num_sent_labels=len(self.label2id_sent),
+                    num_tok_labels=len(self.label2id_tok),
+                    minimum_gap_distance=self.config["minimum_gap_distance"],
+                    approach=self.config["aux_loss_approach"],
+                    type_distance=self.config["type_distance"])
+                self.loss += self.config["gap_objective_weight"] * tf.reduce_sum(gap_distance_loss)
 
-            # Project onto (num_sentence_labels-1) units, corresponding to
-            # the non-default sentence label scores.
-            sentence_non_default_scores = tf.layers.dense(
-                non_default_heads, units=num_sentence_labels - 1,
-                activation=scoring_activation, kernel_initializer=initializer,
-                name="sentence_non_default_scores_ff")  # [B, num_sentence_labels-1]
+        # Include a word-based language modelling loss, LMw.
+        if self.config["lm_cost_lstm_gamma"] > 0.0:
+            self.loss += self.config["lm_cost_lstm_gamma"] * self.construct_lm_cost(
+                input_tensor_fw=lstm_outputs_fw,
+                input_tensor_bw=lstm_outputs_bw,
+                sentence_lengths=self.sentence_lengths,
+                target_ids=self.word_ids,
+                lm_cost_type="separate",
+                name="lm_cost_lstm_separate")
 
-            sentence_scores = tf.concat(
-                [sentence_default_scores, sentence_non_default_scores],
-                axis=-1, name="sentence_scores_concatenation")  # [B, num_sent_labels]
+        if self.config["lm_cost_joint_lstm_gamma"] > 0.0:
+            self.loss += self.config["lm_cost_joint_lstm_gamma"] * self.construct_lm_cost(
+                input_tensor_fw=lstm_outputs_fw,
+                input_tensor_bw=lstm_outputs_bw,
+                sentence_lengths=self.sentence_lengths,
+                target_ids=self.word_ids,
+                lm_cost_type="joint",
+                name="lm_cost_lstm_joint")
+
+        self.train_op = self.construct_optimizer(
+            opt_strategy=self.config["opt_strategy"],
+            loss=self.loss,
+            learning_rate=self.learning_rate,
+            clip=self.config["clip"])
+        print("Notwork built.")
+
+    def construct_lm_cost(
+            self, input_tensor_fw, input_tensor_bw,
+            sentence_lengths, target_ids, lm_cost_type, name):
+        """
+        Constructs the char/word-based language modelling objective.
+        """
+        with tf.variable_scope(name):
+            lm_cost_max_vocab_size = min(
+                len(self.word2id), self.config["lm_cost_max_vocab_size"])
+            target_ids = tf.where(
+                tf.greater_equal(target_ids, lm_cost_max_vocab_size - 1),
+                x=(lm_cost_max_vocab_size - 1) + tf.zeros_like(target_ids),
+                y=target_ids)
+            cost = 0.0
+            if lm_cost_type == "separate":
+                lm_cost_fw_mask = tf.sequence_mask(
+                    sentence_lengths, maxlen=tf.shape(target_ids)[1])[:, 1:]
+                lm_cost_bw_mask = tf.sequence_mask(
+                    sentence_lengths, maxlen=tf.shape(target_ids)[1])[:, :-1]
+                lm_cost_fw = self._construct_lm_cost(
+                    input_tensor_fw[:, :-1, :],
+                    lm_cost_max_vocab_size,
+                    lm_cost_fw_mask,
+                    target_ids[:, 1:],
+                    name=name + "_fw")
+                lm_cost_bw = self._construct_lm_cost(
+                    input_tensor_bw[:, 1:, :],
+                    lm_cost_max_vocab_size,
+                    lm_cost_bw_mask,
+                    target_ids[:, :-1],
+                    name=name + "_bw")
+                cost += lm_cost_fw + lm_cost_bw
+            elif lm_cost_type == "joint":
+                joint_input_tensor = tf.concat(
+                    [input_tensor_fw[:, :-2, :], input_tensor_bw[:, 2:, :]], axis=-1)
+                lm_cost_mask = tf.sequence_mask(
+                    sentence_lengths, maxlen=tf.shape(target_ids)[1])[:, 1:-1]
+                cost += self._construct_lm_cost(
+                    joint_input_tensor,
+                    lm_cost_max_vocab_size,
+                    lm_cost_mask,
+                    target_ids[:, 1:-1],
+                    name=name + "_joint")
+            else:
+                raise ValueError("Unknown lm_cost_type: %s." % lm_cost_type)
+            return cost
+
+    def _construct_lm_cost(
+            self, input_tensor, lm_cost_max_vocab_size,
+            lm_cost_mask, target_ids, name):
+        with tf.variable_scope(name):
+            lm_cost_hidden_layer = tf.layers.dense(
+                inputs=input_tensor, units=self.config["lm_cost_hidden_layer_size"],
+                activation=tf.tanh, kernel_initializer=self.initializer)
+            lm_cost_output = tf.layers.dense(
+                inputs=lm_cost_hidden_layer, units=lm_cost_max_vocab_size,
+                kernel_initializer=self.initializer)
+            lm_cost_loss = tf.nn.sparse_softmax_cross_entropy_with_logits(
+                logits=lm_cost_output, labels=target_ids)
+            lm_cost_loss = tf.where(lm_cost_mask, lm_cost_loss, tf.zeros_like(lm_cost_loss))
+            return tf.reduce_sum(lm_cost_loss)
+
+    @staticmethod
+    def construct_optimizer(opt_strategy, loss, learning_rate, clip):
+        """
+        Applies an optimization strategy to minimize the loss.
+        """
+        if opt_strategy == "adadelta":
+            optimizer = tf.train.AdadeltaOptimizer(learning_rate=learning_rate)
+        elif opt_strategy == "adam":
+            optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate)
+        elif opt_strategy == "sgd":
+            optimizer = tf.train.GradientDescentOptimizer(learning_rate=learning_rate)
         else:
-            sentence_scores = tf.layers.dense(
-                inputs=processed_tensor, units=num_sentence_labels,
-                activation=scoring_activation, kernel_initializer=initializer,
-                name="output_sent_specified_scores_ff")  # [B, num_sent_labels]
+            raise ValueError("Unknown optimisation strategy: %s." % opt_strategy)
 
-        sentence_probabilities = tf.nn.softmax(sentence_scores)
-        sentence_predictions = tf.argmax(sentence_probabilities, axis=1)  # [B]
-
-        # Obtain token scores from attention weights. Shape is [B*num_heads, M].
-        if token_scoring_method == "sum":
-            token_scores = tf.reduce_sum(attention_weights_unnormalized, axis=1)
-        elif token_scoring_method == "max":
-            token_scores = tf.reduce_max(attention_weights_unnormalized, axis=1)
-        elif token_scoring_method == "avg":
-            token_scores = tf.reduce_mean(attention_weights_unnormalized, axis=1)
-        elif token_scoring_method == "logsumexp":
-            token_scores = tf.reduce_logsumexp(attention_weights_unnormalized, axis=1)
+        if clip > 0.0:
+            grads, vs = zip(*optimizer.compute_gradients(loss))
+            grads, gnorm = tf.clip_by_global_norm(grads, clip)
+            train_op = optimizer.apply_gradients(zip(grads, vs))
         else:
-            raise ValueError("Unknown/unsupported token scoring method: %s"
-                             % token_scoring_method)
+            train_op = optimizer.minimize(loss)
+        return train_op
 
-        token_scores = tf.expand_dims(token_scores, axis=2)  # [B*num_heads, M, 1]
+    def preload_word_embeddings(self, embedding_path):
+        """
+        Load the word embeddings in advance to get a feel
+        of the proportion of singletons in the dataset.
+        """
+        loaded_embeddings = set()
+        embedding_matrix = self.session.run(self.word_embeddings)
+        with open(embedding_path) as f:
+            for line in f:
+                line_parts = line.strip().split()
+                if len(line_parts) <= 2:
+                    continue
+                w = line_parts[0]
+                if self.config["lowercase"]:
+                    w = w.lower()
+                if self.config["replace_digits"]:
+                    w = re.sub(r'\d', '0', w)
+                if w in self.word2id and w not in loaded_embeddings:
+                    word_id = self.word2id[w]
+                    embedding = numpy.array(line_parts[1:])
+                    embedding_matrix[word_id] = embedding
+                    loaded_embeddings.add(w)
+        self.session.run(self.word_embeddings.assign(embedding_matrix))
+        print("No. of pre-loaded embeddings: %d." % len(loaded_embeddings))
 
-        token_scores = tf.concat(
-            tf.split(token_scores, num_heads), axis=2)  # [B, M, num_heads]
-        token_probabilities = tf.nn.softmax(token_scores)
-        token_predictions = tf.argmax(
-            token_probabilities, axis=2, output_type=tf.int32)  # [B, M]
+    @staticmethod
+    def translate2id(
+            token, token2id, unk_token=None, lowercase=False,
+            replace_digits=False, singletons=None, singletons_prob=0.0):
+        """
+        Maps each token/character to its index.
+        """
+        if lowercase:
+            token = token.lower()
+        if replace_digits:
+            token = re.sub(r'\d', '0', token)
 
-        attention_weights = tf.concat(
-            tf.split(tf.expand_dims(attention_weights, axis=-1), num_heads),
-            axis=-1)  # [B, M, M, num_heads]
-
-        return sentence_scores, sentence_predictions, \
-            token_scores, token_predictions, \
-            token_probabilities, sentence_probabilities, attention_weights
-
-
-def variant_2(
-        inputs,
-        initializer,
-        attention_activation,
-        num_sentence_labels,
-        num_heads,
-        hidden_units,
-        sentence_lengths,
-        scoring_activation=None,
-        use_inputs_instead_values=False,
-        separate_heads=True):
-    """
-    Variant 2 of the multi-head attention to obtain sentence and token scores and predictions.
-    """
-    with tf.variable_scope("variant_2"):
-        num_units = inputs.get_shape().as_list()[-1]
-        if num_units % num_heads != 0:
-            num_units = ceil(num_units / num_heads) * num_heads
-            inputs = tf.layers.dense(inputs, num_units)  # [B, M, num_units]
-
-        # Project to get the queries, keys, and values.
-        queries = tf.layers.dense(
-            inputs, num_units, activation=tf.tanh,
-            kernel_initializer=initializer)  # [B, M, num_units]
-        keys = tf.layers.dense(
-            inputs, num_units, activation=tf.tanh,
-            kernel_initializer=initializer)  # [B, M, num_units]
-        values = tf.layers.dense(
-            inputs, num_units, activation=tf.tanh,
-            kernel_initializer=initializer)  # [B, M, num_units]
-
-        # Mask out the keys, queries and values: replace with 0 all the token
-        # positions between the true and the maximum sentence length.
-        multiplication_mask = tf.tile(
-            input=tf.expand_dims(tf.sequence_mask(sentence_lengths), axis=-1),
-            multiples=[1, 1, num_units])  # [B, M, num_units]
-        keys = tf.where(multiplication_mask, keys, tf.zeros_like(keys))
-
-        # Split and concat as many projections as the number of heads.
-        queries = tf.concat(
-            tf.split(queries, num_heads, axis=2),
-            axis=0)  # [B*num_heads, M, num_units/num_heads]
-
-        # [B*num_heads, 1, num_units/num_heads]
-        queries = tf.reduce_sum(queries, axis=1, keep_dims=True)
-
-        keys = tf.concat(
-            tf.split(keys, num_heads, axis=2),
-            axis=0)  # [B*num_heads, M, num_units/num_heads]
-        values = tf.concat(
-            tf.split(values, num_heads, axis=2),
-            axis=0)  # [B*num_heads, M, num_units/num_heads]
-        inputs = tf.concat(
-            tf.split(inputs, num_heads, axis=2),
-            axis=0)  # [B*num_heads, M, num_units/num_heads]
-
-        # Transpose multiplication and scale
-        attention_evidence = tf.matmul(
-            queries, tf.transpose(keys, [0, 2, 1]))  # [B*num_heads, 1, M]
-        attention_evidence = tf.math.divide(
-            attention_evidence, tf.constant(num_units ** 0.5))
-
-        # Mask columns (with values of -infinity), based on rows that have 0 sum.
-        attention_evidence_masked = mask(
-            attention_evidence, queries, keys, mask_type="key")
-
-        # Apply a non-linear layer to obtain (un-normalized) attention weights.
-        if attention_activation == "soft":
-            attention_weights = tf.nn.sigmoid(attention_evidence_masked)
-        elif attention_activation == "sharp":
-            attention_weights = tf.math.exp(attention_evidence_masked)
-        elif attention_activation == "linear":
-            attention_weights = attention_evidence_masked
+        if singletons and token in singletons \
+                and token in token2id and unk_token \
+                and numpy.random.uniform() < singletons_prob:
+            token_id = token2id[unk_token]
+        elif token in token2id:
+            token_id = token2id[token]
+        elif unk_token:
+            token_id = token2id[unk_token]
         else:
-            raise ValueError("Unknown/unsupported attention activation: %s."
-                             % attention_activation)
-
-        attention_weights_unnormalized = attention_weights
-
-        # Normalize attention weights.
-        attention_weights /= tf.reduce_sum(
-            attention_weights, axis=-1, keep_dims=True)
-
-        # Mask rows (with values of 0), based on columns that have 0 sum.
-        attention_weights = mask(
-            attention_weights, queries, keys, mask_type="query")
-        attention_weights_unnormalized = mask(
-            attention_weights_unnormalized, queries, keys, mask_type="query")
-
-        # Transpose attention weights.
-        attention_weights = tf.transpose(
-            attention_weights, [0, 2, 1])  # [B*num_heads, M, 1]
-
-        # [B*num_heads, M, num_units/num_heads]
-        if use_inputs_instead_values:
-            product = inputs * attention_weights
-        else:
-            product = values * attention_weights
-
-        product = tf.reduce_sum(product, axis=1)  # [B*num_heads, num_units/num_heads]
-
-        product = tf.layers.dense(
-            inputs=product, units=hidden_units,
-            activation=tf.tanh, kernel_initializer=initializer)  # [B*num_heads, hidden_units]
-
-        processed_tensor = tf.layers.dense(
-            inputs=product, units=1,
-            kernel_initializer=initializer)  # [B*num_heads, 1]
-
-        processed_tensor = tf.concat(
-            tf.split(processed_tensor, num_heads), axis=1)  # [B, num_heads]
-
-        if separate_heads:
-            # Get the sentence representations corresponding to the default head.
-            default_head = tf.gather(
-                processed_tensor,
-                indices=[0], axis=-1)  # [B, 1]
-
-            # Get the sentence representations corresponding to the non-default head.
-            non_default_heads = tf.gather(
-                processed_tensor,
-                indices=list(range(1, num_heads)), axis=-1)  # [B, num_heads-1]
-
-            # Project onto one unit, corresponding to the default sentence label score.
-            sentence_default_scores = tf.layers.dense(
-                default_head, units=1,
-                activation=scoring_activation, kernel_initializer=initializer,
-                name="sentence_default_scores_ff")  # [B, 1]
-
-            # Project onto (num_sentence_labels-1) units, corresponding to
-            # the non-default sentence label scores.
-            sentence_non_default_scores = tf.layers.dense(
-                non_default_heads, units=num_sentence_labels - 1,
-                activation=scoring_activation, kernel_initializer=initializer,
-                name="sentence_non_default_scores_ff")  # [B, num_sentence_labels-1]
-
-            sentence_scores = tf.concat(
-                [sentence_default_scores, sentence_non_default_scores],
-                axis=-1, name="sentence_scores_concatenation")  # [B, num_sent_labels]
-        else:
-            sentence_scores = tf.layers.dense(
-                inputs=processed_tensor, units=num_sentence_labels,
-                activation=scoring_activation, kernel_initializer=initializer,
-                name="output_sent_specified_scores_ff")  # [B, num_sent_labels]
-
-        sentence_probabilities = tf.nn.softmax(sentence_scores)
-        sentence_predictions = tf.argmax(sentence_probabilities, axis=1)  # [B]
-
-        # Obtain token scores from attention weights.
-        token_scores = tf.transpose(
-            attention_weights_unnormalized, [0, 2, 1])  # [num_heads*B, M, 1]
-        token_scores = tf.concat(
-            tf.split(token_scores, num_heads), axis=2)  # [B, M, num_heads]
-        token_probabilities = tf.nn.softmax(token_scores)
-        token_predictions = tf.argmax(
-            token_probabilities, axis=2, output_type=tf.int32)  # [B, M]
-
-        attention_weights = tf.concat(
-            tf.split(tf.transpose(attention_weights, [0, 2, 1]), num_heads),
-            axis=-1)  # [B, M, num_heads]
-
-        return sentence_scores, sentence_predictions, \
-            token_scores, token_predictions, \
-            token_probabilities, sentence_probabilities, attention_weights
-
-
-def variant_3(
-        inputs,
-        initializer,
-        attention_activation,
-        num_sentence_labels,
-        num_heads,
-        attention_size,
-        sentence_lengths,
-        scoring_activation=None,
-        separate_heads=True):
-    """
-    Variant 3 of the multi-head attention to obtain sentence and token scores and predictions.
-    """
-    with tf.variable_scope("variant_3"):
-        num_units = inputs.get_shape().as_list()[-1]
-        if num_units % num_heads != 0:
-            num_units = ceil(num_units / num_heads) * num_heads
-            inputs = tf.layers.dense(inputs, num_units)  # [B, M, num_units]
-
-        # Trainable parameters
-        w_omega = tf.Variable(
-            tf.random_normal([num_heads, num_units, attention_size],
-                             stddev=0.1))  # [num_heads, num_units, A]
-        b_omega = tf.Variable(tf.random_normal([attention_size], stddev=0.1))
-        u_omega = tf.Variable(tf.random_normal([attention_size], stddev=0.1))
-
-        # Computing the attention score, of shape [B, M, H, A].
-        attention_evidence = tf.tanh(tf.tensordot(inputs, w_omega, axes=[[2], [1]]) + b_omega)
-        attention_evidence = tf.tensordot(
-            attention_evidence, u_omega, axes=[[-1], [0]],
-            name='attention_evidence_score')  # [B, M, H]
-
-        # Apply a non-linear layer to obtain (un-normalized) attention weights.
-        if attention_activation == "soft":
-            attention_weights_unnormalized = tf.nn.sigmoid(attention_evidence)
-        elif attention_activation == "sharp":
-            attention_weights_unnormalized = tf.math.exp(attention_evidence)
-        elif attention_activation == "linear":
-            attention_weights_unnormalized = attention_evidence
-        else:
-            raise ValueError("Unknown/unsupported attention activation: %s."
-                             % attention_activation)
-
-        tiled_sentence_lengths = tf.tile(
-            input=tf.expand_dims(
-                tf.sequence_mask(sentence_lengths), axis=-1),
-            multiples=[1, 1, num_heads])
-
-        attention_weights_unnormalized = tf.where(
-            tiled_sentence_lengths,
-            attention_weights_unnormalized,
-            tf.zeros_like(attention_weights_unnormalized))
-
-        attention_weights = attention_weights_unnormalized / tf.reduce_sum(
-            attention_weights_unnormalized, axis=1, keep_dims=True)  # [B, M, H]
-
-        # Prepare alphas and input.
-        attention_weights = tf.transpose(attention_weights, [0, 2, 1])  # [B, H, M, 1]
-        inputs = tf.tile(
-            input=tf.expand_dims(inputs, axis=1),
-            multiples=[1, num_heads, 1, 1])  # [B, H, M, E]
-
-        product = inputs * tf.expand_dims(attention_weights, axis=-1)  # [B, H, M, E]
-        output = tf.reduce_sum(product, axis=2)  # [B, H, E]
-
-        processed_tensor = tf.squeeze(tf.layers.dense(
-            inputs=output, units=1,
-            kernel_initializer=initializer), axis=-1)  # [B, num_heads]
-
-        if separate_heads:
-            # Get the sentence representations corresponding to the default head.
-            default_head = tf.gather(
-                processed_tensor,
-                indices=[0], axis=-1)  # [B, 1]
-
-            # Get the sentence representations corresponding to the non-default head.
-            non_default_heads = tf.gather(
-                processed_tensor,
-                indices=list(range(1, num_heads)), axis=-1)  # [B, num_heads-1]
-
-            # Project onto one unit, corresponding to the default sentence label score.
-            sentence_default_scores = tf.layers.dense(
-                default_head, units=1,
-                activation=scoring_activation, kernel_initializer=initializer,
-                name="sentence_default_scores_ff")  # [B, 1]
-
-            # Project onto (num_sentence_labels-1) units, corresponding to
-            # the non-default sentence label scores.
-            sentence_non_default_scores = tf.layers.dense(
-                non_default_heads, units=num_sentence_labels - 1,
-                activation=scoring_activation, kernel_initializer=initializer,
-                name="sentence_non_default_scores_ff")  # [B, num_sentence_labels-1]
-
-            sentence_scores = tf.concat(
-                [sentence_default_scores, sentence_non_default_scores],
-                axis=-1, name="sentence_scores_concatenation")  # [B, num_sent_labels]
-        else:
-            sentence_scores = tf.layers.dense(
-                inputs=processed_tensor, units=num_sentence_labels,
-                activation=scoring_activation, kernel_initializer=initializer,
-                name="output_sent_specified_scores_ff")  # [B, num_sent_labels]
-
-        sentence_probabilities = tf.nn.softmax(sentence_scores)
-        sentence_predictions = tf.argmax(sentence_probabilities, axis=1)  # [B]
-
-        token_scores = attention_weights_unnormalized  # [B, M, num_heads]
-        token_probabilities = tf.nn.softmax(token_scores)
-        token_predictions = tf.argmax(
-            token_probabilities, axis=2, output_type=tf.int32)  # [B, M]
-
-        return sentence_scores, sentence_predictions, \
-            token_scores, token_predictions, \
-            token_probabilities, sentence_probabilities, attention_weights
-
-
-def variant_4(
-        inputs,
-        initializer,
-        attention_activation,
-        num_sentence_labels,
-        num_heads,
-        hidden_units,
-        sentence_lengths,
-        scoring_activation=None,
-        token_scoring_method="max",
-        use_inputs_instead_values=False,
-        separate_heads=True):
-    """
-    Variant 4 of the multi-head attention to obtain sentence and token scores and predictions.
-    """
-    with tf.variable_scope("variant_4"):
-        num_units = inputs.get_shape().as_list()[-1]
-        if num_units % num_heads != 0:
-            num_units = ceil(num_units / num_heads) * num_heads
-            inputs = tf.layers.dense(inputs, num_units)  # [B, M, num_units]
-
-        # Project to get the queries, keys, and values.
-        queries = tf.layers.dense(
-            inputs, num_units, activation=tf.tanh,
-            kernel_initializer=initializer)  # [B, M, num_units]
-        keys = tf.layers.dense(
-            inputs, num_units, activation=tf.tanh,
-            kernel_initializer=initializer)  # [B, M, num_units]
-        values = tf.layers.dense(
-            inputs, num_units, activation=tf.tanh,
-            kernel_initializer=initializer)  # [B, M, num_units]
-
-        # Mask out the keys, queries and values: replace with 0 all the token
-        # positions between the true and the maximum sentence length.
-        multiplication_mask = tf.tile(
-            input=tf.expand_dims(tf.sequence_mask(sentence_lengths), axis=-1),
-            multiples=[1, 1, num_units])  # [B, M, num_units]
-        queries = tf.where(multiplication_mask, queries, tf.zeros_like(queries))
-        keys = tf.where(multiplication_mask, keys, tf.zeros_like(keys))
-        values = tf.where(multiplication_mask, values, tf.zeros_like(values))
-
-        # Split and concat as many projections as the number of heads.
-        queries = tf.concat(
-            tf.split(queries, num_heads, axis=2),
-            axis=0)  # [B*num_heads, M, num_units/num_heads]
-        keys = tf.concat(
-            tf.split(keys, num_heads, axis=2),
-            axis=0)  # [B*num_heads, M, num_units/num_heads]
-        values = tf.concat(
-            tf.split(values, num_heads, axis=2),
-            axis=0)  # [B*num_heads, M, num_units/num_heads]
-        inputs = tf.concat(
-            tf.split(inputs, num_heads, axis=2),
-            axis=0)  # [B*num_heads, M, num_units/num_heads]
-
-        # Transpose multiplication and scale
-        attention_evidence = tf.matmul(
-            queries, tf.transpose(keys, [0, 2, 1]))  # [B*num_heads, M, M]
-        attention_evidence = tf.math.divide(
-            attention_evidence, tf.constant(num_units ** 0.5))
-
-        # Mask columns (with values of -infinity), based on rows that have 0 sum.
-        attention_evidence_masked = mask(
-            attention_evidence, queries, keys, mask_type="key")
-
-        # Apply a non-linear layer to obtain (un-normalized) attention weights.
-        if attention_activation == "soft":
-            attention_weights_unnormalized = tf.nn.sigmoid(attention_evidence_masked)
-        elif attention_activation == "sharp":
-            attention_weights_unnormalized = tf.math.exp(attention_evidence_masked)
-        elif attention_activation == "linear":
-            attention_weights_unnormalized = attention_evidence_masked
-        else:
-            raise ValueError("Unknown/unsupported attention activation: %s."
-                             % attention_activation)
-
-        attention_weights_unnormalized = mask(  # [B*num_heads, M, M]
-            attention_weights_unnormalized, queries, keys, mask_type="query")
-
-        # Obtain token scores from attention weights. Shape is [B*num_heads, M].
-        if token_scoring_method == "sum":
-            attention_weights_unnormalized = tf.reduce_sum(
-                attention_weights_unnormalized, axis=1)
-        elif token_scoring_method == "max":
-            attention_weights_unnormalized = tf.reduce_max(
-                attention_weights_unnormalized, axis=1)
-        elif token_scoring_method == "avg":
-            attention_weights_unnormalized = tf.reduce_mean(
-                attention_weights_unnormalized, axis=1)
-        elif token_scoring_method == "logsumexp":
-            attention_weights_unnormalized = tf.reduce_logsumexp(
-                attention_weights_unnormalized, axis=1)
-        else:
-            raise ValueError("Unknown/unsupported token scoring method: %s"
-                             % token_scoring_method)
-
-        # attention_weights_unnormalized = tf.where(
-        #     tf.sequence_mask(sentence_lengths),
-        #     attention_weights_unnormalized,
-        #     tf.zeros_like(attention_weights_unnormalized))
-
-        # Normalize to obtain attention weights.
-        attention_weights = attention_weights_unnormalized / tf.reduce_sum(
-            attention_weights_unnormalized, axis=1, keep_dims=True)
-
-        token_scores = tf.concat(
-            tf.split(tf.expand_dims(attention_weights_unnormalized, axis=2), num_heads),
-            axis=2)  # [B, M, num_heads]
-        token_probabilities = tf.nn.softmax(token_scores)
-        token_predictions = tf.argmax(
-            token_probabilities, axis=2, output_type=tf.int32)  # [B, M]
-
-        if use_inputs_instead_values:
-            product = tf.reduce_sum(inputs * tf.expand_dims(attention_weights, axis=-1),
-                                    axis=1)  # [B*num_heads, num_units/num_heads]
-        else:
-            product = tf.reduce_sum(values * tf.expand_dims(attention_weights, axis=-1),
-                                    axis=1)  # [B*num_heads, num_units/num_heads]
-
-        product = tf.layers.dense(
-            inputs=product, units=hidden_units,
-            activation=tf.tanh, kernel_initializer=initializer)  # [B*num_heads, hidden_units]
-
-        processed_tensor = tf.layers.dense(
-            inputs=product, units=1,
-            kernel_initializer=initializer)  # [B*num_heads, 1]
-
-        processed_tensor = tf.concat(
-            tf.split(processed_tensor, num_heads), axis=1)  # [B, num_heads]
-
-        if separate_heads:
-            # Get the sentence representations corresponding to the default head.
-            default_head = tf.gather(
-                processed_tensor,
-                indices=[0], axis=-1)  # [B, 1]
-
-            # Get the sentence representations corresponding to the non-default head.
-            non_default_heads = tf.gather(
-                processed_tensor,
-                indices=list(range(1, num_heads)), axis=-1)  # [B, num_heads-1]
-
-            # Project onto one unit, corresponding to the default sentence label score.
-            sentence_default_scores = tf.layers.dense(
-                default_head, units=1,
-                activation=scoring_activation, kernel_initializer=initializer,
-                name="sentence_default_scores_ff")  # [B, 1]
-
-            # Project onto (num_sentence_labels-1) units, corresponding to
-            # the non-default sentence label scores.
-            sentence_non_default_scores = tf.layers.dense(
-                non_default_heads, units=num_sentence_labels - 1,
-                activation=scoring_activation, kernel_initializer=initializer,
-                name="sentence_non_default_scores_ff")  # [B, num_sentence_labels-1]
-
-            sentence_scores = tf.concat(
-                [sentence_default_scores, sentence_non_default_scores],
-                axis=-1, name="sentence_scores_concatenation")  # [B, num_sent_labels]
-        else:
-            sentence_scores = tf.layers.dense(
-                inputs=processed_tensor, units=num_sentence_labels,
-                activation=scoring_activation, kernel_initializer=initializer,
-                name="output_sent_specified_scores_ff")  # [B, num_sent_labels]
-
-        sentence_probabilities = tf.nn.softmax(sentence_scores)
-        sentence_predictions = tf.argmax(sentence_probabilities, axis=1)  # [B]
-
-        attention_weights = tf.concat(
-            tf.split(tf.expand_dims(attention_weights, axis=-1), num_heads),
-            axis=-1)  # [B, M, num_heads]
-
-        return sentence_scores, sentence_predictions, \
-            token_scores, token_predictions, \
-            token_probabilities, sentence_probabilities, attention_weights
-
-
-def variant_5(
-        inputs,
-        initializer,
-        attention_activation,
-        num_sentence_labels,
-        num_heads,
-        hidden_units,
-        sentence_lengths,
-        scoring_activation=None,
-        token_scoring_method="max",
-        use_inputs_instead_values=False,
-        separate_heads=True):
-    """
-    Variant 5 of the multi-head attention to obtain sentence and token scores and predictions.
-    """
-    with tf.variable_scope("variant_5"):
-        num_units = inputs.get_shape().as_list()[-1]
-        if num_units % num_heads != 0:
-            num_units = ceil(num_units / num_heads) * num_heads
-            inputs = tf.layers.dense(inputs, num_units)  # [B, M, num_units]
-
-        # Project to get the queries, keys, and values.
-        queries = tf.layers.dense(
-            inputs, num_units, activation=tf.tanh,
-            kernel_initializer=initializer)  # [B, M, num_units]
-        keys = tf.layers.dense(
-            inputs, num_units, activation=tf.tanh,
-            kernel_initializer=initializer)  # [B, M, num_units]
-        values = tf.layers.dense(
-            inputs, num_units, activation=tf.tanh,
-            kernel_initializer=initializer)  # [B, M, num_units]
-
-        # Mask out the keys, queries and values: replace with 0 all the token
-        # positions between the true and the maximum sentence length.
-        multiplication_mask = tf.tile(
-            input=tf.expand_dims(tf.sequence_mask(sentence_lengths), axis=-1),
-            multiples=[1, 1, num_units])  # [B, M, num_units]
-        queries = tf.where(multiplication_mask, queries, tf.zeros_like(queries))
-        keys = tf.where(multiplication_mask, keys, tf.zeros_like(keys))
-        values = tf.where(multiplication_mask, values, tf.zeros_like(values))
-
-        # Split and concat as many projections as the number of heads.
-        queries = tf.concat(
-            tf.split(queries, num_heads, axis=2),
-            axis=0)  # [B*num_heads, M, num_units/num_heads]
-        keys = tf.concat(
-            tf.split(keys, num_heads, axis=2),
-            axis=0)  # [B*num_heads, M, num_units/num_heads]
-        values = tf.concat(
-            tf.split(values, num_heads, axis=2),
-            axis=0)  # [B*num_heads, M, num_units/num_heads]
-        inputs = tf.concat(
-            tf.split(inputs, num_heads, axis=2),
-            axis=0)  # [B*num_heads, M, num_units/num_heads]
-
-        # Transpose multiplication and scale
-        attention_evidence = tf.matmul(
-            queries, tf.transpose(keys, [0, 2, 1]))  # [B*num_heads, M, M]
-        attention_evidence = tf.math.divide(
-            attention_evidence, tf.constant(num_units ** 0.5))
-
-        # Obtain token scores from attention weights. Shape is [B*num_heads, M].
-        if token_scoring_method == "sum":
-            attention_evidence = tf.reduce_sum(
-                attention_evidence, axis=1)
-        elif token_scoring_method == "max":
-            attention_evidence = tf.reduce_max(
-                attention_evidence, axis=1)
-        elif token_scoring_method == "avg":
-            attention_evidence = tf.reduce_mean(
-                attention_evidence, axis=1)
-        elif token_scoring_method == "logsumexp":
-            attention_evidence = tf.reduce_logsumexp(
-                attention_evidence, axis=1)
-        else:
-            raise ValueError("Unknown/unsupported token scoring method: %s"
-                             % token_scoring_method)
-
-        # Apply a non-linear layer to obtain un-normalized attention weights.
-        if attention_activation == "soft":
-            attention_weights_unnormalized = tf.nn.sigmoid(attention_evidence)
-        elif attention_activation == "sharp":
-            attention_weights_unnormalized = tf.math.exp(attention_evidence)
-        elif attention_activation == "linear":
-            attention_weights_unnormalized = attention_evidence
-        else:
-            raise ValueError("Unknown/unsupported attention activation: %s."
-                             % attention_activation)
-
-        tiled_sentence_lengths = tf.tile(
-            input=tf.sequence_mask(sentence_lengths), multiples=[num_heads, 1])
-
-        attention_weights_unnormalized = tf.where(
-             tiled_sentence_lengths,
-             attention_weights_unnormalized,
-             tf.zeros_like(attention_weights_unnormalized))
-
-        # Normalize to obtain attention weights of shape [B*num_heads, M].
-        attention_weights = attention_weights_unnormalized / tf.reduce_sum(
-            attention_weights_unnormalized, axis=1, keep_dims=True)
-
-        token_scores = tf.concat(
-            tf.split(tf.expand_dims(attention_weights_unnormalized, axis=2), num_heads),
-            axis=2)  # [B, M, num_heads]
-        token_probabilities = tf.nn.softmax(token_scores)
-        token_predictions = tf.argmax(
-            token_probabilities, axis=2, output_type=tf.int32)  # [B, M]
-
-        if use_inputs_instead_values:
-            product = tf.reduce_sum(inputs * tf.expand_dims(attention_weights, axis=-1),
-                                    axis=1)  # [B*num_heads, num_units/num_heads]
-        else:
-            product = tf.reduce_sum(values * tf.expand_dims(attention_weights, axis=-1),
-                                    axis=1)  # [B*num_heads, num_units/num_heads]
-
-        product = tf.layers.dense(
-            inputs=product, units=hidden_units,
-            activation=tf.tanh, kernel_initializer=initializer)  # [B*num_heads, hidden_units]
-
-        processed_tensor = tf.layers.dense(
-            inputs=product, units=1,
-            kernel_initializer=initializer)  # [B*num_heads, 1]
-
-        processed_tensor = tf.concat(
-            tf.split(processed_tensor, num_heads), axis=1)  # [B, num_heads]
-
-        if separate_heads:
-            # Get the sentence representations corresponding to the default head.
-            default_head = tf.gather(
-                processed_tensor,
-                indices=[0], axis=-1)  # [B, 1]
-
-            # Get the sentence representations corresponding to the non-default head.
-            non_default_heads = tf.gather(
-                processed_tensor,
-                indices=list(range(1, num_heads)), axis=-1)  # [B, num_heads-1]
-
-            # Project onto one unit, corresponding to the default sentence label score.
-            sentence_default_scores = tf.layers.dense(
-                default_head, units=1,
-                activation=scoring_activation, kernel_initializer=initializer,
-                name="sentence_default_scores_ff")  # [B, 1]
-
-            # Project onto (num_sentence_labels-1) units, corresponding to
-            # the non-default sentence label scores.
-            sentence_non_default_scores = tf.layers.dense(
-                non_default_heads, units=num_sentence_labels - 1,
-                activation=scoring_activation, kernel_initializer=initializer,
-                name="sentence_non_default_scores_ff")  # [B, num_sentence_labels-1]
-
-            sentence_scores = tf.concat(
-                [sentence_default_scores, sentence_non_default_scores],
-                axis=-1, name="sentence_scores_concatenation")  # [B, num_sent_labels]
-        else:
-            sentence_scores = tf.layers.dense(
-                inputs=processed_tensor, units=num_sentence_labels,
-                activation=scoring_activation, kernel_initializer=initializer,
-                name="output_sent_specified_scores_ff")  # [B, num_sent_labels]
-
-        sentence_probabilities = tf.nn.softmax(sentence_scores)
-        sentence_predictions = tf.argmax(sentence_probabilities, axis=1)  # [B]
-
-        attention_weights = tf.concat(
-            tf.split(tf.expand_dims(attention_weights, axis=-1), num_heads),
-            axis=-1)  # [B, M, num_heads]
-
-        return sentence_scores, sentence_predictions, \
-            token_scores, token_predictions, \
-            token_probabilities, sentence_probabilities, attention_weights
-
-
-def variant_6(
-        inputs,
-        initializer,
-        attention_activation,
-        num_sentence_labels,
-        num_heads,
-        hidden_units,
-        scoring_activation=None,
-        token_scoring_method="max",
-        separate_heads=True):
-    """
-    Variant 6 of the multi-head attention to obtain sentence and token scores and predictions.
-    """
-    with tf.variable_scope("variant_6"):
-        num_units = inputs.get_shape().as_list()[-1]
-        keys_list = []
-        queries_list = []
-        values_list = []
-
-        for i in range(num_heads):
-            with tf.variable_scope("num_head_{}".format(i), reuse=tf.AUTO_REUSE):
-                keys_this_head = tf.layers.dense(
-                    inputs, num_units, activation=tf.tanh,
-                    kernel_initializer=initializer)  # [B, M, num_units]
-                queries_this_head = tf.layers.dense(
-                    inputs, num_units, activation=tf.nn.relu,
-                    kernel_regularizer=tf.contrib.layers.l2_regularizer(scale=0.7),
-                    kernel_initializer=initializer)  # [B, M, num_units]
-                values_this_head = tf.layers.dense(
-                    inputs, num_units, activation=tf.tanh,
-                    kernel_initializer=initializer)  # [B, M, num_units]
-
-                keys_list.append(keys_this_head)
-                queries_list.append(queries_this_head)
-                values_list.append(values_this_head)
-
-        keys = tf.stack(keys_list)  # [num_heads, B, M, num_units]
-        queries = tf.stack(queries_list)   # [num_heads, B, M, num_units]
-        values = tf.stack(values_list)  # [num_heads, B, M, num_units]
-
-        # Transpose multiplication and scale
-        attention_evidence = tf.matmul(
-            queries, tf.transpose(keys, [0, 1, 3, 2]))  # [num_heads, B, M, M]
-        attention_evidence = tf.math.divide(
-            attention_evidence, tf.constant(num_units ** 0.5))
-
-        # Mask columns (with values of -infinity), based on rows that have 0 sum.
-        attention_evidence_masked = mask_2(
-            attention_evidence, queries, keys, mask_type="key")
-
-        # Apply a non-linear layer to obtain (un-normalized) attention weights.
-        if attention_activation == "soft":
-            attention_weights = tf.nn.sigmoid(attention_evidence_masked)
-        elif attention_activation == "sharp":
-            attention_weights = tf.math.exp(attention_evidence_masked)
-        elif attention_activation == "linear":
-            attention_weights = attention_evidence_masked
-        else:
-            raise ValueError("Unknown/unsupported attention activation: %s."
-                             % attention_activation)
-
-        attention_weights_unnormalized = attention_weights
-
-        # Normalize attention weights.
-        attention_weights /= tf.reduce_sum(
-            attention_weights, axis=-1, keep_dims=True)
-
-        # Mask rows (with values of 0), based on columns that have 0 sum.
-        attention_weights = mask_2(
-            attention_weights, queries, keys, mask_type="query")
-        attention_weights_unnormalized = mask_2(
-            attention_weights_unnormalized, queries, keys, mask_type="query")
-
-        # [num_heads, B, M, num_units]
-        product = tf.matmul(attention_weights, values)
-
-        product = tf.reduce_sum(product, axis=2)  # [num_heads, B, num_units]
-
-        product = tf.layers.dense(
-            inputs=product, units=hidden_units,
-            activation=tf.tanh, kernel_initializer=initializer)  # [num_heads, B, hidden_units]
-
-        processed_tensor = tf.layers.dense(
-            inputs=product, units=1,
-            kernel_initializer=initializer)  # [num_heads, B, 1]
-
-        processed_tensor = tf.transpose(
-            tf.squeeze(processed_tensor, axis=-1), [1, 0])  # [B, num_heads]
-
-        if separate_heads:
-            # Get the sentence representations corresponding to the default head.
-            default_head = tf.gather(
-                processed_tensor,
-                indices=[0], axis=-1)  # [B, 1]
-
-            # Get the sentence representations corresponding to the non-default head.
-            non_default_heads = tf.gather(
-                processed_tensor,
-                indices=list(range(1, num_heads)), axis=-1)  # [B, num_heads-1]
-
-            # Project onto one unit, corresponding to the default sentence label score.
-            sentence_default_scores = tf.layers.dense(
-                default_head, units=1,
-                activation=scoring_activation, kernel_initializer=initializer,
-                name="sentence_default_scores_ff")  # [B, 1]
-
-            # Project onto (num_sentence_labels-1) units, corresponding to
-            # the non-default sentence label scores.
-            sentence_non_default_scores = tf.layers.dense(
-                non_default_heads, units=num_sentence_labels - 1,
-                activation=scoring_activation, kernel_initializer=initializer,
-                name="sentence_non_default_scores_ff")  # [B, num_sentence_labels-1]
-
-            sentence_scores = tf.concat(
-                [sentence_default_scores, sentence_non_default_scores],
-                axis=-1, name="sentence_scores_concatenation")  # [B, num_sent_labels]
-        else:
-            sentence_scores = tf.layers.dense(
-                inputs=processed_tensor, units=num_sentence_labels,
-                activation=scoring_activation, kernel_initializer=initializer,
-                name="output_sent_specified_scores_ff")  # [B, num_sent_labels]
-
-        sentence_probabilities = tf.nn.softmax(sentence_scores)
-        sentence_predictions = tf.argmax(sentence_probabilities, axis=1)  # [B]
-
-        # Obtain token scores from attention weights. Shape is [num_heads, B, M].
-        if token_scoring_method == "sum":
-            token_scores = tf.reduce_sum(attention_weights_unnormalized, axis=2)
-        elif token_scoring_method == "max":
-            token_scores = tf.reduce_max(attention_weights_unnormalized, axis=2)
-        elif token_scoring_method == "avg":
-            token_scores = tf.reduce_mean(attention_weights_unnormalized, axis=2)
-        elif token_scoring_method == "logsumexp":
-            token_scores = tf.reduce_logsumexp(attention_weights_unnormalized, axis=2)
-        else:
-            raise ValueError("Unknown/unsupported token scoring method: %s"
-                             % token_scoring_method)
-
-        token_scores = tf.transpose(token_scores, [1, 2, 0])  # [B, M, num_heads]
-        token_probabilities = tf.nn.softmax(token_scores)
-        token_predictions = tf.argmax(
-            token_probabilities, axis=2, output_type=tf.int32)  # [B, M]
-
-        attention_weights = tf.transpose(attention_weights, [1, 2, 3, 0])  # [B, M, M, num_heads]
-
-        return sentence_scores, sentence_predictions, \
-            token_scores, token_predictions, \
-            token_probabilities, sentence_probabilities, attention_weights
+            raise ValueError("Unable to handle value, no UNK token: %s." % token)
+        return token_id
+
+    def create_input_dictionary_for_batch(self, batch, is_training, learning_rate):
+        """
+        Creates the dictionary fed to the the TF model.
+        """
+        sentence_lengths = numpy.array([len(sentence.tokens) for sentence in batch])
+        max_sentence_length = sentence_lengths.max()
+        max_word_length = numpy.array(
+            [numpy.array([len(token.value) for token in sentence.tokens]).max()
+             for sentence in batch]).max()
+
+        if 0 < self.config["allowed_word_length"] < max_word_length:
+            max_word_length = min(max_word_length, self.config["allowed_word_length"])
+
+        word_ids = numpy.zeros(
+            (len(batch), max_sentence_length), dtype=numpy.int32)
+        char_ids = numpy.zeros(
+            (len(batch), max_sentence_length, max_word_length), dtype=numpy.int32)
+        word_lengths = numpy.zeros(
+            (len(batch), max_sentence_length), dtype=numpy.int32)
+        word_labels = numpy.zeros(
+            (len(batch), max_sentence_length), dtype=numpy.float32)
+        sentence_labels = numpy.zeros(
+            (len(batch)), dtype=numpy.float32)
+        word_objective_weights = numpy.zeros(
+            (len(batch), max_sentence_length), dtype=numpy.float32)
+        sentence_objective_weights = numpy.zeros((len(batch)), dtype=numpy.float32)
+
+        # A proportion of the singletons are assigned to UNK (do this just for training).
+        singletons = self.singletons if is_training else None
+        singletons_prob = self.config["singletons_prob"] if is_training else 0.0
+
+        for i, sentence in enumerate(batch):
+            sentence_labels[i] = sentence.label_sent
+
+            if sentence_labels[i] != 0:
+                if self.config["sentence_objective_weights_non_default"] > 0.0:
+                    sentence_objective_weights[i] = self.config[
+                        "sentence_objective_weights_non_default"]
+                else:
+                    sentence_objective_weights[i] = 1.0
+            else:
+                sentence_objective_weights[i] = 1.0
+
+            for j, token in enumerate(sentence.tokens):
+                word_ids[i][j] = self.translate2id(
+                    token=token.value,
+                    token2id=self.word2id,
+                    unk_token=self.UNK,
+                    lowercase=self.config["lowercase"],
+                    replace_digits=self.config["replace_digits"],
+                    singletons=singletons,
+                    singletons_prob=singletons_prob)
+                word_labels[i][j] = token.label_tok
+                word_lengths[i][j] = len(token.value)
+                for k in range(min(len(token.value), max_word_length)):
+                    char_ids[i][j][k] = self.translate2id(
+                        token=token.value[k],
+                        token2id=self.char2id,
+                        unk_token=self.CUNK)
+                if token.enable_supervision is True:
+                    word_objective_weights[i][j] = 1.0
+
+        input_dictionary = {
+            self.word_ids: word_ids,
+            self.char_ids: char_ids,
+            self.sentence_lengths: sentence_lengths,
+            self.word_lengths: word_lengths,
+            self.sentence_labels: sentence_labels,
+            self.word_labels: word_labels,
+            self.word_objective_weights: word_objective_weights,
+            self.learning_rate: learning_rate,
+            self.is_training: is_training}
+        return input_dictionary
+
+    def process_batch(self, batch, is_training, learning_rate):
+        """
+        Processes a batch of sentences.
+        :param batch: a set of sentences of size "max_batch_size".
+        :param is_training: whether the current batch is a training instance or not.
+        :param learning_rate: the pace at which learning should be performed.
+        :return: the cost, the sentence predictions, the sentence label distribution,
+        the token predictions and the token label distribution.
+        """
+        feed_dict = self.create_input_dictionary_for_batch(batch, is_training, learning_rate)
+        cost, sentence_pred, sentence_prob, token_pred, token_prob = self.session.run(
+            [self.loss, self.sentence_predictions, self.sentence_probabilities,
+             self.token_predictions, self.token_probabilities] +
+            ([self.train_op] if is_training else []), feed_dict=feed_dict)[:5]
+        return cost, sentence_pred, sentence_prob, token_pred, token_prob
+
+    def initialize_session(self):
+        """
+        Initializes a tensorflow session and sets the random seed.
+        """
+        tf.set_random_seed(self.config["random_seed"])
+        session_config = tf.ConfigProto()
+        session_config.gpu_options.allow_growth = self.config["tf_allow_growth"]
+        session_config.gpu_options.per_process_gpu_memory_fraction = self.config[
+            "tf_per_process_gpu_memory_fraction"]
+        self.session = tf.Session(config=session_config)
+        self.session.run(tf.global_variables_initializer())
+        self.saver = tf.train.Saver(max_to_keep=1)
+
+    @staticmethod
+    def get_parameter_count():
+        """
+        Counts the total number of parameters.
+        """
+        total_parameters = 0
+        for variable in tf.trainable_variables():
+            shape = variable.get_shape()
+            variable_parameters = 1
+            for dim in shape:
+                variable_parameters *= dim.value
+            total_parameters += variable_parameters
+        return total_parameters
+
+    def get_parameter_count_without_word_embeddings(self):
+        """
+        Counts the number of parameters without those introduced by word embeddings.
+        """
+        shape = self.word_embeddings.get_shape()
+        variable_parameters = 1
+        for dim in shape:
+            variable_parameters *= dim.value
+        return self.get_parameter_count() - variable_parameters
+
+    def save(self, filename):
+        """
+        Saves a trained model to the path in filename.
+        """
+        dump = dict()
+        dump["config"] = self.config
+        dump["label2id_sent"] = self.label2id_sent
+        dump["label2id_tok"] = self.label2id_tok
+        dump["UNK"] = self.UNK
+        dump["CUNK"] = self.CUNK
+        dump["word2id"] = self.word2id
+        dump["char2id"] = self.char2id
+        dump["singletons"] = self.singletons
+
+        dump["params"] = {}
+        for variable in tf.global_variables():
+            assert (
+                variable.name not in dump["params"]), \
+                "Error: variable with this name already exists: %s." % variable.name
+            dump["params"][variable.name] = self.session.run(variable)
+        with open(filename, 'wb') as f:
+            pickle.dump(dump, f, protocol=pickle.HIGHEST_PROTOCOL)
+
+    @staticmethod
+    def load(filename, new_config=None):
+        """
+        Loads a pre-trained MHAL model.
+        """
+        with open(filename, 'rb') as f:
+            dump = pickle.load(f)
+            dump["config"]["save"] = None
+
+            # Use the saved config, except for values that are present in the new config.
+            if new_config:
+                for key in new_config:
+                    dump["config"][key] = new_config[key]
+
+            labeler = Model(dump["config"], dump["label2id_sent"], dump["label2id_tok"])
+            labeler.UNK = dump["UNK"]
+            labeler.CUNK = dump["CUNK"]
+            labeler.word2id = dump["word2id"]
+            labeler.char2id = dump["char2id"]
+            labeler.singletons = dump["singletons"]
+
+            labeler.construct_network()
+            labeler.initialize_session()
+
+            labeler.load_params(filename)
+
+            return labeler
+
+    def load_params(self, filename):
+        """
+        Loads the parameters of a trained model.
+        """
+        with open(filename, 'rb') as f:
+            dump = pickle.load(f)
+
+            for variable in tf.global_variables():
+                assert (variable.name in dump["params"]), \
+                    "Variable not in dump: %s." % variable.name
+                assert (variable.shape == dump["params"][variable.name].shape), \
+                    "Variable shape not as expected: %s, of shape %s. %s" % (
+                        variable.name, str(variable.shape),
+                        str(dump["params"][variable.name].shape))
+                value = numpy.asarray(dump["params"][variable.name])
+                self.session.run(variable.assign(value))
 

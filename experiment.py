@@ -1,8 +1,9 @@
-# from marek_model import Model
-from my_model import Model
-from my_eval import Evaluator
 from collections import Counter
 from collections import OrderedDict
+from evaluator import Evaluator
+from model import Model
+# from second_model import Model
+# from variants import Model
 import gc
 import math
 import numpy as np
@@ -24,28 +25,34 @@ else:
 
 class Token:
     """
-    Representation of a single token as a value and a label.
+    Representation of a single token. Each token has a value, a label,
+    and a supervision state, which can be enabled or disabled.
     """
     unique_labels_tok = set()
+    labels_tok_dict = {}
 
     def __init__(self, value, label, enable_supervision):
         self.value = value
         self.label_tok = label
         self.enable_supervision = True
-        if enable_supervision == "off":
+        if "off" in enable_supervision:
             self.enable_supervision = False
         self.unique_labels_tok.add(label)
+        if label not in self.labels_tok_dict.keys():
+            self.labels_tok_dict[label] = 0
+        self.labels_tok_dict[label] += 1
 
 
 class Sentence:
     """
     Representation of a sentence as a list of tokens which are of
-    class Token, thus each has a certain value and label.
+    class Token, each having a value, label and supervision state.
     Each sentence is assigned a label which can be either inferred
-    from its tokens (binary/majority) or specified by the user (so
-    the last line is "sent_label" followed by the sentence label).
+    from its tokens (binary/majority) or specified by the user in
+    which case the last line is "sent_label" followed by the label).
     """
     unique_labels_sent = set()
+    labels_sent_dict = {}
 
     def __init__(self):
         self.tokens = []
@@ -54,16 +61,15 @@ class Sentence:
     def add_token(self, value, label, enable_supervision,
                   sentence_label_type, default_label):
         """
-        Add a token with the specified value and label to the list of tokens.
-        If the token value is "sent_label" then instead of adding a token,
-        the sentence label is set for which the sentence_label_type and
-        the default_label are needed.
-        :param value: str, the actual token value (what is the word, precisely)
-        :param label: str, the lable of the current token
+        Adds a token with the specified value, label and state to the list of tokens.
+        If the token value is "sent_label" then, instead of adding a token, it sets
+        the sentence label (needing a sentence_label_type and a default_label).
+        :param value: str, the token value (i.e. what's the actual word, precisely)
+        :param label: str, the label of the current token
         :param enable_supervision: str, whether to allow supervision or not
-        :param sentence_label_type: str
-        :param default_label: str
-        :rtype: None
+        :param sentence_label_type: str, type of sentence label assignment to expect
+        (binary, majority, specified). Should be set by "sentence_label" in config.
+        :param default_label: str, the default label, set by "default_label" in config.
         """
         if value == "sent_label":
             self.set_label(sentence_label_type, default_label, label)
@@ -73,13 +79,12 @@ class Sentence:
 
     def set_label(self, sentence_label_type, default_label, label=None):
         """
-        Set the label of the sentence, according to the sentence_label_type,
-        which can be "specified", "majority", or "binary".
-        The default label is needed to infer the binary labels.
+        Sets the label of the sentence, according to "sentence_label_type"
+        specified in config, which can be "specified", "majority", or "binary".
+        The "default_label" is also needed to infer the binary labels.
         :param sentence_label_type: str
         :param default_label: str
         :param label: str
-        :rtype: None
         """
         if sentence_label_type == "specified":
             assert label is not None or self.label_sent is not None, "Sentence label missing!"
@@ -96,15 +101,18 @@ class Sentence:
             non_default_token_labels = sum(
                 [0 if token.label_tok == default_label else 1 for token in self.tokens])
             if non_default_token_labels > 0:
-                self.label_sent = "1"
+                self.label_sent = "1"  # non-default_label
             else:
                 self.label_sent = "0"  # default_label
         if self.label_sent is not None:
             self.unique_labels_sent.add(self.label_sent)
+            if self.label_sent not in self.labels_sent_dict.keys():
+                self.labels_sent_dict[self.label_sent] = 0
+            self.labels_sent_dict[self.label_sent] += 1
 
     def print_sentence(self):
         """
-        Print a sentence in this format: "sent_label: tok_i(label_i, is_supervision_enabled_i)".
+        Prints a sentence in this format: "sent_label: tok_i(label_i, is_supervision_enabled_i)".
         :rtype: int, representing the number of tokens enabled in this sentence
         """
         to_print = []
@@ -122,7 +130,7 @@ class Sentence:
 
 class Experiment:
     """
-    Here we start the experiment.
+    Start an experiment using MHAL.
     """
 
     def __init__(self):
@@ -133,12 +141,12 @@ class Experiment:
     def read_input_files(self, file_paths, max_sentence_length=-1):
         """
         Reads input files in whitespace-separated format.
-        Will split file_paths on comma, reading from multiple files.
+        Splits file_paths on comma, reading from multiple files.
         Expects one token per line: first column = value, last column = label.
-        If the sentence label is specified, it needs to have
+        If the sentence label is already specified in the input file, it needs to have:
         first column = "sent_label" and config["sentence_label"] = specified.
         If the sentence label is not specified, it will be inferred from the data
-        depending on the value of config["sentence_label"]. Can be majority or binary.
+        depending on the value of config["sentence_label"]. Can be set to majority or binary.
         :type file_paths: str
         :type max_sentence_length: int
         :rtype: list of Sentence objects
@@ -160,10 +168,9 @@ class Experiment:
                                 len(line_parts), line_length, line)
                         line_length = len(line_parts)
 
-                        # The first element on the line is the token value.
-                        # The last is the token label. If there is a penultimate column value
-                        # on the line that is equal to either "on" or "off", it indicates
-                        # whether supervision on this token is enabled. If there is no such element,
+                        # The first element on the line is the token value, while the last is the token label.
+                        # If there is a penultimate column whose value is either "on" or "off", it indicates
+                        # whether supervision on this token is enabled or not. If there is no such element,
                         # we implicitly assume that supervision is possible and turn it on.
                         sentence.add_token(
                             value=line_parts[0], label=line_parts[-1],
@@ -188,9 +195,9 @@ class Experiment:
 
     def create_labels_mapping(self, unique_labels):
         """
-        Map a list of U unique labels to an index in [0, U).
-        The default label (if it exists and is present) will receive index 0.
-        All other labels get the index corresponding to their order.
+        Maps a list of U unique labels to an index in [0, U).
+        The default label (if it exists) will receive index 0.
+        All other labels get the index corresponding to their natural order.
         :type unique_labels: set
         :rtype: dict
         """
@@ -205,7 +212,7 @@ class Experiment:
 
     def convert_labels(self, data):
         """
-        Convert each sentence and token label to its corresponding index.
+        Converts each sentence and token label to its corresponding index.
         :type data: list[Sentence]
         :rtype: list[Sentence]
         """
@@ -248,7 +255,7 @@ class Experiment:
     @staticmethod
     def is_float(value):
         """
-        Check if value is of type float.
+        Checks if value is of type float.
         :type value: any type
         :rtype: bool
         """
@@ -261,10 +268,10 @@ class Experiment:
     @staticmethod
     def create_batches_of_sentence_ids(sentences, batch_equal_size, max_batch_size):
         """
-        Create batches of sentence ids. A positive max_batch_size determines
-         the maximum number of sentences in each batch. A negative max_batch_size 
-         dynamically creates the batches such that each batch contains 
-         abs(max_batch_size) words. Returns a list of lists with sentences ids.
+        Creates batches of sentence ids. A positive max_batch_size determines
+        the maximum number of sentences in each batch. A negative max_batch_size
+        dynamically creates the batches such that each batch contains
+        abs(max_batch_size) words. Returns a list of lists with sentences ids.
         :type sentences: List[Sentence]
         :type batch_equal_size: bool
         :type max_batch_size: int
@@ -307,8 +314,7 @@ class Experiment:
 
     def process_sentences(self, sentences, model, is_training, learning_rate, name):
         """
-        Obtain sentence and token predictions for the sentences.
-        Return the evaluation metrics.
+        Obtains predictions and returns the evaluation metrics.
         :type sentences: List[Sentence]
         :type model: Model
         :type is_training: bool
@@ -342,7 +348,7 @@ class Experiment:
             # Plot the token scores for each sentence in the batch.
             if "test" in name and self.config["plot_token_scores"]:
                 for sentence, token_proba_per_sentence, sent_pred in zip(batch, token_probs, sentence_pred):
-                    if len(sentence.tokens) > 5:
+                    if sentence.label_sent != 0 and sentence.label_sent == sent_pred and len(sentence.tokens) > 5:
                         visualize.plot_token_scores(
                             token_probs=token_proba_per_sentence,
                             sentence=sentence,
@@ -370,16 +376,123 @@ class Experiment:
                 id2label_tok=evaluator.id2label_tok,
                 html_name=self.config["path_plot_predictions_html"] + "/%s" % save_name,
                 sent_binary=len(self.label2id_sent) == 2)
-
         return results
+
+    def run_baseline(self):
+        """
+        Runs majority and random baselines.
+        """
+        if self.config["path_train"] and len(self.config["path_train"]) > 0:
+            data_train = []
+            for path_train in self.config["path_train"].strip().split(":"):
+                data_train += self.read_input_files(
+                    file_paths=path_train,
+                    max_sentence_length=self.config["max_train_sent_length"])
+
+        majority_sentence_label = Counter(Sentence.labels_sent_dict).most_common(1)[0][0]
+        majority_token_label = Counter(Token.labels_tok_dict).most_common(1)[0][0]
+
+        print("Most common sentence label (as in the train set) = ", majority_sentence_label)
+        print("Most common token label (as in the train set) = ", majority_token_label)
+
+        self.label2id_sent = self.create_labels_mapping(Sentence.unique_labels_sent)
+        self.label2id_tok = self.create_labels_mapping(Token.unique_labels_tok)
+        print("Sentence labels to id: ", self.label2id_sent)
+        print("Token labels to id: ", self.label2id_tok)
+
+        df_results = None
+
+        if self.config["path_test"] is not None:
+            i = 0
+            for path_test in self.config["path_test"].strip().split(":"):
+                data_test = self.read_input_files(path_test)
+                data_test = self.convert_labels(data_test)
+
+                # Majority baseline.
+                majority_pred_sent = [self.label2id_sent[majority_sentence_label]] * len(data_test)
+                majority_pred_tok = []
+                for sentence in data_test:
+                    majority_pred_tok.append(
+                        [self.label2id_tok[majority_token_label]] * len(sentence.tokens))
+
+                majority_evaluator = Evaluator(
+                    self.label2id_sent, self.label2id_tok, self.config["conll03_eval"])
+                majority_evaluator.append_data(
+                    0.0, data_test, majority_pred_sent, majority_pred_tok)
+
+                name = "majority_test" + str(i)
+                results = majority_evaluator.get_results(
+                    name=name, token_labels_available=self.config["token_labels_available"])
+
+                for key in results:
+                    print("%s_%s: %s" % (name, key, str(results[key])))
+                majority_evaluator.get_results_nice_print(
+                    name=name, token_labels_available=self.config["token_labels_available"])
+
+                if df_results is None:
+                    df_results = pd.DataFrame(columns=results.keys())
+                df_results = df_results.append(results, ignore_index=True)
+
+                # Random baseline.
+                random_pred_sent = []
+                random_pred_tok = []
+                for sentence in data_test:
+                    random_pred_sent.append(random.randint(0, len(self.label2id_sent) - 1))
+                    random_pred_tok.append(
+                        [random.randint(0, len(self.label2id_tok) - 1)
+                         for _ in range(len(sentence.tokens))])
+
+                random_evaluator = Evaluator(
+                    self.label2id_sent, self.label2id_tok, self.config["conll03_eval"])
+                random_evaluator.append_data(
+                    0.0, data_test, random_pred_sent, random_pred_tok)
+
+                name = "rand_test" + str(i)
+                results = random_evaluator.get_results(
+                    name=name, token_labels_available=self.config["token_labels_available"])
+
+                for key in results:
+                    print("%s_%s: %s" % (name, key, str(results[key])))
+                random_evaluator.get_results_nice_print(
+                    name=name, token_labels_available=self.config["token_labels_available"])
+
+                df_results = df_results.append(results, ignore_index=True)
+                i += 1
+
+        # Save data frame with all the training and testing results
+        df_results.to_csv("".join(self.config["to_write_filename"].split(".")[:-1])
+                          + "_df_results.txt", index=False, sep="\t", encoding="utf-8")
 
     def run_experiment(self, config_path):
         """
-        Run the sequence labeling experiment.
+        Runs an experiment with MHAL.
         :type config_path: str
-        :rtype: None
         """
         self.config = self.parse_config("config", config_path)
+
+        # If you already have a pre-trained model that you just want to test/visualize, set
+        # "load_pretrained_model" to True and add the path to the saved model in "save".
+        if self.config["load_pretrained_model"]:
+            model_filename = experiment.config["save"]
+            loaded_model = Model.load(model_filename)
+            print("Loaded model from %s" % model_filename)
+
+            experiment.label2id_sent = loaded_model.label2id_sent
+            experiment.label2id_tok = loaded_model.label2id_tok
+            print("Sentence labels to id: ", experiment.label2id_sent)
+            print("Token labels to id: ", experiment.label2id_tok)
+
+            if experiment.config["path_test"]:
+                for d, path_data_test in enumerate(experiment.config["path_test"].strip().split(":")):
+                    data_test_loaded = experiment.read_input_files(path_data_test)
+                    data_test_loaded = experiment.convert_labels(data_test_loaded)
+                    experiment.process_sentences(
+                        data_test_loaded, loaded_model, is_training=False,
+                        learning_rate=0.0, name="test" + str(d))
+            return
+
+        # Train and test a new model.
+
         initialize_writer(self.config["to_write_filename"])
         i_rand = random.randint(1, 10000)
         print("i_rand = ", i_rand)
@@ -392,6 +505,11 @@ class Experiment:
 
         for key, val in self.config.items():
             print(str(key) + " = " + str(val))
+
+        # Run majority and random baselines.
+        if "baseline" in self.config["model_type"]:
+            self.run_baseline()
+            return
 
         data_train, data_dev, data_test = None, None, None
 
@@ -420,6 +538,10 @@ class Experiment:
         data_train = self.convert_labels(data_train) if data_train else None
         data_dev = self.convert_labels(data_dev) if data_dev else None
         data_test = self.convert_labels(data_test) if data_test else None
+
+        data_train = data_train[:50]
+        data_dev = data_dev[:50]
+        data_test = data_test[:50]
 
         model = Model(self.config, self.label2id_sent, self.label2id_tok)
         model.build_vocabs(data_train, data_dev, data_test,
@@ -531,24 +653,23 @@ class Experiment:
             model.save(self.config["save"])
 
         if self.config["path_test"] is not None:
-            i = 0
-            for path_test in self.config["path_test"].strip().split(":"):
+            for i, path_test in enumerate(self.config["path_test"].strip().split(":")):
                 data_test = self.read_input_files(path_test)
                 data_test = self.convert_labels(data_test)
+                data_test = data_test[:50]
                 results_test = self.process_sentences(
                     data_test, model, is_training=False,
                     learning_rate=0.0, name="test" + str(i))
                 df_results = df_results.append(results_test, ignore_index=True)
-                i += 1
 
-        # Save data frame with all the training and testing results
-        df_results.to_csv("".join(self.config["to_write_filename"].split(".")[:-1]) + "_df_results.txt",
-                          index=False, sep="\t", encoding="utf-8")
+        # Save all the training and testing results in csv format.
+        df_results.to_csv("".join(self.config["to_write_filename"].split(".")[:-1])
+                          + "_df_results.txt", index=False, sep="\t", encoding="utf-8")
 
 
 class Writer:
     """
-    This class allows me to print to file and to std output at the same time.
+    A class that allows printing to file and to std output at the same time.
     """
     def __init__(self, *writers):
         self.writers = writers
@@ -563,9 +684,8 @@ class Writer:
 
 def initialize_writer(to_write_filename):
     """
-    Method that initializes my writer class.
-    :param to_write_filename: name of the file where the output will be written.
-    :return: None.
+    Method to initialize my writer class.
+    :param to_write_filename: path to write the file to.
     """
     file_out = open(to_write_filename, "wt")
     sys.stdout = Writer(sys.stdout, file_out)
@@ -573,28 +693,5 @@ def initialize_writer(to_write_filename):
 
 if __name__ == "__main__":
     experiment = Experiment()
-    load_pretrained = True
-
-    if not load_pretrained:
-        experiment.run_experiment(sys.argv[1])
-    else:
-        experiment.config = experiment.parse_config("config", sys.argv[1])
-        filename = experiment.config["save"]
-        print("Loaded model %s" % filename)
-        loaded_model = Model.load(filename)
-
-        experiment.label2id_sent = loaded_model.label2id_sent
-        experiment.label2id_tok = loaded_model.label2id_tok
-        print("Sentence labels to id: ", experiment.label2id_sent)
-        print("Token labels to id: ", experiment.label2id_tok)
-
-        if experiment.config["path_test"] is not None:
-            d = 0
-            for path_data_test in experiment.config["path_test"].strip().split(":"):
-                data_test_loaded = experiment.read_input_files(path_data_test)
-                data_test_loaded = experiment.convert_labels(data_test_loaded)
-                experiment.process_sentences(
-                    data_test_loaded, loaded_model, is_training=False,
-                    learning_rate=0.0, name="test" + str(d))
-                d += 1
+    experiment.run_experiment(sys.argv[1])
 

@@ -6,6 +6,9 @@ import time
 
 
 class Evaluator:
+    """
+    Evaluates the results of a joint text classifier.
+    """
 
     def __init__(self, label2id_sent, label2id_tok, conll03_eval):
         self.id2label_sent = {v: k for k, v in label2id_sent.items()}
@@ -37,28 +40,24 @@ class Evaluator:
 
     def append_token_data_for_sentence(self, tokens, true_labels_tok, pred_labels_tok):
         """
-        Get statistical results from the tokens in a certain sentence.
+        Gets statistical results for the tokens in a sentence.
         """
         self.count_tok += len(true_labels_tok)
 
-        # For each token, calculate the same metrics as for the sentence scores
+        # For each token, calculate the same metrics as for the sentence scores.
         for token, true_label, pred_label in zip(tokens, true_labels_tok, pred_labels_tok):
             self.true_tok.append(true_label)
             self.pred_tok.append(pred_label)
 
-            # Calculate accuracy.
             if true_label == pred_label:
-                self.correct_binary_tok += 1.0
+                self.correct_binary_tok += 1.0  # accuracy
 
-            # Calculate TP + FP.
-            self.token_predicted[pred_label] += 1.0
+            self.token_predicted[pred_label] += 1.0  # TP + FP
 
-            # Calculate TP + FN.
-            self.token_total[true_label] += 1.0
+            self.token_total[true_label] += 1.0  # TP + FN
 
-            # Calculate TP.
             if true_label == pred_label:
-                self.token_correct[true_label] += 1.0
+                self.token_correct[true_label] += 1.0  # TP
 
             if self.conll03_eval is True:
                 gold_token_label = self.id2label_tok[true_label]
@@ -72,7 +71,7 @@ class Evaluator:
 
     def append_data(self, cost, batch, sentence_predictions, token_predictions):
         """
-        Get statistical results from the sentence and token scores in a certain batch.
+        Gets statistical results for the sentence and token scores in a batch.
         """
         self.cost_sum += cost
         self.count_sent += len(batch)
@@ -105,8 +104,8 @@ class Evaluator:
     @staticmethod
     def calculate_metrics(correct, predicted, total):
         """
-        Calculate the basic metrics.
-        :param correct: the number of examples predicted as correct that are actually correct
+        Calculates the basic metrics.
+        :param correct: the number of examples predicted as correct that are actually correct.
         :param predicted: the number of examples predicted as correct.
         :param total: the number of examples that are correct by the gold standard.
         :return: the precision, recall, F1 and F05 scores
@@ -119,11 +118,10 @@ class Evaluator:
 
     def get_results(self, name, token_labels_available=True):
         """
-        Obtain the statistical results for a certain dataset
-        both at the sentence and at the token level.
-        :param name: train, dev or test
-        :param token_labels_available: whether there are token annotations
-        :return: an ordered dictionary containing the collection of results
+        Gets the statistical results both at the sentence and at the token level.
+        :param name: train, dev or test (+ epoch number).
+        :param token_labels_available: whether there are token annotations.
+        :return: an ordered dictionary containing the collection of results.
         """
         results = OrderedDict()
 
@@ -144,7 +142,9 @@ class Evaluator:
 
         for key in self.id2label_sent.keys():
             p, r, f, f05 = self.calculate_metrics(
-                self.sentence_correct[key], self.sentence_predicted[key], self.sentence_total[key])
+                self.sentence_correct[key],
+                self.sentence_predicted[key],
+                self.sentence_total[key])
             label = "label=%s" % self.id2label_sent[key]
             results[label + "_predicted_sent"] = self.sentence_predicted[key]
             results[label + "_correct_sent"] = self.sentence_correct[key]
@@ -210,7 +210,7 @@ class Evaluator:
             results["accuracy_tok"] = (self.correct_binary_tok / float(self.count_tok)
                                        if self.count_tok else 0.0)
 
-            # Calculate the micro and macro averages for the token predictions
+            # Calculate the micro and macro averages for the token predictions.
             f_tok_macro, p_tok_macro, r_tok_macro, f05_tok_macro = 0.0, 0.0, 0.0, 0.0
             f_non_default_macro_tok, p_non_default_macro_tok, \
                 r_non_default_macro_tok, f05_non_default_macro_tok = 0.0, 0.0, 0.0, 0.0
@@ -291,15 +291,15 @@ class Evaluator:
 
     def get_results_nice_print(self, name, token_labels_available=True):
         """
-        This method is just a wrapper around the statistical results already computed,
-        just to print them bolder and nicer. Can also used to check the basic metrics.
-        :return: nothing, just print a classification report for the tokens and sentences.
+        This method is a wrapper around the statistical results already computed,
+        just to print them in a nicer format. Can also use it to check the basic metrics.
         """
         if self.true_sent and self.pred_sent:
             print("*" * 50)
             print("Sentence predictions: ")
             print(classification_report(
-                self.true_sent, self.pred_sent, digits=4, labels=np.array(range(len(self.id2label_sent))),
+                self.true_sent, self.pred_sent, digits=4,
+                labels=np.array(range(len(self.id2label_sent))),
                 target_names=[self.id2label_sent[i] for i in range(len(self.id2label_sent))]))
 
         if token_labels_available or "test" in name:
@@ -307,6 +307,7 @@ class Evaluator:
                 print("*" * 50)
                 print("Token predictions: ")
                 print(classification_report(
-                    self.true_tok, self.pred_tok, digits=4, labels=np.array(range(len(self.id2label_tok))),
+                    self.true_tok, self.pred_tok, digits=4,
+                    labels=np.array(range(len(self.id2label_tok))),
                     target_names=[self.id2label_tok[i] for i in range(len(self.id2label_tok))]))
 

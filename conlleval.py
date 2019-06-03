@@ -11,10 +11,9 @@
 # - LaTeX output (-l argument) not supported
 # - raw tags (-r argument) not supported
 
-import sys
-import re
-
 from collections import defaultdict, namedtuple
+import re
+import sys
 
 ANY_SPACE = '<SPACE>'
 

@@ -12,7 +12,7 @@ html_footer = '</body></font></html>'
 
 # A couple of colours (expecting no more than 10 heads). Add more if needed.
 head_colours = [
-    [0.75, 0.75, 0.75],  # grey
+    [0.75, 0.75, 0.75],  # grey for default heads
     [0.9, 0.0, 0.0],  # red
     [0.6, 0.0, 1.0],  # purple
     [1.0, 0.6, 0.0],  # orange
@@ -20,8 +20,8 @@ head_colours = [
     [0.0, 0.0, 0.9],  # blue
     [1.0, 0.0, 1.0],  # pink
     [1.0, 1.0, 0.3],  # yellow
-    [0.0, 0.6, 1.0],  # a type of green
-    [0.5, 1.0, 0.0],  # a type of blue
+    [0.0, 0.6, 1.0],  # another type of green
+    [0.5, 1.0, 0.0],  # another type of blue
     ]
 head_colours_sent = [[0.8, 0.0, 0.4], [0.0, 0.4, 0.4]]  # for binary-labelled sentences
 
@@ -86,10 +86,10 @@ def plot_predictions(
           "Saving to html file %s" % html_filename)
     with open(html_filename, "w") as html_file:
 
-        # Write the normal html file header.
+        # Write the usual html file header.
         html_file.write(html_header)
 
-        # Print labels legend
+        # Print a legend of the colours assigned to the sentence and token labels.
         html_file.write(' ============================== ')
         html_file.write('<br>')
         html_file.write('LEGEND')
@@ -135,7 +135,7 @@ def plot_predictions(
                     "Passed sent_prob = %f which is not a valid probability!" \
                     % sent_prob
 
-                # Represent in colour the gold and the predicted sentence label.
+                # Represent by colour the gold and the predicted sentence labels.
                 predicted_sent_label = int(np.argmax(sent_prob))
                 gold_sent_label = sent.label_sent
                 alpha_sent = sent_prob[predicted_sent_label]
@@ -157,7 +157,7 @@ def plot_predictions(
                        0.9, "<b>GOLD</b>"))
 
                 # Write each token in the colour background of its most probable
-                #  head prediction. Incorrect predictions will be underlined.
+                # head prediction. Incorrect predictions will be underlined.
                 for token, tok_prob in zip(sent.tokens, tok_probs_this_sent):
 
                     assert all(0 <= prob <= 1 for prob in tok_prob), \
