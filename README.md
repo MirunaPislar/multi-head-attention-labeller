@@ -12,7 +12,7 @@ There are two main components:
 
 We provide a schematic overview below, for one head *h* only.
 
-![Architecture](plots/architecture.png =50x)
+<img src="plots/architecture.png" alt="architecture" width="500"/>
 
 The main objectives are to train the model as a joint text classifier, but we also introduced some auxiliary objectives:
 - char and/or word-based language modelling objectives
